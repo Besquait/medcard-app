@@ -197,48 +197,78 @@ function openStudy(id) {
 }
 
 /* ---------- form ---------- */
+const TYPE_HINT = {
+  us: "щитовидка, брюшная полость, почки, сосуды", xray: "грудная клетка, кости, пазухи", ct: "голова, грудь, живот, позвоночник",
+  mri: "мозг, позвоночник, суставы, гипофиз", mammo: "молочные железы", fluoro: "лёгкие, скрининг", dxa: "плотность костей",
+  ecg: "ритм и проводимость сердца", echo: "УЗИ сердца", holter: "ЭКГ за сутки", spiro: "функция лёгких",
+  egd: "пищевод, желудок, 12-перстная", colono: "толстая кишка",
+  consult: "осмотр и выводы специалиста", discharge: "из стационара", other: "всё остальное",
+};
+const WZ = [["type", "Что за обследование"], ["when", "Где и когда"], ["result", "Что показало"], ["attach", "Файлы и анализы"]];
 function openStudyForm(id, presetType) {
-  const s = id ? state.studies[id] : { type: presetType || "us", date: todayISO(), links: [] };
-  ui.stEdit = { id, files: [], links: new Set(s.links || []), removed: [], more: !COMMON_TYPES.includes(s.type), extra: !!(s.doctor || s.recs || s.repeat || s.note) };
-  openX(`<div class="dlg-head"><h3>${id ? "Изменить обследование" : "Новое обследование"}</h3><button type="button" class="icon-btn" data-xclose aria-label="Закрыть">×</button></div>
-    <form class="st-form" data-st-form>
-      <div class="fld"><span>Тип</span><input type="hidden" name="type" value="${esc(s.type)}"><div data-typepick></div></div>
-      <label class="fld"><span>Область или специалист</span><input class="input" name="area" value="${esc(s.area || "")}" placeholder="Например: щитовидная железа" autocomplete="off"></label>
-      <div class="st-hints" data-areas></div>
-      <div class="st-row2">
+  const s = id ? state.studies[id] : { type: presetType || "", date: todayISO(), links: [] };
+  ui.stEdit = { id, files: [], links: new Set(s.links || []), removed: [], step: id || presetType ? 1 : 0 };
+  const typeList = TYPE_GROUPS.map(([g, l]) => `<div class="wz-tg"><small>${esc(g)}</small><div class="wz-types">${l.map(t => `<button type="button" class="wz-type" data-tpick="${t}" aria-pressed="${s.type === t}">${icon(t)}<span><b>${esc(ST[t].name)}</b><small>${esc(TYPE_HINT[t] || "")}</small></span></button>`).join("")}</div></div>`).join("");
+  openX(`<div class="dlg-head"><div><div class="info-group" data-wz-kicker></div><h3 data-wz-title></h3></div><button type="button" class="icon-btn" data-xclose aria-label="Закрыть">×</button></div>
+    <div class="wz-steps">${WZ.map(([k, n], i) => `<button type="button" class="wz-dot" data-wz-go="${i}" title="${esc(n)}"><i></i><span>${esc(n)}</span></button>`).join("")}</div>
+    <form class="st-form" data-st-form novalidate>
+      <input type="hidden" name="type" value="${esc(s.type || "")}">
+      <section class="wz-step" data-step="0">${typeList}</section>
+
+      <section class="wz-step" data-step="1" hidden>
+        <label class="fld"><span>Область или специалист</span><input class="input" name="area" value="${esc(s.area || "")}" placeholder="Например: щитовидная железа" autocomplete="off"></label>
+        <div class="st-hints" data-areas></div>
         <div class="fld"><span>Дата</span>${dfield('name="date"', s.date || todayISO())}</div>
-        <label class="fld st-grow"><span>Клиника</span><input class="input" name="clinic" value="${esc(s.clinic || "")}" autocomplete="off"></label>
+        <label class="fld"><span>Клиника</span><input class="input" name="clinic" value="${esc(s.clinic || "")}" placeholder="необязательно" autocomplete="off"></label>
+        <label class="fld"><span>Врач</span><input class="input" name="doctor" value="${esc(s.doctor || "")}" placeholder="необязательно" autocomplete="off"></label>
+      </section>
+
+      <section class="wz-step" data-step="2" hidden>
+        <div class="fld"><span>Итог</span><input type="hidden" name="status" value="${esc(s.status || "")}">
+          <div class="wz-status">${STUDY_STATUS.map(([k, n]) => `<button type="button" class="wz-st ${k}" data-status="${k}" aria-pressed="${s.status === k}"><i></i>${n}</button>`).join("")}</div></div>
+        <label class="fld"><span>Заключение</span><textarea class="input" name="conclusion" rows="6" placeholder="Перепиши или вставь текст заключения">${esc(s.conclusion || "")}</textarea></label>
+        <label class="fld"><span>Рекомендации врача</span><textarea class="input" name="recs" rows="2" placeholder="необязательно">${esc(s.recs || "")}</textarea></label>
+        <div class="fld"><span>Когда повторить</span>${csel('name="repeat"', [[0, "Не нужно"], [3, "Через 3 месяца"], [6, "Через 6 месяцев"], [12, "Через год"], [24, "Через 2 года"], [36, "Через 3 года"], [60, "Через 5 лет"]], s.repeat || 0)}</div>
+      </section>
+
+      <section class="wz-step" data-step="3" hidden>
+        <div class="fld"><span>Файлы</span>
+          ${canFiles() ? `<label class="st-drop" data-drop><input type="file" multiple accept="image/*,application/pdf,.pdf,.doc,.docx,.txt" data-files hidden>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M20 11.5l-7.8 7.8a5 5 0 0 1-7.1-7.1l8.5-8.5a3.3 3.3 0 0 1 4.7 4.7l-8.5 8.5a1.7 1.7 0 0 1-2.4-2.4l7.8-7.8"/></svg>
+            <span>Прикрепить снимки или PDF</span><small>до 50 МБ</small></label>
+            <div class="st-flist" data-flist></div>` : `<p class="muted st-note">Файлы можно прикреплять после входа через Google.</p>`}</div>
+        <div class="fld"><span>Связанные анализы</span><p class="muted st-note">Отметь анализы, которые относятся к этому обследованию — они будут видны рядом.</p>
+          <div class="st-linkbox" data-links></div>
+          <input class="input st-linkq" data-link-q placeholder="Найти другой анализ" autocomplete="off"><div class="tchips" data-link-sugg></div></div>
+        <label class="fld"><span>Заметка</span><input class="input" name="note" value="${esc(s.note || "")}" placeholder="необязательно" autocomplete="off"></label>
+      </section>
+
+      <div class="dlg-foot wz-foot">
+        <button type="button" class="btn ghost" data-wz-back>Назад</button>
+        <span style="flex:1"></span>
+        ${id ? `<button type="submit" class="btn ghost" data-st-save data-wz-savenow>Сохранить</button>` : ""}
+        <button type="button" class="btn primary" data-wz-next>Далее</button>
+        <button type="submit" class="btn primary" data-st-save data-wz-final hidden>Сохранить</button>
       </div>
-      <div class="fld"><span>Итог</span><input type="hidden" name="status" value="${esc(s.status || "")}">
-        <div class="seg st-seg">${[["", "Не указан"], ...STUDY_STATUS].map(([k, n]) => `<button type="button" data-status="${k}" aria-pressed="${(s.status || "") === k}">${n}</button>`).join("")}</div></div>
-      <label class="fld"><span>Заключение</span><textarea class="input" name="conclusion" rows="4" placeholder="Перепиши или вставь текст заключения">${esc(s.conclusion || "")}</textarea></label>
-      <div class="fld"><span>Связанные анализы</span><div class="st-linkbox" data-links></div>
-        <input class="input st-linkq" data-link-q placeholder="Добавить анализ по названию" autocomplete="off"><div class="tchips" data-link-sugg></div></div>
-      <div class="fld"><span>Файлы</span>
-        ${canFiles() ? `<label class="st-drop" data-drop><input type="file" multiple accept="image/*,application/pdf,.pdf,.doc,.docx,.txt" data-files hidden>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M20 11.5l-7.8 7.8a5 5 0 0 1-7.1-7.1l8.5-8.5a3.3 3.3 0 0 1 4.7 4.7l-8.5 8.5a1.7 1.7 0 0 1-2.4-2.4l7.8-7.8"/></svg>
-          <span>Прикрепить снимки или PDF</span><small>до 50 МБ</small></label>
-          <div class="st-flist" data-flist></div>` : `<p class="muted st-note">Файлы можно прикреплять после входа через Google.</p>`}</div>
-      <details class="st-more"${ui.stEdit.extra ? " open" : ""}><summary>Дополнительно: врач, рекомендации, повтор</summary>
-        <div class="st-more-in">
-          <label class="fld"><span>Врач</span><input class="input" name="doctor" value="${esc(s.doctor || "")}" autocomplete="off"></label>
-          <label class="fld"><span>Рекомендации</span><textarea class="input" name="recs" rows="2" placeholder="Что посоветовал врач">${esc(s.recs || "")}</textarea></label>
-          <div class="fld"><span>Повторить через</span>${csel('name="repeat"', [[0, "Не нужно"], [3, "3 месяца"], [6, "6 месяцев"], [12, "1 год"], [24, "2 года"], [36, "3 года"], [60, "5 лет"]], s.repeat || 0)}</div>
-          <label class="fld"><span>Заметка</span><input class="input" name="note" value="${esc(s.note || "")}" autocomplete="off"></label>
-        </div>
-      </details>
-      <div class="dlg-foot st-foot-bar"><span style="flex:1"></span><button type="button" class="btn ghost" data-xclose>Отмена</button><button type="submit" class="btn primary" data-st-save>Сохранить</button></div>
-    </form>`, "st-dlg");
-  renderTypePick();
-  refreshStudyForm();
+    </form>`, "st-dlg wz");
+  wzShow();
 }
-function renderTypePick() {
-  const cur = $("[data-st-form] [name=type]").value, ed = ui.stEdit;
-  const btn = t => `<button type="button" class="tp" data-tpick="${t}" aria-pressed="${t === cur}">${esc(ST[t].name)}</button>`;
-  $("[data-typepick]").innerHTML = ed.more
-    ? `<div class="tp-groups">${TYPE_GROUPS.map(([g, l]) => `<div class="tp-g"><small>${esc(g)}</small><div class="tp-row">${l.map(btn).join("")}</div></div>`).join("")}</div>`
-    : `<div class="tp-row">${COMMON_TYPES.map(btn).join("")}<button type="button" class="tp tp-more" data-tmore>Ещё типы${CHEV}</button></div>`;
+function wzShow() {
+  const ed = ui.stEdit, i = ed.step, type = $("[data-st-form] [name=type]").value;
+  $$(".wz-step").forEach(sec => sec.hidden = +sec.dataset.step !== i);
+  $$(".wz-dot").forEach((d, k) => { d.classList.toggle("on", k === i); d.classList.toggle("done", k < i); d.disabled = !type && k > 0; });
+  $("[data-wz-kicker]").textContent = `Шаг ${i + 1} из ${WZ.length}${type && i > 0 ? " · " + ST[type].name : ""}`;
+  $("[data-wz-title]").textContent = ed.id && i === 0 ? "Изменить обследование" : WZ[i][1];
+  $("[data-wz-back]").style.visibility = i === 0 ? "hidden" : "";
+  $("[data-wz-next]").hidden = i === WZ.length - 1 || i === 0;
+  $("[data-wz-final]").hidden = i !== WZ.length - 1;
+  const now = $("[data-wz-savenow]"); if (now) now.hidden = i === WZ.length - 1;
+  if (i >= 1) refreshStudyForm();
+  const focus = { 1: "[name=area]", 2: "[name=conclusion]" }[i];
+  if (focus) setTimeout(() => $(`[data-st-form] ${focus}`)?.focus(), 30);
+  $("#xDlg").scrollTop = 0;
 }
+function wzGo(i) { if (!$("[data-st-form] [name=type]").value && i > 0) return; ui.stEdit.step = Math.max(0, Math.min(WZ.length - 1, i)); wzShow(); }
 function formVals() { const f = $("[data-st-form]"); return f ? Object.fromEntries(new FormData(f)) : {}; }
 function refreshStudyForm() {
   const v = formVals(), ed = ui.stEdit;
@@ -335,8 +365,11 @@ function initStudies() {
     const fi = t.closest("[data-file]");
     if (fi && ui.stOpen) { const f = state.studies[ui.stOpen].files[+fi.dataset.file]; openFile(f.path, f.name, f.mime); return; }
     if (!$("[data-st-form]")) return;
-    const tp = t.closest("[data-tpick]"); if (tp) { $("[data-st-form] [name=type]").value = tp.dataset.tpick; renderTypePick(); refreshStudyForm(); return; }
-    if (t.closest("[data-tmore]")) { ui.stEdit.more = true; renderTypePick(); return; }
+    const tp = t.closest("[data-tpick]");
+    if (tp) { $("[data-st-form] [name=type]").value = tp.dataset.tpick; $$("[data-tpick]").forEach(b => b.setAttribute("aria-pressed", b === tp)); wzGo(1); return; }
+    if (t.closest("[data-wz-next]")) { wzGo(ui.stEdit.step + 1); return; }
+    if (t.closest("[data-wz-back]")) { wzGo(ui.stEdit.step - 1); return; }
+    const wg = t.closest("[data-wz-go]"); if (wg) { wzGo(+wg.dataset.wzGo); return; }
     const sb = t.closest("[data-status]"); if (sb) { $("[data-st-form] [name=status]").value = sb.dataset.status; $$("[data-status]").forEach(b => b.setAttribute("aria-pressed", b === sb)); return; }
     if (t.closest("[data-areas-all]")) { ui.stEdit.allAreas = true; refreshStudyForm(); return; }
     const ar = t.closest("[data-area]"); if (ar) { $("[data-st-form] [name=area]").value = ar.dataset.area; refreshStudyForm(); return; }
@@ -358,7 +391,20 @@ function initStudies() {
       $("[data-link-sugg]").innerHTML = q ? CATALOG.filter(m => matches(info(m.id), q)).slice(0, 8).map(m => `<button type="button" class="tchip" data-link="${esc(m.id)}" aria-pressed="${ui.stEdit.links.has(m.id)}">${esc(m.ru)}</button>`).join("") : "";
     }
   });
-  xd.addEventListener("submit", e => { if (e.target.matches("[data-st-form]")) { e.preventDefault(); saveStudy(); } });
+  xd.addEventListener("keydown", e => {
+    // Enter in a single-line field goes to the next step (the link search keeps its own behaviour)
+    if (e.key !== "Enter" || !e.target.closest("[data-st-form]") || e.target.tagName !== "INPUT" || e.target.matches("[data-link-q], .cal-type")) return;
+    e.preventDefault();
+    if (ui.stEdit.step < WZ.length - 1) wzGo(ui.stEdit.step + 1); else saveStudy();
+  });
+  xd.addEventListener("submit", e => {
+    if (!e.target.matches("[data-st-form]")) return;
+    e.preventDefault();
+    // Enter inside a field moves to the next step; the save buttons submit for real
+    const btn = e.submitter;
+    if (!btn?.hasAttribute("data-st-save") && ui.stEdit.step < WZ.length - 1) { wzGo(ui.stEdit.step + 1); return; }
+    saveStudy();
+  });
   xd.addEventListener("dragover", e => { const d = e.target.closest("[data-drop]"); if (d) { e.preventDefault(); d.classList.add("over"); } });
   xd.addEventListener("dragleave", e => { const d = e.target.closest("[data-drop]"); if (d) d.classList.remove("over"); });
   xd.addEventListener("drop", e => { const d = e.target.closest("[data-drop]"); if (!d) return; e.preventDefault(); d.classList.remove("over"); addPicked(e.dataTransfer.files); });

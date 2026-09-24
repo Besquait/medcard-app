@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Медкарта</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="styles.css?v=25">
+</head>
+<body>
+  <div class="gate" id="gate" hidden>
+    <div class="gate-card">
+      <span class="logo" aria-hidden="true"></span>
+      <h1>Медкарта</h1>
+      <p>Анализы, динамика и нормы в одном месте. Данные видишь только ты.</p>
+      <button type="button" class="google-btn" id="googleBtn">
+        <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>
+        Войти через Google
+      </button>
+      <p class="gate-msg" id="gateMsg"></p>
+    </div>
+  </div>
+
+  <div class="page">
+    <header class="top">
+      <a class="brand" href="#"><span class="logo" aria-hidden="true"></span>Медкарта</a>
+      <nav class="tabs" aria-label="Разделы">
+        <button class="tab" aria-current="page">Анализы</button>
+        <button class="tab" disabled>Симптомы <span class="soon">скоро</span></button>
+        <button class="tab" disabled>Лекарства <span class="soon">скоро</span></button>
+        <button class="tab" disabled>Визиты <span class="soon">скоро</span></button>
+      </nav>
+      <div class="top-actions">
+        <button class="btn ghost" id="menuBtn" aria-haspopup="true" aria-expanded="false">Данные</button>
+        <div class="menu" id="menu" hidden>
+          <div class="acct" id="acct"></div>
+          <button id="exportBtn">Сохранить копию в файл</button>
+          <label class="menu-file">Загрузить из файла<input type="file" id="importInput" accept="application/json,.json"></label>
+        </div>
+        <button class="btn primary" id="addBtn">+ Внести анализы</button>
+      </div>
+    </header>
+
+    <section class="overview" id="overview" aria-label="Сводка"></section>
+
+    <section class="block">
+      <div class="block-head">
+        <h2>Показатели <span class="count num" id="count"></span></h2>
+      </div>
+      <div class="toolbar">
+        <div class="searchbox">
+          <svg class="search-ico" width="18" height="18" viewBox="0 0 20 20" aria-hidden="true"><circle cx="9" cy="9" r="6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M13.5 13.5L17 17" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          <input id="q" type="text" autocomplete="off" spellcheck="false" placeholder="Найти показатель — по-русски, українською или in English" aria-label="Поиск показателя">
+          <button type="button" class="search-clear" id="qClear" aria-label="Очистить поиск" hidden>×</button>
+          <kbd class="search-kbd" aria-hidden="true">/</kbd>
+        </div>
+        <div class="toolbar-row">
+          <div class="groups" id="groups" role="group" aria-label="Группы"></div>
+          <div class="seg" id="statusSeg" role="group" aria-label="Фильтр по состоянию">
+            <button data-s="all" aria-pressed="true">Все</button>
+            <button data-s="bad" aria-pressed="false">Вне нормы</button>
+            <button data-s="multi" aria-pressed="false">С динамикой</button>
+          </div>
+          <select id="sitSel" class="sit-select" aria-label="Показать анализы для ситуации"></select>
+        </div>
+        <div class="sitbar" id="sitBar" hidden></div>
+      </div>
+      <div id="list" class="list"></div>
+    </section>
+
+    <section class="block">
+      <div class="block-head"><h2>История сдач</h2></div>
+      <div id="timeline" class="timeline"></div>
+    </section>
+
+    <footer class="foot">Данные хранятся только в этом браузере. Делай копию через «Данные → Сохранить копию в файл».</footer>
+  </div>
+
+  <dialog id="entry" class="dialog entry-dlg" aria-labelledby="entryTitle">
+    <form method="dialog" id="entryForm" novalidate>
+      <div class="dlg-head">
+        <h3 id="entryTitle">Новая сдача</h3>
+        <button type="button" class="icon-btn" id="entryClose" aria-label="Закрыть">×</button>
+      </div>
+
+      <div class="when">
+        <div class="date-row">
+          <button type="button" class="date-pick" id="datePick" aria-label="Изменить дату сдачи">
+            <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="4.5" width="14" height="12.5" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3 8.5h14M7 2.5v4M13 2.5v4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+            <span id="dpText">24 сентября 2026</span>
+          </button>
+          <input type="hidden" id="eDate">
+          <div class="calpop" id="calPop" hidden></div>
+          <div class="date-quick" id="dateQuick" role="group" aria-label="Быстрый выбор даты">
+            <button type="button" data-d="0" aria-pressed="true">Сегодня</button>
+            <button type="button" data-d="1" aria-pressed="false">Вчера</button>
+          </div>
+        </div>
+        <div class="lab-row">
+          <span class="lab-k">Лаборатория</span>
+          <button type="button" class="lab-show" id="labShow"><span id="labText">не указана</span><span class="lab-edit-hint">изменить</span></button>
+          <span id="labEdit" hidden><input class="input lab-input" id="eLab" list="labList" placeholder="Например: Синево" autocomplete="off"><datalist id="labList"></datalist></span>
+        </div>
+      </div>
+
+      <div class="adder">
+        <div class="addwrap">
+          <svg class="search-ico" width="18" height="18" viewBox="0 0 20 20" aria-hidden="true"><circle cx="9" cy="9" r="6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M13.5 13.5L17 17" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          <input id="addQ" autocomplete="off" spellcheck="false" placeholder="Добавить анализ: ТТГ, холестерин, TSH…" role="combobox" aria-expanded="false" aria-controls="addSugg" aria-label="Добавить анализ">
+          <ul class="add-sugg" id="addSugg" role="listbox" hidden></ul>
+        </div>
+        <div class="quick" id="quick"></div>
+      </div>
+
+      <div class="cards" id="rows"></div>
+
+      <p class="hint" id="entryMsg" hidden></p>
+      <div class="dlg-foot">
+        <span class="foot-tip">Enter — к следующему анализу</span>
+        <button type="button" class="btn ghost" id="entryCancel">Отмена</button>
+        <button type="submit" class="btn primary" id="entrySave" disabled>Сохранить</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="infoDlg" class="dialog info-dlg" aria-label="Об анализе">
+    <div class="info-wrap" id="infoBody"></div>
+  </dialog>
+
+  <div class="tip" id="tip" role="tooltip" hidden></div>
+  <div class="toast" id="toast" role="status" hidden></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="config.js?v=25"></script>
+  <script src="catalog.js?v=25"></script>
+  <script src="info.js?v=25"></script>
+  <script src="info-hl.js?v=25"></script>
+  <script src="panels.js?v=25"></script>
+  <script src="seed.js?v=25"></script>
+  <script src="cloud.js?v=25"></script>
+  <script src="app.js?v=25"></script>
+</body>
+</html>

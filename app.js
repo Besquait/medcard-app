@@ -379,8 +379,7 @@ function renderGroups() {}
 function renderNav() {
   const secs = $$("#list .sec");
   $("#groups").innerHTML = secs.map(el => `<button class="chip" data-sec="${el.id}">${+el.dataset.bad ? `<i class="chip-dot" title="${el.dataset.bad} вне нормы"></i>` : ""}${esc(el.dataset.name)}<span class="cnt">${el.dataset.n}</span></button>`).join("");
-  $("#rail").innerHTML = `<button type="button" class="rail-search" data-rail-search><svg width="15" height="15" viewBox="0 0 20 20" aria-hidden="true"><circle cx="9" cy="9" r="6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M13.5 13.5L17 17" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Поиск<kbd>/</kbd></button>
-    <div class="rail-list">${secs.map(el => `<button type="button" class="rail-item" data-sec="${el.id}"><span class="rail-name">${esc(el.dataset.name)}</span>${+el.dataset.bad ? `<span class="rail-bad" title="вне нормы">${el.dataset.bad}</span>` : `<span class="rail-n">${el.dataset.n}</span>`}</button>`).join("")}</div>`;
+  $("#rail").innerHTML = `<div class="rail-cap">Разделы</div><div class="rail-list">${secs.map(el => `<button type="button" class="rail-item" data-sec="${el.id}"><span class="rail-name">${esc(el.dataset.name)}</span>${+el.dataset.bad ? `<span class="rail-bad" title="вне нормы">${el.dataset.bad}</span>` : `<span class="rail-n">${el.dataset.n}</span>`}</button>`).join("")}</div>`;
   spy();
 }
 function visibleIds() {
@@ -399,6 +398,7 @@ function visibleIds() {
   });
 }
 function renderList() {
+  if (typeof renderReset === "function" && $("#resetBtn")) renderReset();
   const bm = byMarker(), ids = visibleIds();
   const total = Object.keys(bm).length, filtered = ui.q || ui.filter !== "all" || ui.sit;
   $("#count").textContent = filtered ? `${ids.length} из ${total}` : String(total);
@@ -680,12 +680,12 @@ function openInfo(id) {
   $("#infoBody").scrollTop = 0;
 }
 function focusRow(id) {
-  ui.open = id; ui.group = "all"; ui.filter = "all"; ui.sit = ""; $("#sitSel").value = ""; setQuery("");
+  ui.open = id; ui.group = "all"; ui.filter = "all"; ui.sit = ""; renderSitBtn(); setQuery("");
   $$("#statusSeg button").forEach(x => x.setAttribute("aria-pressed", x.dataset.s === "all"));
   renderSit(); renderGroups(); renderList();
   $(`.mk[data-id="${CSS.escape(id)}"]`)?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
-function setSit(sit) { ui.sit = sit; $("#sitSel").value = sit; renderSit(); renderList(); }
+function setSit(sit) { ui.sit = sit; renderSitBtn(); renderSit(); renderList(); }
 function renderSit() {
   const bar = $("#sitBar");
   if (!ui.sit) { bar.hidden = true; bar.innerHTML = ""; return; }
@@ -697,8 +697,52 @@ function renderSit() {
   bar.innerHTML = `<div class="sitbar-top"><span>Ситуация <b>${esc(ui.sit)}</b> · ${ids.length} ${plural(ids.length, "анализ", "анализа", "анализов")}, сдано ${taken}</span><button type="button" class="icon-btn sm" data-sit-clear aria-label="Сбросить ситуацию">×</button></div>
     ${panels.length ? `<div class="sitbar-panels"><span>Обычно сдают набором:</span>${panels.map(p => `<button type="button" class="chip" data-panel="${esc(p.id)}" title="${esc(p.why)} — внести весь набор">${esc(p.name)}</button>`).join("")}</div>` : ""}`;
 }
-$("#sitSel").innerHTML = `<option value="">Ситуация…</option>${SITUATIONS.map(x => `<option>${esc(x)}</option>`).join("")}`;
-$("#sitSel").addEventListener("change", e => setSit(e.target.value));
+// Situation picker: a grouped popover instead of a long native select.
+const SIT_GROUPS = [
+  ["Плановое", ["Чекап раз в год", "Перед операцией", "Контроль лекарств", "Спорт и нагрузки", "Планирование детей"]],
+  ["Самочувствие", ["Усталость и слабость", "Стресс и сон", "Тревога и настроение", "Головные боли", "Выпадение волос", "Кожа и акне", "Онемение и нервы", "Либидо и потенция"]],
+  ["Органы и системы", ["Сердце и сосуды", "Давление и отёки", "Сахар и диабет", "Лишний вес", "Щитовидка", "Печень", "Почки", "ЖКТ и живот", "Изжога и гастрит"]],
+  ["Кровь, иммунитет, опора", ["Анемия", "Кровоточивость и тромбы", "Воспаление и инфекции", "Аллергия", "Суставы", "Кости"]],
+];
+{ const known = new Set(SIT_GROUPS.flatMap(g => g[1])), lost = SITUATIONS.filter(x => !known.has(x)); if (lost.length) SIT_GROUPS.push(["Другое", lost]); }
+const sitBtn = $("#sitBtn"), sitPop = $("#sitPop");
+function renderSitBtn() {
+  sitBtn.classList.toggle("on", !!ui.sit);
+  sitBtn.innerHTML = `<svg width="15" height="15" viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M6 10h8M9 15h2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span>${esc(ui.sit || "Что беспокоит")}</span><svg class="sit-chev" width="14" height="14" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 8l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  renderReset();
+}
+function renderSitPop(q = "") {
+  const k = q.trim().toLowerCase();
+  const groups = SIT_GROUPS.map(([name, list]) => [name, list.filter(x => !k || x.toLowerCase().includes(k))]).filter(g => g[1].length);
+  const count = x => CATALOG.filter(m => (INFO[m.id]?.when || []).includes(x)).length;
+  sitPop.querySelector(".sit-body").innerHTML = groups.length ? groups.map(([name, list]) => `
+    <div class="sit-group"><div class="sit-gname">${esc(name)}</div>
+      <div class="sit-grid">${list.map(x => `<button type="button" class="sit-opt" data-pick="${esc(x)}" aria-pressed="${ui.sit === x}"><span>${esc(x)}</span><span class="sit-n">${count(x)}</span></button>`).join("")}</div>
+    </div>`).join("") : `<div class="sit-empty">Ничего не нашлось</div>`;
+}
+function openSitPop() {
+  sitPop.innerHTML = `<div class="sit-head"><input class="sit-q" type="text" placeholder="Найти ситуацию" autocomplete="off" aria-label="Найти ситуацию">${ui.sit ? `<button type="button" class="sit-reset" data-pick="">Сбросить</button>` : ""}</div><div class="sit-body"></div>`;
+  renderSitPop(); sitPop.hidden = false; sitBtn.setAttribute("aria-expanded", "true");
+  // open to the side that has room
+  sitPop.classList.remove("to-left"); const r = sitPop.getBoundingClientRect(); if (r.right > innerWidth - 12) sitPop.classList.add("to-left");
+  $(".sit-q", sitPop).focus({ preventScroll: true });
+}
+function closeSitPop() { if (sitPop.hidden) return; sitPop.hidden = true; sitBtn.setAttribute("aria-expanded", "false"); }
+sitBtn.addEventListener("click", () => sitPop.hidden ? openSitPop() : closeSitPop());
+sitPop.addEventListener("input", e => { if (e.target.classList.contains("sit-q")) renderSitPop(e.target.value); });
+sitPop.addEventListener("click", e => { const b = e.target.closest("[data-pick]"); if (!b) return; setSit(b.dataset.pick); closeSitPop(); sitBtn.focus(); });
+sitPop.addEventListener("keydown", e => {
+  if (e.key === "Escape") { closeSitPop(); sitBtn.focus(); }
+  if (e.key === "Enter" && e.target.classList.contains("sit-q")) { const first = $(".sit-opt", sitPop); if (first) first.click(); }
+});
+document.addEventListener("mousedown", e => { if (!e.target.closest?.("#sitPick")) closeSitPop(); });
+// one click clears search, status filter and situation
+function renderReset() { $("#resetBtn").hidden = !(ui.q || ui.filter !== "all" || ui.sit); }
+$("#resetBtn").addEventListener("click", () => {
+  ui.filter = "all"; $$("#statusSeg button").forEach(x => x.setAttribute("aria-pressed", x.dataset.s === "all"));
+  ui.sit = ""; renderSitBtn(); renderSit(); setQuery("");
+});
+renderSitBtn();
 // clicks that work both in the list and inside the info dialog
 document.addEventListener("click", e => {
   const t = e.target;
@@ -763,14 +807,24 @@ $("#statusSeg").addEventListener("click", e => {
   ui.filter = b.dataset.s; $$("#statusSeg button").forEach(x => x.setAttribute("aria-pressed", x === b)); renderList();
 });
 $("#groups").addEventListener("click", e => { const b = e.target.closest(".chip"); if (b) jumpTo(b.dataset.sec); });
-$("#rail").addEventListener("click", e => {
-  if (e.target.closest("[data-rail-search]")) { scrollTo({ top: toolbarEl.getBoundingClientRect().top + scrollY - 24, behavior: "smooth" }); $("#q").focus({ preventScroll: true }); return; }
-  const b = e.target.closest(".rail-item"); if (b) jumpTo(b.dataset.sec);
-});
+$("#rail").addEventListener("click", e => { const b = e.target.closest(".rail-item"); if (b) jumpTo(b.dataset.sec); });
 const toolbarEl = $(".toolbar"), groupsEl = $("#groups");
 // wide screens: side rail instead of the sticky toolbar
 const wideMQ = matchMedia("(min-width: 1180px)");
 const navOffset = () => wideMQ.matches ? 24 : null;
+// wide screens: search, filters and situation live in the sticky rail; narrow screens: in the top toolbar
+const searchEl = $(".toolbar .searchbox"), toolsRow = $(".toolbar .toolbar-row");
+let toolsWide = null;
+function placeTools() {
+  if (toolsWide === wideMQ.matches) return;
+  toolsWide = wideMQ.matches;
+  if (toolsWide) { $("#railTools").append(searchEl, toolsRow); }
+  else { toolbarEl.prepend(searchEl); searchEl.after(toolsRow); }
+  closeSitPop?.();
+  spy();
+}
+wideMQ.addEventListener("change", placeTools);
+addEventListener("resize", placeTools);
 function jumpTo(secId) {
   const el = document.getElementById(secId); if (!el) return;
   ui.jumping = secId; markChip(secId);
@@ -1204,3 +1258,4 @@ if (typeof cloudConfigured === "function" && cloudConfigured()) cloudBoot();
 else { load(); renderAll(); }
 // entrance animation plays once; later re-renders (opening a row, sync) stay still
 setTimeout(() => $("#list").classList.add("settled"), 900);
+placeTools();

@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&display=swap">
-  <link rel="stylesheet" href="styles.css?v=28">
+  <link rel="stylesheet" href="styles.css?v=30">
 </head>
 <body>
   <div class="gate" id="gate" hidden>
@@ -63,12 +63,19 @@
             <button data-s="bad" aria-pressed="false">Вне нормы</button>
             <button data-s="multi" aria-pressed="false">С динамикой</button>
           </div>
-          <select id="sitSel" class="sit-select" aria-label="Показать анализы для ситуации"></select>
+          <div class="sitpick" id="sitPick">
+            <button type="button" class="sit-btn" id="sitBtn" aria-haspopup="dialog" aria-expanded="false"></button>
+            <div class="sit-pop" id="sitPop" role="dialog" aria-label="Выбор ситуации" hidden></div>
+          </div>
+          <button type="button" class="reset-btn" id="resetBtn" hidden><svg width="13" height="13" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>Сбросить</button>
         </div>
         <div class="sitbar" id="sitBar" hidden></div>
       </div>
       <div class="list-wrap">
-        <nav class="rail" id="rail" aria-label="Разделы"></nav>
+        <aside class="rail" id="railBox">
+          <div class="rail-tools" id="railTools"></div>
+          <nav id="rail" aria-label="Разделы"></nav>
+        </aside>
         <div id="list" class="list"></div>
       </div>
     </section>
@@ -136,13 +143,13 @@
   <div class="toast" id="toast" role="status" hidden></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="config.js?v=28"></script>
-  <script src="catalog.js?v=28"></script>
-  <script src="info.js?v=28"></script>
-  <script src="info-hl.js?v=28"></script>
-  <script src="panels.js?v=28"></script>
-  <script src="seed.js?v=28"></script>
-  <script src="cloud.js?v=28"></script>
-  <script src="app.js?v=28"></script>
+  <script src="config.js?v=30"></script>
+  <script src="catalog.js?v=30"></script>
+  <script src="info.js?v=30"></script>
+  <script src="info-hl.js?v=30"></script>
+  <script src="panels.js?v=30"></script>
+  <script src="seed.js?v=30"></script>
+  <script src="cloud.js?v=30"></script>
+  <script src="app.js?v=30"></script>
 </body>
 </html>

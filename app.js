@@ -139,13 +139,13 @@ function pos(r) {
 
 /* ============ storage ============ */
 const KEY = "medcard.v1";
-const state = { markers: {}, results: {}, events: {}, prefs: {} };
+const state = { markers: {}, results: {}, events: {}, prefs: {}, studies: {} };
 function load() {
   let raw = null;
   try { raw = localStorage.getItem(KEY); } catch (e) { /* storage blocked */ }
   if (raw) {
     try {
-      const j = JSON.parse(raw); state.markers = j.markers || {}; state.results = j.results || {}; state.events = j.events || {}; state.prefs = j.prefs || {};
+      const j = JSON.parse(raw); state.markers = j.markers || {}; state.results = j.results || {}; state.events = j.events || {}; state.prefs = j.prefs || {}; state.studies = j.studies || {};
       // bring in seed rows added after this browser was first filled (matched by analysis + date)
       if ((j.seedVersion || 1) < (window.SEED_VERSION || 1)) {
         // seed rows (ids starting with "s") are replaced wholesale; rows entered on the site are kept
@@ -638,8 +638,8 @@ function renderTimeline() {
   for (const [id, r] of Object.entries(state.results)) (by[r.date || ""] ||= []).push(view(id, r));
   const ds = Object.keys(by).sort().reverse();
   if (!ds.length) { $("#timeline").innerHTML = `<div class="empty">Здесь появятся твои сдачи.</div>`; return; }
-  const evs = eventList();
-  const evHtml = e => `<button type="button" class="tl-ev k-${e.kind}" data-ev="${esc(e.id)}"><i></i><span><b>${esc(e.title)}</b> · ${esc(EVENT_KIND[e.kind] || "")}</span><span class="num muted">${fmtDate(e.start)}${e.end ? " – " + fmtDate(e.end) : " → сейчас"}</span></button>`;
+  const evs = [...eventList(), ...studyList().map(s => ({ ...s, start: s.date, study: true }))].sort((a, b) => (b.start || "").localeCompare(a.start || ""));
+  const evHtml = e => e.study ? `<button type="button" class="tl-st" data-st-open="${esc(e.id)}">${icon(e.type)}<span><b>${esc(studyTitle(e))}</b>${e.status ? ` · ${esc(STATUS_NAME[e.status])}` : ""}${e.conclusion ? `<small>${esc(e.conclusion.slice(0, 110))}${e.conclusion.length > 110 ? "…" : ""}</small>` : ""}</span><span class="num muted">${fmtDate(e.date)}</span></button>` : `<button type="button" class="tl-ev k-${e.kind}" data-ev="${esc(e.id)}"><i></i><span><b>${esc(e.title)}</b> · ${esc(EVENT_KIND[e.kind] || "")}</span><span class="num muted">${fmtDate(e.start)}${e.end ? " – " + fmtDate(e.end) : " → сейчас"}</span></button>`;
   let ei = 0, html = "";
   for (const d of ds) {
     while (ei < evs.length && evs[ei].start > d) html += evHtml(evs[ei++]);
@@ -764,6 +764,7 @@ function openInfo(id) {
   $("#infoBody").scrollTop = 0;
 }
 function focusRow(id) {
+  if (ui.view === "studies") setView("labs");
   ui.open = id; ui.group = "all"; ui.filter = "all"; ui.sit = ""; renderSitBtn(); setQuery("");
   $$("#statusSeg button").forEach(x => x.setAttribute("aria-pressed", x.dataset.s === "all"));
   renderSit(); renderGroups(); renderList();
@@ -877,7 +878,7 @@ document.addEventListener("click", e => {
 });
 infoDlg.addEventListener("click", e => { if (e.target === infoDlg) infoDlg.close(); });
 
-function renderAll() { renderOverview(); renderDue(); renderGroups(); renderList(); renderTimeline(); }
+function renderAll() { renderOverview(); renderDue(); renderGroups(); renderList(); renderTimeline(); renderStudies(); }
 
 /* ============ tooltip ============ */
 const tip = $("#tip");
@@ -1026,7 +1027,7 @@ $("#importInput").addEventListener("change", async e => {
   try {
     const j = JSON.parse(await f.text());
     if (!j || typeof j.results !== "object") throw new Error("bad");
-    state.markers = j.markers || {}; state.results = j.results; state.events = j.events || {}; state.prefs = j.prefs || {}; save(); renderAll();
+    state.markers = j.markers || {}; state.results = j.results; state.events = j.events || {}; state.prefs = j.prefs || {}; state.studies = j.studies || {}; save(); renderAll();
     toast(`Загружено: ${Object.keys(state.results).length} замеров`);
   } catch (err) { toast("Это не файл Медкарты — ничего не изменено"); }
   e.target.value = ""; menu.hidden = true;
@@ -1360,6 +1361,7 @@ function toast(t) { const el = $("#toast"); el.textContent = t; el.hidden = fals
 /* ============ boot ============ */
 // with a Supabase project configured the site asks for Google sign-in; otherwise it works offline
 initExtras();
+initStudies();
 const shareToken = new URLSearchParams(location.search).get("share");
 if (shareToken && typeof cloudConfigured === "function" && cloudConfigured()) shareBoot(shareToken);
 else if (typeof cloudConfigured === "function" && cloudConfigured()) cloudBoot();
@@ -1371,17 +1373,14 @@ setTimeout(() => $("#list").classList.add("settled"), 900);
 $("#tabbar").addEventListener("click", e => {
   const b = e.target.closest("[data-tb]"); if (!b) return;
   const k = b.dataset.tb;
-  if (k === "add") { openEntry(); return; }
+  if (k === "add") { if (ui.view === "studies") openStudyForm(); else openEntry(); return; }
+  if (k === "studies") { setView("studies"); return; }
   if (k === "me") { e.stopPropagation(); $("#menuBtn").click(); return; }
+  if (k !== "me" && ui.view === "studies") setView("labs");
   if (k === "sit") { $(".toolbar").scrollIntoView({ behavior: "smooth", block: "start" }); setTimeout(() => sitPop.hidden && openSitPop(), 250); return; }
   if (k === "history") { $("#historyBlock").scrollIntoView({ behavior: "smooth", block: "start" }); return; }
   scrollTo({ top: 0, behavior: "smooth" });
 });
-// highlight "История" once the timeline is on screen
-addEventListener("scroll", () => {
-  const inHist = $("#historyBlock").getBoundingClientRect().top < innerHeight * .45;
-  $$("#tabbar [data-tb]").forEach(b => b.setAttribute("aria-current", String(b.dataset.tb === (inHist ? "history" : "list"))));
-}, { passive: true });
 
 /* ============ installable app ============ */
 if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {

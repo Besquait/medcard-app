@@ -10,7 +10,11 @@ const toMarkerRow = (id, m) => ({ id, ru: m.ru, uk: m.uk || "", en: m.en || "", 
 const fromResultRow = row => Object.fromEntries(RESULT_COLS.map(k => [k, row[k] ?? (k === "unit" || k === "lab" || k === "note" ? "" : null)]));
 const fromMarkerRow = row => ({ ru: row.ru, uk: row.uk, en: row.en, abbr: row.abbr, group: row.grp, unit: row.unit });
 // events and preferences live in one generic table: one row per event, one row for prefs
-const itemsObj = () => ({ ...Object.fromEntries(Object.entries(state.events || {}).map(([id, e]) => [id, { kind: "event", data: e }])), prefs: { kind: "prefs", data: state.prefs || {} } });
+const itemsObj = () => ({
+  ...Object.fromEntries(Object.entries(state.events || {}).map(([id, e]) => [id, { kind: "event", data: e }])),
+  ...Object.fromEntries(Object.entries(state.studies || {}).map(([id, s]) => [id, { kind: "study", data: s }])),
+  prefs: { kind: "prefs", data: state.prefs || {} },
+});
 const toItemRow = (id, x) => ({ id, kind: x.kind, data: x.data });
 const snap = (rowFn, obj) => Object.fromEntries(Object.entries(obj).map(([id, v]) => [id, JSON.stringify(rowFn(id, v))]));
 
@@ -27,6 +31,7 @@ async function cloudPull() {
   if (cloud.itemsOk) {
     state.events = Object.fromEntries(it.data.filter(r => r.kind === "event").map(r => [r.id, r.data]));
     state.prefs = it.data.find(r => r.id === "prefs")?.data || {};
+    state.studies = Object.fromEntries(it.data.filter(r => r.kind === "study").map(r => [r.id, r.data]));
   }
   cloud.synced = { results: snap(toResultRow, state.results), markers: snap(toMarkerRow, state.markers), items: cloud.itemsOk ? snap(toItemRow, itemsObj()) : {} };
 }
@@ -122,7 +127,7 @@ async function cloudBoot() {
   document.getElementById("localNote")?.remove(); // the browser-only warning is for offline mode
   document.getElementById("gate").hidden = true; document.body.classList.remove("gated");
   // show the last copy instantly, then refresh from the server
-  try { const j = JSON.parse(localStorage.getItem("medcard.cloud." + cloud.user.id) || "null"); if (j) { state.results = j.results || {}; state.markers = j.markers || {}; state.events = j.events || {}; state.prefs = j.prefs || {}; } } catch (e) { /* ignore */ }
+  try { const j = JSON.parse(localStorage.getItem("medcard.cloud." + cloud.user.id) || "null"); if (j) { state.results = j.results || {}; state.markers = j.markers || {}; state.events = j.events || {}; state.prefs = j.prefs || {}; state.studies = j.studies || {}; } } catch (e) { /* ignore */ }
   renderAll(); renderAccount();
   try { await cloudPull(); renderAll(); renderAccount(); setSyncState("ok"); }
   catch (e) { console.error(e); setSyncState("error"); }

@@ -156,13 +156,16 @@ function retestPlan() {
 }
 function renderDue() {
   const box = $("#due"); if (!box) return;
-  const all = retestPlan().filter(p => p.left <= 30);
+  const today = todayISO();
+  const st = studyList().filter(s => s.repeat).map(s => ({ s, due: addMonths(s.date, s.repeat) })).map(x => ({ ...x, left: daysBetween(today, x.due) })).filter(x => x.left <= 30);
+  const all = [...retestPlan().filter(p => p.left <= 30), ...st].sort((a, b) => a.left - b.left);
   if (!all.length) { box.hidden = true; return; }
   const open = ui.dueOpen, shown = open ? all : all.slice(0, 6);
   box.hidden = false;
   box.innerHTML = `<div class="due-head"><h3>Пора пересдать <span class="cnt num">${all.length}</span></h3>
       <button type="button" class="btn sm ghost" data-ics>Напомнить в календаре</button></div>
     <div class="due-list">${shown.map(p => {
+      if (p.s) return `<button type="button" class="due-item st" data-st-open="${esc(p.s.id)}" title="${esc(studyTitle(p.s))} · ${fmtDate(p.s.date)}">${icon(p.s.type)}<span class="due-name">${esc(studyTitle(p.s))}</span><span class="due-when">${p.left < 0 ? `просрочено на ${spanText(p.left)}` : `через ${spanText(p.left)}`}</span></button>`;
       const s = status(p.x) || "none";
       return `<button type="button" class="due-item ${s}" data-goto="${esc(p.m)}" title="Сдавал ${fmtDate(p.x.date)} · интервал ${p.months} мес.${p.auto ? " (авто)" : ""}">
         <i class="gc-dot"></i><span class="due-name">${esc(info(p.m).ru)}</span>
@@ -215,6 +218,7 @@ function markerSettings(id, list) {
       ${(() => { const p = retestPlan().find(q => q.m === id); return p ? `<span class="dset-due ${p.left < 0 ? "late" : ""}">${p.left < 0 ? `просрочено на ${spanText(p.left)}` : `до ${fmtDate(p.due)}`}</span>` : ""; })()}
     </div>
     ${eventsFor(list).length ? `<div class="dset-row"><span class="dset-k">События</span><div class="evchips">${eventsFor(list).map(e => `<button type="button" class="evchip k-${e.kind}" data-ev="${esc(e.id)}">${esc(e.title)} <small>${fmtDate(e.start)}${e.end ? "–" + fmtDate(e.end) : e.end === null ? " → сейчас" : ""}</small></button>`).join("")}</div></div>` : ""}
+    ${studiesFor(id).length ? `<div class="dset-row"><span class="dset-k">Обследования</span><div class="evchips">${studiesFor(id).map(s => `<button type="button" class="evchip st-chip" data-st-open="${esc(s.id)}" style="--ev:${ST[s.type]?.color}">${esc(studyTitle(s))} <small>${fmtDate(s.date)}${s.status ? " · " + esc(STATUS_NAME[s.status]) : ""}</small></button>`).join("")}</div></div>` : ""}
     <div class="dset-row"><span class="dset-k"></span><button type="button" class="linkbtn" data-ev-new>+ Отметить событие: лечение, добавка, болезнь</button></div>
   </div>`;
 }
@@ -410,6 +414,7 @@ function reportHtml(opt = {}) {
     ${sec("Вне нормы сейчас", bad.length ? `<table class="rep-t"><thead><tr><th>Показатель</th><th>Значение</th><th>Норма</th><th>Дата</th><th>Раньше</th></tr></thead><tbody>${bad.map(m => { const l = bm[m], x = latest(m), pv = l.length > 1 ? l[l.length - 2] : null; return `<tr><td><b>${esc(info(m).ru)}</b>${harmHit(x) ? ` <span class="rep-harm">порог действия</span>` : ""}</td><td class="num ${status(x)}">${val(x)}</td><td class="num">${norm(x)}</td><td class="num">${fmtDate(x.date)}</td><td class="num">${pv ? `${fmt(pv.v)} (${fmtDate(pv.date)})` : "—"}</td></tr>`; }).join("")}</tbody></table>` : `<p>Все последние значения в норме.</p>`)}
     ${sec("Давление", bpTxt() ? `<p>${esc(bpTxt())}</p>` : "")}
     ${sec(`Динамика ключевых показателей${years ? ` за ${years} ${plural(years, "год", "года", "лет")}` : ""}`, trendIds.length ? `<table class="rep-t"><thead><tr><th>Показатель</th><th>Значения по датам</th><th>Тренд</th></tr></thead><tbody>${trendIds.map(m => { const l = bm[m].filter(r => r.date >= from).slice(-5); return `<tr><td>${esc(info(m).ru)} <small>${esc(l[l.length - 1].unit || "")}</small></td><td class="num">${l.map(r => `<span class="rep-v ${status(r) || ""}">${fmt(r.v)}</span> <small>${fmtDate(r.date).slice(3)}</small>`).join(" → ")}</td><td>${spark(l)}</td></tr>`; }).join("")}</tbody></table>` : "")}
+    ${sec("Обследования", (() => { const l = studyList().filter(s => (s.date || "") >= from); return l.length ? `<table class="rep-t"><thead><tr><th>Дата</th><th>Обследование</th><th>Итог и заключение</th></tr></thead><tbody>${l.map(s => `<tr><td class="num">${fmtDate(s.date)}</td><td><b>${esc(studyTitle(s))}</b>${s.clinic ? `<br><small>${esc(s.clinic)}</small>` : ""}</td><td>${s.status ? `<b class="${s.status === "ok" ? "" : "high"}">${esc(STATUS_NAME[s.status])}</b>. ` : ""}${esc(s.conclusion || "")}${s.recs ? `<br><small>Рекомендации: ${esc(s.recs)}</small>` : ""}</td></tr>`).join("")}</tbody></table>` : ""; })())}
     ${sec("Лечение и события", evs.length ? `<ul class="rep-ev">${evs.map(e => `<li><b>${esc(e.title)}</b> · ${esc(EVENT_KIND[e.kind] || "")} · ${fmtDate(e.start)}${e.end ? "–" + fmtDate(e.end) : " → сейчас"}${e.note ? ` · ${esc(e.note)}` : ""}</li>`).join("")}</ul>` : "")}
     ${opt.controls ? `<section class="rep-sec no-print"><h4>Вопросы к врачу</h4><textarea class="input rep-q" data-rep-q rows="4" placeholder="Что хочешь спросить на приёме — сохранится и попадёт в печать">${esc(q)}</textarea></section>` : ""}
     ${q ? `<section class="rep-sec ${opt.controls ? "print-only" : ""}"><h4>Вопросы к врачу</h4><p class="rep-qtext">${esc(q)}</p></section>` : ""}
@@ -451,7 +456,8 @@ async function renderShares(fresh) {
 }
 async function createShare(days) {
   const token = randomToken(), expires = new Date(Date.now() + days * 864e5).toISOString();
-  const data = { v: 1, name: cloud.user.user_metadata?.full_name || "", results: state.results, markers: state.markers, events: state.events || {},
+  const studies = Object.fromEntries(Object.entries(state.studies || {}).map(([id, s]) => [id, { ...s, files: [] }]));
+  const data = { v: 1, name: cloud.user.user_metadata?.full_name || "", results: state.results, markers: state.markers, events: state.events || {}, studies,
     prefs: { profile: profile(), targets: state.prefs?.targets || {}, research: state.prefs?.research, questions: state.prefs?.questions || "" } };
   const { error } = await cloud.client.from("shares").insert({ token, data, expires_at: expires });
   if (error) { toast("Не получилось создать ссылку: " + error.message); return; }
@@ -469,7 +475,7 @@ async function shareBoot(token) {
     const { data, error } = await client.rpc("get_share", { t: token });
     if (error || !data) throw error || new Error("gone");
     const d = data.data;
-    state.results = d.results || {}; state.markers = d.markers || {}; state.events = d.events || {}; state.prefs = d.prefs || {};
+    state.results = d.results || {}; state.markers = d.markers || {}; state.events = d.events || {}; state.prefs = d.prefs || {}; state.studies = d.studies || {};
     page.innerHTML = `<div class="share-top no-print"><span class="brand"><span class="logo" aria-hidden="true"></span>Медкарта</span>
         <span class="muted">Только просмотр · ссылка действует до ${fmtDate(String(data.expires_at).slice(0, 10))}</span>
         <button type="button" class="btn primary" data-print>Печать или PDF</button></div>
@@ -508,6 +514,7 @@ function initExtras() {
   xd.addEventListener("click", async e => {
     const t = e.target;
     if (t === xd || t.closest("[data-xclose]")) { closeX(); return; }
+    const so = t.closest("[data-st-open]"); if (so) { openStudy(so.dataset.stOpen); return; }
     const go = t.closest("[data-goto]");
     if (go && !t.closest("select")) { closeX(); focusRow(go.dataset.goto); return; }
     // events
@@ -578,6 +585,7 @@ function initExtras() {
     }
     if (t.closest("[data-ev-new]")) { ui.confirmEv = null; openEvents(null, true); return; }
     const ev = t.closest("[data-ev]"); if (ev) { openEvents(ev.dataset.ev); return; }
+    const so = t.closest("[data-st-open]"); if (so) { openStudy(so.dataset.stOpen); return; }
   });
   list.addEventListener("change", e => {
     const t = e.target; if (!t.matches("[data-remind]")) return;
@@ -590,6 +598,7 @@ function initExtras() {
   $("#due").addEventListener("click", e => {
     if (e.target.closest("[data-ics]")) { downloadIcs(); return; }
     if (e.target.closest("[data-due-more]")) { ui.dueOpen = !ui.dueOpen; renderDue(); return; }
+    const so = e.target.closest("[data-st-open]"); if (so) { openStudy(so.dataset.stOpen); return; }
     const g = e.target.closest("[data-goto]"); if (g) focusRow(g.dataset.goto);
   });
   $("#overview").addEventListener("click", e => { const d = e.target.closest("[data-digest]"); if (d) openDigest(d.dataset.digest); });
@@ -602,7 +611,8 @@ function initExtras() {
   $("#timeline").addEventListener("click", e => {
     const g = e.target.closest("[data-goto]"); if (g) { focusRow(g.dataset.goto); return; }
     const d = e.target.closest("[data-digest]"); if (d) { e.preventDefault(); openDigest(d.dataset.digest); return; }
-    const ev = e.target.closest("[data-ev]"); if (ev) openEvents(ev.dataset.ev);
+    const ev = e.target.closest("[data-ev]"); if (ev) { openEvents(ev.dataset.ev); return; }
+    const so = e.target.closest("[data-st-open]"); if (so) openStudy(so.dataset.stOpen);
   });
   const menuAct = (sel, fn) => $(sel).addEventListener("click", () => { $("#menu").hidden = true; fn(); });
   menuAct("#reportBtn", openReport);

@@ -379,6 +379,8 @@ function renderGroups() {}
 function renderNav() {
   const secs = $$("#list .sec");
   $("#groups").innerHTML = secs.map(el => `<button class="chip" data-sec="${el.id}">${+el.dataset.bad ? `<i class="chip-dot" title="${el.dataset.bad} вне нормы"></i>` : ""}${esc(el.dataset.name)}<span class="cnt">${el.dataset.n}</span></button>`).join("");
+  $("#rail").innerHTML = `<button type="button" class="rail-search" data-rail-search><svg width="15" height="15" viewBox="0 0 20 20" aria-hidden="true"><circle cx="9" cy="9" r="6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M13.5 13.5L17 17" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Поиск<kbd>/</kbd></button>
+    <div class="rail-list">${secs.map(el => `<button type="button" class="rail-item" data-sec="${el.id}"><span class="rail-name">${esc(el.dataset.name)}</span>${+el.dataset.bad ? `<span class="rail-bad" title="вне нормы">${el.dataset.bad}</span>` : `<span class="rail-n">${el.dataset.n}</span>`}</button>`).join("")}</div>`;
   spy();
 }
 function visibleIds() {
@@ -761,13 +763,20 @@ $("#statusSeg").addEventListener("click", e => {
   ui.filter = b.dataset.s; $$("#statusSeg button").forEach(x => x.setAttribute("aria-pressed", x === b)); renderList();
 });
 $("#groups").addEventListener("click", e => { const b = e.target.closest(".chip"); if (b) jumpTo(b.dataset.sec); });
+$("#rail").addEventListener("click", e => {
+  if (e.target.closest("[data-rail-search]")) { scrollTo({ top: toolbarEl.getBoundingClientRect().top + scrollY - 24, behavior: "smooth" }); $("#q").focus({ preventScroll: true }); return; }
+  const b = e.target.closest(".rail-item"); if (b) jumpTo(b.dataset.sec);
+});
 const toolbarEl = $(".toolbar"), groupsEl = $("#groups");
+// wide screens: side rail instead of the sticky toolbar
+const wideMQ = matchMedia("(min-width: 1180px)");
+const navOffset = () => wideMQ.matches ? 24 : null;
 function jumpTo(secId) {
   const el = document.getElementById(secId); if (!el) return;
   ui.jumping = secId; markChip(secId);
   // measure the toolbar as it will be once stuck, so the section lands right under it
-  const was = toolbarEl.classList.contains("stuck"); toolbarEl.classList.add("stuck");
-  const h = toolbarEl.offsetHeight; if (!was) toolbarEl.classList.remove("stuck");
+  let h = navOffset();
+  if (h == null) { const was = toolbarEl.classList.contains("stuck"); toolbarEl.classList.add("stuck"); h = toolbarEl.offsetHeight; if (!was) toolbarEl.classList.remove("stuck"); }
   const y = el.getBoundingClientRect().top + scrollY - h - 6;
   scrollTo({ top: y, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
   el.classList.remove("flash"); void el.offsetWidth; el.classList.add("flash");
@@ -775,13 +784,13 @@ function jumpTo(secId) {
 }
 function markChip(secId) {
   let cur = null;
-  for (const c of groupsEl.children) { const on = c.dataset.sec === secId; c.setAttribute("aria-current", on); if (on) cur = c; }
+  for (const c of $$("#groups .chip, #rail .rail-item")) { const on = c.dataset.sec === secId; c.setAttribute("aria-current", on); if (on && c.classList.contains("chip")) cur = c; }
   if (cur && groupsEl.scrollWidth > groupsEl.clientWidth) groupsEl.scrollTo({ left: cur.offsetLeft - groupsEl.clientWidth / 2 + cur.offsetWidth / 2, behavior: "smooth" });
 }
 // which section is under the sticky toolbar; also shrink the toolbar once it is stuck
 function spy() {
-  const edge = toolbarEl.getBoundingClientRect().bottom + 12;
-  toolbarEl.classList.toggle("stuck", toolbarEl.getBoundingClientRect().top <= 0 && $("#list").getBoundingClientRect().top < edge);
+  const edge = wideMQ.matches ? 48 : toolbarEl.getBoundingClientRect().bottom + 12;
+  toolbarEl.classList.toggle("stuck", !wideMQ.matches && toolbarEl.getBoundingClientRect().top <= 0 && $("#list").getBoundingClientRect().top < edge);
   if (ui.jumping) return;
   let cur = null;
   const secs = $$("#list .sec");

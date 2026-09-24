@@ -811,3 +811,34 @@ body.gated .page { display: none; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; } }
 .card + .key-card { margin-top: 12px; }
 .chip-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--high); margin-right: 7px; vertical-align: 1px; }
+
+/* ---------- side rail (wide screens) ---------- */
+.rail { display: none; }
+@media (min-width: 1180px) {
+  .toolbar { position: static; background: none; }
+  .toolbar .groups { display: none; }
+  .list-wrap { display: grid; grid-template-columns: 196px minmax(0, 1fr); gap: 36px; align-items: start; }
+  .rail { display: flex; flex-direction: column; gap: 14px; position: sticky; top: 24px; max-height: calc(100vh - 48px); overflow-y: auto; scrollbar-width: none; padding-top: 2px; }
+  .rail::-webkit-scrollbar { display: none; }
+  .rail-search {
+    display: flex; align-items: center; gap: 9px; width: 100%; border: 1px solid var(--line); background: var(--card);
+    border-radius: 12px; padding: 9px 12px; font: 500 13.5px var(--font); color: var(--muted); cursor: pointer; transition: color .15s, border-color .15s;
+  }
+  .rail-search:hover { color: var(--ink); border-color: var(--accent); }
+  .rail-search kbd { margin-left: auto; border: 1px solid var(--line); border-radius: 6px; padding: 0 6px; font: 500 11.5px var(--font); color: var(--faint); }
+  .rail-list { display: flex; flex-direction: column; gap: 2px; border-left: 1px solid var(--line); }
+  .rail-item {
+    position: relative; display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
+    border: 0; background: none; padding: 8px 12px 8px 16px; margin-left: -1px; border-left: 2px solid transparent;
+    font: 500 14px var(--font); color: var(--muted); cursor: pointer; border-radius: 0 10px 10px 0;
+    transition: color .2s, background .2s, border-color .2s;
+  }
+  .rail-item:hover { color: var(--ink); background: color-mix(in srgb, var(--soft) 70%, transparent); }
+  .rail-item[aria-current="true"] { color: var(--accent); border-left-color: var(--accent); background: var(--accent-soft); font-weight: 600; }
+  .rail-name { flex: 1; min-width: 0; line-height: 1.3; }
+  .rail-n { font-size: 12.5px; color: var(--faint); font-weight: 500; }
+  .rail-bad { min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; display: grid; place-items: center; font-size: 11.5px; font-weight: 700; color: var(--high); background: var(--high-bg); }
+  .sec { scroll-margin-top: 24px; }
+}
+/* enough room: the rail moves into the left margin and the list keeps the full column width */
+@media (min-width: 1600px) { .list-wrap { margin-left: -232px; } }

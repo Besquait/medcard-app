@@ -1443,11 +1443,11 @@ button, a, input, select { touch-action: manipulation; }
 .wz-dot.on { color: var(--ink); }
 .wz-dot.done { color: var(--muted); }
 .wz-dot:disabled { cursor: default; }
-.wz-step { display: flex; flex-direction: column; gap: 18px; min-height: 300px; animation: rise .25s cubic-bezier(.2, .7, .2, 1); }
+.wz-step { display: flex; flex-direction: column; gap: 18px; min-height: 260px; animation: rise .25s cubic-bezier(.2, .7, .2, 1); }
 .wz-step[hidden] { display: none; }
-.wz-tg small { display: block; font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--faint); margin: 0 0 8px 2px; }
-.wz-types { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
-.wz-type { display: flex; align-items: center; gap: 12px; border: 1px solid var(--line); background: transparent; border-radius: 12px; padding: 11px 14px; text-align: left; cursor: pointer; font: inherit; color: var(--ink); transition: border-color .15s, background .15s; }
+.wz-tg > small { display: block; font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--faint); margin: 0 0 8px 2px; }
+.wz-types { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.wz-type { min-width: 0; display: flex; align-items: center; gap: 12px; border: 1px solid var(--line); background: transparent; border-radius: 12px; padding: 11px 14px; text-align: left; cursor: pointer; font: inherit; color: var(--ink); transition: border-color .15s, background .15s; }
 .wz-type:hover { border-color: var(--faint); background: color-mix(in srgb, var(--soft) 60%, transparent); }
 .wz-type[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
 .wz-type > span:last-child { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
@@ -1468,3 +1468,9 @@ button, a, input, select { touch-action: manipulation; }
   .wz-step { min-height: 0; }
   .wz-foot { position: sticky; bottom: 0; background: var(--card); margin: 0 -16px; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); }
 }
+.x-dlg { overflow-x: hidden; }
+.wz-types .wz-type { padding: 10px 14px; }
+.wz-type small { text-transform: none; letter-spacing: 0; }
+.wz-foot[hidden] { display: none; }
+.wz-step[data-step="0"] { min-height: 0; gap: 16px; }
+.x-dlg form { padding: 0; }

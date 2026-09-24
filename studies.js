@@ -257,8 +257,9 @@ function wzShow() {
   const ed = ui.stEdit, i = ed.step, type = $("[data-st-form] [name=type]").value;
   $$(".wz-step").forEach(sec => sec.hidden = +sec.dataset.step !== i);
   $$(".wz-dot").forEach((d, k) => { d.classList.toggle("on", k === i); d.classList.toggle("done", k < i); d.disabled = !type && k > 0; });
-  $("[data-wz-kicker]").textContent = `Шаг ${i + 1} из ${WZ.length}${type && i > 0 ? " · " + ST[type].name : ""}`;
-  $("[data-wz-title]").textContent = ed.id && i === 0 ? "Изменить обследование" : WZ[i][1];
+  $("[data-wz-kicker]").textContent = `Шаг ${i + 1} из ${WZ.length}`;
+  $("[data-wz-title]").textContent = type && i > 0 ? ST[type].name : ed.id ? "Изменить обследование" : "Новое обследование";
+  $(".wz-foot").hidden = i === 0 && !ed.id;
   $("[data-wz-back]").style.visibility = i === 0 ? "hidden" : "";
   $("[data-wz-next]").hidden = i === WZ.length - 1 || i === 0;
   $("[data-wz-final]").hidden = i !== WZ.length - 1;

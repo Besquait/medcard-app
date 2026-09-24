@@ -387,7 +387,7 @@ function visibleIds() {
   return Object.keys(bm).filter(id => {
     const m = info(id);
     if (!matches(m, ui.q)) return false;
-    if (ui.sit && !(INFO[id]?.when || []).includes(ui.sit)) return false;
+    if (ui.sit && !inSit(id, ui.sit)) return false;
     const l = bm[id], s = status(l[l.length - 1]);
     if (ui.filter === "bad" && s !== "high" && s !== "low") return false;
     if (ui.filter === "multi" && l.length < 2) return false;
@@ -488,7 +488,7 @@ function miniRow(id, list) {
 // Catalog markers never taken: collapsed under the list, opened by a click or by a search that hits them.
 function untaken(bm) {
   if (ui.filter !== "all") return "";
-  const ids = CATALOG.filter(m => !bm[m.id] && (ui.group === "all" || m.group === ui.group) && matches(info(m.id), ui.q) && (!ui.sit || (INFO[m.id]?.when || []).includes(ui.sit))).map(m => m.id);
+  const ids = CATALOG.filter(m => !bm[m.id] && (ui.group === "all" || m.group === ui.group) && matches(info(m.id), ui.q) && (!ui.sit || inSit(m.id, ui.sit))).map(m => m.id);
   if (!ids.length) return "";
   const open = ui.showAll || !!ui.q || !!ui.sit;
   const byGroup = [];
@@ -686,16 +686,40 @@ function focusRow(id) {
   $(`.mk[data-id="${CSS.escape(id)}"]`)?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 function setSit(sit) { ui.sit = sit; renderSitBtn(); renderSit(); renderList(); }
+const guideIds = g => new Set(["core", "then", "extra"].flatMap(k => (g?.[k] || []).flatMap(it => it[0])));
+const GUIDE_IDS = Object.fromEntries(Object.entries(window.GUIDES || {}).map(([k, g]) => [k, guideIds(g)]));
+function inSit(id, sit) { return (INFO[id]?.when || []).includes(sit) || !!GUIDE_IDS[sit]?.has(id); }
+// one marker inside a plan: latest value with status, or "не сдавал"
+function gchip(id, bm) {
+  const m = info(id), l = bm[id];
+  if (!l) return `<button type="button" class="gchip none" data-ginfo="${esc(id)}" title="Не сдавал — что это и как внести"><span class="gc-name">${esc(m.ru)}</span><span class="gc-val">не сдавал</span></button>`;
+  const x = l[l.length - 1], s = status(x) || "none", old = ageClass(x.date) === "age-old";
+  return `<button type="button" class="gchip ${s}" data-ginfo="${esc(id)}" title="${esc(fmtDate(x.date) + " · " + agoText(x.date) + (STATUS_TXT[s] ? " · " + STATUS_TXT[s] : ""))}">
+    <i class="gc-dot"></i><span class="gc-name">${esc(m.ru)}</span><span class="gc-val num">${fmt(x.v)} <span>${esc(x.unit || "")}</span></span>${old ? `<span class="gc-old">${esc(agoText(x.date))}</span>` : ""}</button>`;
+}
 function renderSit() {
   const bar = $("#sitBar");
   if (!ui.sit) { bar.hidden = true; bar.innerHTML = ""; return; }
-  const bm = byMarker();
-  const ids = CATALOG.map(m => m.id).filter(id => (INFO[id]?.when || []).includes(ui.sit));
-  const taken = ids.filter(id => bm[id]).length;
-  const panels = PANELS.filter(p => panelIds(p).filter(x => (INFO[x]?.when || []).includes(ui.sit)).length >= 2);
+  const bm = byMarker(), g = GUIDES[ui.sit];
+  const panels = PANELS.filter(p => panelIds(p).filter(x => inSit(x, ui.sit)).length >= 2);
+  const panelRow = panels.length ? `<div class="sitbar-panels"><span>Внести набором:</span>${panels.map(p => `<button type="button" class="chip" data-panel="${esc(p.id)}" title="${esc(p.why)} — внести весь набор">${esc(p.name)}</button>`).join("")}</div>` : "";
+  const head = `<div class="g-head"><div><div class="g-kicker">Что беспокоит</div><div class="g-title">${esc(ui.sit)}</div></div><button type="button" class="icon-btn sm" data-sit-clear aria-label="Сбросить ситуацию">×</button></div>`;
+  if (!g) { bar.hidden = false; bar.innerHTML = head + panelRow; return; }
+  const coreIds = [...new Set((g.core || []).flatMap(it => it[0]))], done = coreIds.filter(id => bm[id]).length;
+  const items = list => list.map(([ids, why]) => `<div class="g-item"><div class="g-why">${esc(why)}</div><div class="g-chips">${ids.map(id => gchip(id, bm)).join("")}</div></div>`).join("");
+  const step = (n, key, list, extra = "") => list?.length ? `<section class="g-step ${key}"><div class="g-sh"><span class="g-n">${n}</span>${esc(GUIDE_STEP[key])}${extra}</div>${items(list)}</section>` : "";
+  const open = ui.sitExtra;
   bar.hidden = false;
-  bar.innerHTML = `<div class="sitbar-top"><span>Ситуация <b>${esc(ui.sit)}</b> · ${ids.length} ${plural(ids.length, "анализ", "анализа", "анализов")}, сдано ${taken}</span><button type="button" class="icon-btn sm" data-sit-clear aria-label="Сбросить ситуацию">×</button></div>
-    ${panels.length ? `<div class="sitbar-panels"><span>Обычно сдают набором:</span>${panels.map(p => `<button type="button" class="chip" data-panel="${esc(p.id)}" title="${esc(p.why)} — внести весь набор">${esc(p.name)}</button>`).join("")}</div>` : ""}`;
+  bar.innerHTML = head + `
+    <p class="g-lead">${esc(g.lead)}</p>
+    ${coreIds.length ? `<div class="g-prog"><div class="g-bar"><i style="width:${Math.round(done / coreIds.length * 100)}%"></i></div><span>Основное сдано: <b>${done} из ${coreIds.length}</b></span></div>` : ""}
+    ${step(1, "core", g.core)}
+    ${step(g.core?.length ? 2 : 1, "then", g.then)}
+    ${g.extra?.length ? `<section class="g-step extra"><button type="button" class="g-more" data-sit-extra aria-expanded="${!!open}">${esc(GUIDE_STEP.extra)} · ${g.extra.length}<svg width="14" height="14" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 8l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>${open ? items(g.extra) : ""}</section>` : ""}
+    ${g.note ? `<div class="g-note">${esc(g.note)}</div>` : ""}
+    ${g.flags ? `<div class="g-flags"><b>Сразу к врачу, если:</b> ${esc(g.flags)}</div>` : ""}
+    ${panelRow}
+    <div class="g-src">План по клиническим рекомендациям — это подсказка для разговора с врачом, а не назначение.</div>`;
 }
 // Situation picker: a grouped popover instead of a long native select.
 const SIT_GROUPS = [
@@ -714,7 +738,7 @@ function renderSitBtn() {
 function renderSitPop(q = "") {
   const k = q.trim().toLowerCase();
   const groups = SIT_GROUPS.map(([name, list]) => [name, list.filter(x => !k || x.toLowerCase().includes(k))]).filter(g => g[1].length);
-  const count = x => CATALOG.filter(m => (INFO[m.id]?.when || []).includes(x)).length;
+  const count = x => CATALOG.filter(m => inSit(m.id, x)).length;
   sitPop.querySelector(".sit-body").innerHTML = groups.length ? groups.map(([name, list]) => `
     <div class="sit-group"><div class="sit-gname">${esc(name)}</div>
       <div class="sit-grid">${list.map(x => `<button type="button" class="sit-opt" data-pick="${esc(x)}" aria-pressed="${ui.sit === x}"><span>${esc(x)}</span><span class="sit-n">${count(x)}</span></button>`).join("")}</div>
@@ -748,6 +772,9 @@ document.addEventListener("click", e => {
   const t = e.target;
   if (t.closest("[data-close]")) { infoDlg.close(); return; }
   if (t.closest("[data-sit-clear]")) { setSit(""); return; }
+  if (t.closest("[data-sit-extra]")) { ui.sitExtra = !ui.sitExtra; renderSit(); return; }
+  const gi = t.closest("[data-ginfo]");
+  if (gi) { openInfo(gi.dataset.ginfo); return; }
   const tab = t.closest("[data-tab]");
   if (tab) { ui.tab = tab.dataset.tab; renderList(); return; }
   const sit = t.closest("[data-sit]");

@@ -900,3 +900,54 @@ body.gated .page { display: none; }
   transition: filter .15s;
 }
 .reset-btn:hover { filter: brightness(1.15); }
+
+/* ---------- situation plan ---------- */
+.sitbar { background: var(--card); border: 1px solid var(--line); box-shadow: var(--shadow); border-radius: var(--radius); padding: 20px 22px; gap: 16px; }
+.g-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.g-kicker { font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--faint); }
+.g-title { font-size: 20px; font-weight: 650; letter-spacing: -.01em; margin-top: 2px; color: var(--accent); }
+.g-lead { margin: 0; font-size: 14.5px; line-height: 1.55; color: var(--ink); max-width: 78ch; }
+.g-prog { display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--muted); }
+.g-prog b { color: var(--ink); }
+.g-bar { flex: 0 0 160px; height: 6px; border-radius: 99px; background: var(--soft); overflow: hidden; }
+.g-bar i { display: block; height: 100%; background: var(--accent); border-radius: inherit; transition: width .4s ease; }
+.g-step { display: flex; flex-direction: column; gap: 12px; padding-top: 14px; border-top: 1px solid var(--line); }
+.g-sh { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 650; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+.g-n { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; letter-spacing: 0; background: var(--soft); color: var(--ink); }
+.g-step.core .g-n { background: var(--accent); color: var(--accent-ink); }
+.g-item { display: grid; grid-template-columns: minmax(180px, 1fr) minmax(0, 1.6fr); gap: 6px 20px; align-items: start; }
+.g-why { font-size: 13.5px; line-height: 1.45; color: var(--muted); padding-top: 6px; }
+.g-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.gchip {
+  display: inline-flex; align-items: center; gap: 7px; max-width: 100%; border: 1px solid var(--line); background: var(--soft);
+  border-radius: 10px; padding: 6px 10px; font: 500 13px var(--font); color: var(--ink); cursor: pointer; transition: border-color .15s, background .15s;
+}
+.gchip:hover { border-color: var(--accent); background: var(--card); }
+.gc-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 240px; }
+.gc-val { font-weight: 650; white-space: nowrap; }
+.gc-val span { font-weight: 400; color: var(--muted); font-size: 12px; }
+.gc-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; background: var(--faint); }
+.gchip.ok .gc-dot { background: var(--ok); }
+.gchip.edge .gc-dot { background: var(--edge); }
+.gchip.high .gc-dot { background: var(--high); }
+.gchip.low .gc-dot { background: var(--low); }
+.gchip.high .gc-val { color: var(--high); }
+.gchip.low .gc-val { color: var(--low); }
+.gchip.none { background: transparent; border-style: dashed; color: var(--muted); }
+.gchip.none .gc-val { font-weight: 500; color: var(--faint); font-size: 12px; }
+.gc-old { font-size: 11.5px; color: var(--edge); white-space: nowrap; }
+.g-more { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; border: 0; background: none; padding: 0; font: 650 13px var(--font); text-transform: uppercase; letter-spacing: .05em; color: var(--muted); cursor: pointer; }
+.g-more:hover { color: var(--ink); }
+.g-more svg { transition: transform .2s; }
+.g-more[aria-expanded="true"] svg { transform: rotate(180deg); }
+.g-note { font-size: 13.5px; line-height: 1.5; color: var(--ink); background: var(--soft); border-radius: 12px; padding: 12px 14px; }
+.g-flags { font-size: 13.5px; line-height: 1.5; color: var(--ink); background: var(--high-bg); border-radius: 12px; padding: 12px 14px; }
+.g-flags b { color: var(--high); }
+.g-src { font-size: 12px; color: var(--faint); }
+.sitbar .sitbar-panels { padding-top: 2px; }
+@media (max-width: 720px) {
+  .sitbar { padding: 16px; }
+  .g-item { grid-template-columns: 1fr; }
+  .g-why { padding-top: 0; }
+  .gc-name { max-width: 170px; }
+}

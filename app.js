@@ -378,7 +378,7 @@ function chart(list) {
 function renderGroups() {}
 function renderNav() {
   const secs = $$("#list .sec");
-  $("#groups").innerHTML = secs.map(el => `<button class="chip" data-sec="${el.id}">${esc(el.dataset.name)}${+el.dataset.bad ? `<span class="cnt bad">${el.dataset.bad}</span>` : `<span class="cnt">${el.dataset.n}</span>`}</button>`).join("");
+  $("#groups").innerHTML = secs.map(el => `<button class="chip" data-sec="${el.id}">${+el.dataset.bad ? `<i class="chip-dot" title="${el.dataset.bad} вне нормы"></i>` : ""}${esc(el.dataset.name)}<span class="cnt">${el.dataset.n}</span></button>`).join("");
   spy();
 }
 function visibleIds() {
@@ -422,33 +422,33 @@ function renderList() {
       </div>`).join("") + rest;
     renderNav(); return;
   }
+  // inside every group: out-of-range first (worst on top), then the key markers; the rest behind a button
   const latest = id => bm[id][bm[id].length - 1];
-  const bad = ids.filter(id => outside(latest(id))).sort((a, b) => outside(latest(b)).pct - outside(latest(a)).pct);
-  const key = KEY_MARKERS.filter(id => ids.includes(id) && !bad.includes(id));
-  const top = [...bad, ...key], others = ids.filter(id => !top.includes(id));
-  const head = `<div class="sec" id="sec-top" data-name="Главное" data-n="${top.length}" data-bad="${bad.length}">
-      <h3 class="group-title">Главное <span class="gt-sub">${bad.length ? `${bad.length} ${plural(bad.length, "показатель", "показателя", "показателей")} вне нормы` : "всё в норме"}</span></h3>
-      ${bad.length ? `<div class="card">${bad.map(id => row(id, bm[id])).join("")}</div>` : ""}
-      ${key.length ? `<div class="card key-card">${key.map(id => ui.open === id ? row(id, bm[id]) : miniRow(id, bm[id])).join("")}</div>` : ""}
-    </div>`;
-  const tail = byGroup(others).map(({ g, ids }) => {
-    const main = ids.filter(id => !MINOR[id]), extra = ids.filter(id => MINOR[id]);
-    const more = ui.more.has(g) || extra.includes(ui.open);
+  $("#list").innerHTML = byGroup(ids).map(({ g, ids }) => {
+    const bad = ids.filter(id => outside(latest(id))).sort((a, b) => outside(latest(b)).pct - outside(latest(a)).pct);
+    let top = [...bad, ...ids.filter(id => KEY_MARKERS.includes(id) && !bad.includes(id))];
+    if (!top.length) top = ids.filter(id => !MINOR[id]);
+    let restIds = ids.filter(id => !top.includes(id));
+    if (restIds.length <= 1) { top = [...top, ...restIds]; restIds = []; }
+    const main = restIds.filter(id => !MINOR[id]), minor = restIds.filter(id => MINOR[id]);
+    const open = ui.more.has(g) || restIds.includes(ui.open);
     const one = id => ui.open === id ? row(id, bm[id]) : miniRow(id, bm[id]);
-    return `<div class="sec" id="sec-${g}" data-name="${esc(GROUP_NAME[g] || g)}" data-n="${ids.length}" data-bad="0">
-      <h3 class="group-title">${esc(GROUP_NAME[g] || g)}</h3>
-      <div class="card">${main.map(one).join("")}
-        ${more ? `<div class="minor${ui.justOpened === g ? " reveal" : ""}"><div class="minor-cap">Маловажные: врачи смотрят на них редко, обычно только если основные показатели не в норме</div>${extra.map(one).join("")}</div>` : ""}
-        ${extra.length ? `<button type="button" class="more-btn" data-more="${esc(g)}" aria-expanded="${more}">${more ? "Скрыть маловажные" : `Показать маловажные · ${extra.length}`}</button>` : ""}
+    return `<div class="sec" id="sec-${g}" data-name="${esc(GROUP_NAME[g] || g)}" data-n="${ids.length}" data-bad="${bad.length}">
+      <h3 class="group-title">${esc(GROUP_NAME[g] || g)}${bad.length ? ` <span class="gt-sub bad">${bad.length} вне нормы</span>` : ""}</h3>
+      <div class="card">${top.map(id => row(id, bm[id])).join("")}
+        ${open ? `<div class="minor${ui.justOpened === g ? " reveal" : ""}">
+          ${main.length ? `<div class="minor-cap">Остальное в норме</div>${main.map(one).join("")}` : ""}
+          ${minor.length ? `<div class="minor-cap">Маловажные: врачи смотрят на них редко, обычно если основные не в норме</div>${minor.map(one).join("")}` : ""}
+        </div>` : ""}
       </div>
+      ${restIds.length ? `<button type="button" class="more-btn" data-more="${esc(g)}" aria-expanded="${open}">${open ? "Свернуть" : `Показать всё · ещё ${restIds.length}`}<svg width="16" height="16" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 8l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>` : ""}
     </div>`;
-  }).join("");
-  $("#list").innerHTML = head + (tail ? `<h2 class="list-sep">Остальное в норме</h2>` + tail : "") + rest;
+  }).join("") + rest;
   ui.justOpened = null;
   renderNav();
 }
-// Always shown on top, even when in range: the markers a doctor looks at first.
-const KEY_MARKERS = ["weight", "sbp", "dbp", "hgb", "wbc", "plt", "glu", "hba1c", "chol", "ldl", "tsh", "ft4", "crea", "alt", "ast", "ferritin", "testo", "crp"];
+// Shown at the top of their group even when in range: the markers a doctor looks at first.
+const KEY_MARKERS = ["weight", "sbp", "dbp", "hgb", "wbc", "plt", "rbc", "glu", "hba1c", "alt", "ast", "crea", "ua", "chol", "ldl", "hdl", "tg", "apob", "ferritin", "vitd", "b12", "tsh", "ft4", "atpo", "testo", "prl", "lh", "crp", "hscrp", "fcal"];
 // Markers clinicians rarely act on when they are in range (derived, duplicated or superseded
 // by a better test; Choosing Wisely, ATA, ESC/EAS 2019, ICSH). Hidden behind a button per group;
 // an out-of-range value still goes to the top.

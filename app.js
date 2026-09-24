@@ -623,8 +623,9 @@ function detail(id, list) {
   const tabs = `<div class="dtabs" role="tablist">
       <button role="tab" data-tab="hist" aria-selected="${ui.tab === "hist"}">График и история</button>
       <button role="tab" data-tab="about" aria-selected="${ui.tab === "about"}">Об анализе и связи</button>
+      <button role="tab" data-tab="treat" aria-selected="${ui.tab === "treat"}">Что обычно делают</button>
     </div>`;
-  const body = ui.tab === "about" ? `<div class="panel">${about(id)}</div>` : `
+  const body = ui.tab === "about" ? `<div class="panel">${about(id)}</div>` : ui.tab === "treat" ? `<div class="panel">${treatHtml(id, list)}</div>` : `
     <div class="panel chart">${chart(list)}</div>
     <div class="panel">${markerSettings(id, list)}</div>
     <div class="panel"><div class="tbl-scroll"><table class="mtable"><thead><tr><th>Дата</th><th>Значение</th><th>Норма бланка</th><th>Где</th><th></th></tr></thead><tbody>${rows}</tbody></table></div></div>`;

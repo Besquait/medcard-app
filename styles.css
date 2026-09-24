@@ -1376,3 +1376,34 @@ button, a, input, select { touch-action: manipulation; }
   .st-lwhen { grid-column: 2 / 4; margin-top: -8px; }
   .st-typepick { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* ================= what is usually done ================= */
+.tr { display: flex; flex-direction: column; gap: 16px; }
+.tr-warn { font-size: 13.5px; line-height: 1.5; background: var(--edge-bg); color: var(--ink); border-radius: 12px; padding: 12px 14px; }
+.tr-warn b { color: var(--edge); }
+.tr-seg { align-self: flex-start; }
+.tr-side { font-weight: 650; font-size: 14px; }
+.tr-note, .tr-empty { margin: 0; font-size: 14px; color: var(--muted); }
+.tr-block h5 { margin: 0 0 8px; font-size: 12.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+.tr-block p { margin: 0; font-size: 14.5px; line-height: 1.55; }
+.tr-cause p { margin: 0 0 6px; font-size: 14px; line-height: 1.5; }
+.tr-opts { display: flex; flex-direction: column; gap: 8px; }
+.tr-opt { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 16px; align-items: start; padding: 12px 14px; border-radius: 14px; background: var(--soft); border-left: 3px solid var(--lv); }
+.lv-strong { --lv: var(--ok); } .lv-moderate { --lv: var(--accent); } .lv-weak { --lv: var(--edge); } .lv-none { --lv: var(--faint); }
+.tr-lv { display: flex; flex-direction: column; gap: 6px; font-size: 12px; font-weight: 600; color: var(--lv); }
+.tr-meter { display: flex; gap: 3px; }
+.tr-meter i { width: 18px; height: 6px; border-radius: 3px; background: var(--line); }
+.tr-meter i.on { background: var(--lv); }
+.lv-none .tr-body b { text-decoration: line-through; text-decoration-color: var(--faint); }
+.tr-body b { font-size: 14.5px; }
+.tr-body p { margin: 4px 0 0; font-size: 13.5px; line-height: 1.5; color: var(--ink); opacity: .9; }
+.tr-body small { display: block; margin-top: 4px; font-size: 12px; color: var(--faint); }
+.tr-ask ul { margin: 0; padding-left: 20px; font-size: 14.5px; line-height: 1.7; }
+.tr-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.tr-legend { margin: 0; font-size: 12px; color: var(--faint); line-height: 1.5; }
+@media (max-width: 720px) {
+  .tr-opt { grid-template-columns: 1fr; gap: 8px; }
+  .tr-lv { flex-direction: row; align-items: center; }
+  .dtabs { overflow-x: auto; scrollbar-width: none; }
+  .dtabs button { white-space: nowrap; }
+}

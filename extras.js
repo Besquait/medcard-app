@@ -499,6 +499,43 @@ function openProfile() {
     </form>`);
 }
 
+/* ============ what is usually done (evidence-ranked, to discuss with a doctor) ============ */
+const LEVELS = { strong: ["Сильные доказательства", 4], moderate: ["Умеренные", 3], weak: ["Слабые", 2], none: ["Не доказано", 0] };
+function treatHtml(id, list) {
+  const t = (window.TREAT || {})[id === "dbp" ? "sbp" : id];
+  const x = [...list].reverse().find(r => !r.calc) || list[list.length - 1];
+  const s = status(x), cur = s === "high" ? "hi" : s === "low" ? "lo" : null;
+  const warn = `<div class="tr-warn"><b>Это не назначение.</b> Здесь собрано, что обычно делают при таком отклонении и насколько это помогает по исследованиям. Используй как список вопросов к врачу — что подходит именно тебе, решает он с учётом всей картины.</div>`;
+  if (!t || (!t.hi && !t.lo)) {
+    const hl = (window.HL || {})[id], sits = INFO[id]?.when || [];
+    return `<div class="tr">${warn}
+      <p class="tr-empty">Для этого показателя подход зависит от причины отклонения, общего списка вариантов нет.</p>
+      ${hl ? `<div class="tr-cause">${hl[0] ? `<p><b>Если выше:</b> ${esc(hl[0])}</p>` : ""}${hl[1] ? `<p><b>Если ниже:</b> ${esc(hl[1])}</p>` : ""}</div>` : ""}
+      ${sits.length ? `<p class="muted">Посмотри план обследования: ${sits.map(w => `<button type="button" class="sit" data-sit="${esc(w)}">${esc(w)}</button>`).join(" ")}</p>` : ""}
+    </div>`;
+  }
+  const sides = ["hi", "lo"].filter(k => t[k]);
+  const side = ui.treatSide?.[id] && t[ui.treatSide[id]] ? ui.treatSide[id] : (cur && t[cur] ? cur : sides[0]);
+  const d = t[side];
+  const meter = n => `<span class="tr-meter" aria-hidden="true">${[1, 2, 3, 4].map(i => `<i class="${i <= n ? "on" : ""}"></i>`).join("")}</span>`;
+  const opts = d.opts.map(([name, lvl, text, src]) => `<div class="tr-opt lv-${lvl}">
+      <div class="tr-lv">${meter(LEVELS[lvl]?.[1] ?? 0)}<span>${esc(LEVELS[lvl]?.[0] || lvl)}</span></div>
+      <div class="tr-body"><b>${esc(name)}</b><p>${esc(text)}</p>${src ? `<small>${esc(src)}</small>` : ""}</div>
+    </div>`).join("");
+  return `<div class="tr" data-treat="${esc(id)}">
+    ${warn}
+    ${sides.length > 1 ? `<div class="seg tr-seg">${sides.map(k => `<button type="button" data-tside="${k}" aria-pressed="${k === side}">${k === "hi" ? "Если выше нормы" : "Если ниже нормы"}${k === cur ? " · твой случай" : ""}</button>`).join("")}</div>`
+      : `<div class="tr-side">${side === "hi" ? "Если выше нормы" : "Если ниже нормы"}${side === cur ? " · твой случай" : ""}</div>`}
+    ${!cur ? `<p class="tr-note">Сейчас значение в норме — ниже то, что делают при отклонении.</p>` : !t[cur] ? `<p class="tr-note">Твоё значение ${cur === "hi" ? "выше" : "ниже"} нормы, но отклонение в эту сторону обычно клинического значения не имеет и не лечится. Ниже — что делают при отклонении в другую сторону.</p>` : ""}
+    ${d.why ? `<div class="tr-block"><h5>Частые причины</h5><p>${esc(d.why)}</p></div>` : ""}
+    ${d.first ? `<div class="tr-block"><h5>С чего обычно начинают</h5><p>${esc(d.first)}</p></div>` : ""}
+    <div class="tr-block"><h5>Что помогает — от сильного к слабому</h5><div class="tr-opts">${opts}</div></div>
+    ${d.ask?.length ? `<div class="tr-block tr-ask"><h5>Что спросить у врача</h5><ul>${d.ask.map(q => `<li>${esc(q)}</li>`).join("")}</ul>
+      <div class="tr-actions"><button type="button" class="btn sm" data-ask-add>Добавить в сводку для врача</button><button type="button" class="btn sm ghost" data-ask-copy>Скопировать вопросы</button></div></div>` : ""}
+    <p class="tr-legend">Сила доказательств: сильные — крупные рандомизированные исследования и клинические рекомендации; умеренные — эффект есть, но меньше или данных меньше; слабые — небольшой эффект или исследования низкого качества; не доказано — пользы не нашли или не рекомендуют.</p>
+  </div>`;
+}
+
 /* ============ generic sheet dialog ============ */
 function openX(html, cls = "") {
   const d = $("#xDlg");
@@ -586,6 +623,19 @@ function initExtras() {
     if (t.closest("[data-ev-new]")) { ui.confirmEv = null; openEvents(null, true); return; }
     const ev = t.closest("[data-ev]"); if (ev) { openEvents(ev.dataset.ev); return; }
     const so = t.closest("[data-st-open]"); if (so) { openStudy(so.dataset.stOpen); return; }
+  });
+  list.addEventListener("click", async e => {
+    const tr = e.target.closest("[data-treat]"); if (!tr) return;
+    const id = tr.dataset.treat, side = e.target.closest("[data-tside]");
+    if (side) { ui.treatSide = { ...ui.treatSide, [id]: side.dataset.tside }; renderList(); return; }
+    const qs = [...tr.querySelectorAll(".tr-ask li")].map(li => li.textContent);
+    if (e.target.closest("[data-ask-copy]")) { try { await navigator.clipboard.writeText(qs.join("\n")); toast("Вопросы скопированы"); } catch (err) { toast("Не получилось скопировать"); } return; }
+    if (e.target.closest("[data-ask-add]")) {
+      const head = `${info(id).ru}:`, cur = state.prefs?.questions || "";
+      if (cur.includes(head)) { toast("Эти вопросы уже в сводке"); return; }
+      setPref(["questions"], (cur ? cur.trimEnd() + "\n\n" : "") + head + "\n" + qs.map(q => "— " + q).join("\n"));
+      toast("Добавлено в «Вопросы к врачу» в сводке");
+    }
   });
   list.addEventListener("change", e => {
     const t = e.target; if (!t.matches("[data-remind]")) return;

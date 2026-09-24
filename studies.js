@@ -79,7 +79,18 @@ function nearValue(m, date) {
   return best;
 }
 const studiesFor = m => studyList().filter(s => (s.links || []).includes(m));
-const icon = (type, big) => `<span class="st-ic${big ? " big" : ""}" style="--c:${ST[type]?.color || "#6B7A8F"}">${esc(ST[type]?.short || "•")}</span>`;
+// neutral line glyphs by category: imaging, functional tests, endoscopy, documents
+const CATEGORY = { us: "img", xray: "img", ct: "img", mri: "img", mammo: "img", fluoro: "img", dxa: "img", ecg: "fn", echo: "fn", holter: "fn", spiro: "fn", egd: "endo", colono: "endo", consult: "doc", discharge: "doc", other: "doc" };
+const GLYPH = {
+  img: `<rect x="3.5" y="3.5" width="17" height="17" rx="4"/><circle cx="12" cy="12" r="4.2"/><path d="M12 3.5v3M12 17.5v3"/>`,
+  fn: `<path d="M3 12h4l2.2-5 3.6 10 2.4-5H21"/>`,
+  endo: `<path d="M5 20c0-6 3-8 7-8s7-2 7-8"/><circle cx="19" cy="4" r="1.6"/>`,
+  doc: `<path d="M7 3.5h7l4 4V20a.5.5 0 0 1-.5.5h-10A.5.5 0 0 1 7 20z"/><path d="M14 3.5V8h4M9.5 12h6M9.5 15.5h6"/>`,
+};
+const icon = type => `<span class="st-ic" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${GLYPH[CATEGORY[type] || "doc"]}</svg></span>`;
+const COMMON_TYPES = ["us", "mri", "ct", "xray", "ecg", "consult"];
+const TYPE_GROUPS = [["Снимки и УЗИ", ["us", "xray", "ct", "mri", "mammo", "fluoro", "dxa"]], ["Функциональные", ["ecg", "echo", "holter", "spiro"]], ["Эндоскопия", ["egd", "colono"]], ["Документы", ["consult", "discharge", "other"]]];
+const MON3 = ["янв", "фев", "мар", "апр", "мая", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"];
 const kb = n => n > 1048576 ? `${(n / 1048576).toFixed(1)} МБ` : `${Math.max(1, Math.round(n / 1024))} КБ`;
 const isImg = f => /^image\/(png|jpe?g|webp|gif|bmp)$/i.test(f.mime || "");
 
@@ -111,50 +122,49 @@ async function openFile(path, name, mime) {
 function renderStudies() {
   const box = $("#studiesView"); if (!box || box.hidden) return;
   const all = studyList(), q = norm(ui.stQ || ""), f = ui.stType || "";
-  const list = all.filter(s => (!f || s.type === f) && (!q || norm([studyTitle(s), s.clinic, s.doctor, s.conclusion, s.recs].join(" ")).includes(q)));
-  const types = STUDY_TYPES.filter(([id]) => all.some(s => s.type === id));
+  if (!all.length) {
+    box.innerHTML = `<div class="st-head"><div><h2>Обследования</h2></div></div>
+      <div class="st-empty">
+        <h3>Пока пусто</h3>
+        <p>Здесь хранятся заключения УЗИ, КТ, МРТ, рентгена, ЭКГ, эндоскопий и выписки — вместе с файлами. Каждое обследование можно связать с анализами, чтобы видеть их рядом.</p>
+        <button type="button" class="btn primary" data-st-new>Добавить обследование</button>
+      </div>`;
+    return;
+  }
+  const list = all.filter(s => (!f || CATEGORY[s.type] === f) && (!q || norm([studyTitle(s), s.clinic, s.doctor, s.conclusion, s.recs].join(" ")).includes(q)));
   const years = {};
   list.forEach(s => (years[(s.date || "").slice(0, 4) || "Без даты"] ||= []).push(s));
-  const count = k => all.filter(s => s.status === k).length;
+  const finds = all.filter(s => s.status === "find").length, watch = all.filter(s => s.status === "watch").length;
+  const cats = [["", "Все"], ["img", "Снимки и УЗИ"], ["fn", "Функциональные"], ["endo", "Эндоскопия"], ["doc", "Документы"]].filter(([k]) => !k || all.some(s => CATEGORY[s.type] === k));
   box.innerHTML = `
     <div class="st-head">
-      <div><h2>Обследования</h2><p class="muted">Снимки, УЗИ, ЭКГ, эндоскопии, заключения врачей — с файлами и связью с анализами</p></div>
-      <button type="button" class="btn primary" data-st-new>+ Добавить обследование</button>
+      <div><h2>Обследования</h2>
+        <p class="st-sub">${all.length} ${plural(all.length, "запись", "записи", "записей")}${finds ? ` · <span class="bad">${finds} с находками</span>` : ""}${watch ? ` · ${watch} под наблюдением` : ""}</p></div>
+      <button type="button" class="btn primary" data-st-new>Добавить</button>
     </div>
-    ${all.length ? `
-    <div class="st-sum">
-      <div class="ov"><div class="ov-k">Всего</div><div class="ov-v num">${all.length}</div><div class="ov-s">последнее ${fmtDate(all[0].date)}</div></div>
-      <div class="ov"><div class="ov-k">Есть находки</div><div class="ov-v num ${count("find") ? "bad" : ""}">${count("find")}</div><div class="ov-s">по заключениям</div></div>
-      <div class="ov"><div class="ov-k">Наблюдение</div><div class="ov-v num">${count("watch")}</div><div class="ov-s">повторить в срок</div></div>
-    </div>
-    <div class="st-bar">
+    ${all.length > 4 ? `<div class="st-bar">
       <div class="searchbox st-search"><svg class="search-ico" width="16" height="16" viewBox="0 0 20 20" aria-hidden="true"><circle cx="9" cy="9" r="6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M13.5 13.5L17 17" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-        <input type="text" data-st-q value="${esc(ui.stQ || "")}" placeholder="Найти в заключениях" autocomplete="off"></div>
-      <div class="tchips">${[["", "Все"], ...types.map(([id, n]) => [id, n])].map(([id, n]) => `<button type="button" class="tchip" data-st-type="${id}" aria-pressed="${f === id}">${esc(n)}</button>`).join("")}</div>
-    </div>
-    ${Object.keys(years).length ? Object.entries(years).map(([y, l]) => `<h3 class="st-year">${esc(y)}</h3><div class="st-grid">${l.map(studyCard).join("")}</div>`).join("") : `<div class="empty">Ничего не нашлось.</div>`}`
-    : `<div class="st-empty">
-        <p>Добавь первое обследование — выбери тип:</p>
-        <div class="st-types">${STUDY_TYPES.map(([id, n]) => `<button type="button" class="st-type" data-st-new="${id}">${icon(id)}<span>${esc(n)}</span></button>`).join("")}</div>
-      </div>`}`;
-  hydrateThumbs(box);
+        <input type="text" data-st-q value="${esc(ui.stQ || "")}" placeholder="Поиск по заключениям" autocomplete="off"></div>
+      ${cats.length > 2 ? `<div class="seg">${cats.map(([k, n]) => `<button type="button" data-st-type="${k}" aria-pressed="${f === k}">${esc(n)}</button>`).join("")}</div>` : ""}
+    </div>` : ""}
+    ${Object.keys(years).length ? Object.entries(years).map(([y, l]) => `<h3 class="st-year">${esc(y)}</h3><div class="card st-list">${l.map(studyRow).join("")}</div>`).join("") : `<div class="empty">Ничего не нашлось.</div>`}`;
 }
-function studyCard(s) {
-  const imgs = (s.files || []).filter(isImg), other = (s.files || []).length - imgs.length;
-  const links = s.links || [];
-  return `<article class="st-card" data-st="${esc(s.id)}" tabindex="0">
-    ${icon(s.type)}
-    <div class="st-main">
-      <div class="st-top"><b>${esc(studyTitle(s))}</b>${s.status ? `<span class="st-badge ${s.status}">${esc(STATUS_NAME[s.status])}</span>` : ""}</div>
-      <div class="st-meta num">${fmtDate(s.date)}${s.clinic ? " · " + esc(s.clinic) : ""}${s.doctor ? " · " + esc(s.doctor) : ""}</div>
-      ${s.conclusion ? `<p class="st-concl">${esc(s.conclusion)}</p>` : ""}
-      <div class="st-foot">
-        ${imgs.slice(0, 3).map(f => `<span class="st-thumb" data-thumb="${esc(f.path)}"></span>`).join("")}
-        ${other > 0 || imgs.length > 3 ? `<span class="st-files">📎 ${(s.files || []).length}</span>` : ""}
-        ${links.length ? `<span class="st-links">${links.slice(0, 4).map(m => { const n = nearValue(m, s.date); return `<span class="st-lk ${n ? status(n.r) || "none" : "none"}">${esc(info(m).abbr || info(m).ru)}</span>`; }).join("")}${links.length > 4 ? `<span class="st-lk none">+${links.length - 4}</span>` : ""}</span>` : ""}
-      </div>
-    </div>
-  </article>`;
+function studyRow(s) {
+  const [, m, d] = (s.date || "").split("-");
+  const files = (s.files || []).length, links = (s.links || []).length;
+  return `<button type="button" class="st-row" data-st="${esc(s.id)}">
+    <span class="st-date num"><b>${d ? +d : "—"}</b><span>${m ? MON3[+m - 1] : ""}</span></span>
+    <span class="st-main">
+      <span class="st-kind">${icon(s.type)}${s.area ? esc(ST[s.type]?.name || "Обследование") : ""}${s.area && s.clinic ? " · " : ""}${s.clinic ? esc(s.clinic) : ""}</span>
+      <b class="st-title">${esc(s.area || ST[s.type]?.name || "")}</b>
+      ${s.conclusion ? `<span class="st-concl">${esc(s.conclusion)}</span>` : ""}
+    </span>
+    <span class="st-side">
+      ${s.status ? `<span class="st-status ${s.status}"><i></i>${esc(STATUS_NAME[s.status])}</span>` : ""}
+      ${files || links ? `<span class="st-counts">${files ? `${files} ${plural(files, "файл", "файла", "файлов")}` : ""}${files && links ? " · " : ""}${links ? `${links} ${plural(links, "анализ", "анализа", "анализов")}` : ""}</span>` : ""}
+    </span>
+    <svg class="chev" width="18" height="18" viewBox="0 0 20 20" aria-hidden="true"><path d="M7 4l6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </button>`;
 }
 
 /* ---------- one study ---------- */
@@ -170,10 +180,10 @@ function openStudy(id) {
       ${n ? `<span class="num"><b class="${status(n.r) || ""}">${fmt(n.r.v)}</b> <small>${esc(n.r.unit || "")}</small></span><span class="muted st-lwhen">${fmtDate(n.r.date)} · ${when}</span>` : `<span class="muted">не сдавал</span><span></span>`}
     </button>`;
   }).join("");
-  openX(`<div class="dlg-head"><div class="st-dh">${icon(s.type, true)}<div><div class="info-group">${esc(ST[s.type]?.name || "")}</div><h3>${esc(s.area || ST[s.type]?.name || "Обследование")}</h3>
-      <div class="st-meta num">${fmtDate(s.date)}${s.clinic ? " · " + esc(s.clinic) : ""}${s.doctor ? " · " + esc(s.doctor) : ""}</div></div></div>
+  openX(`<div class="dlg-head"><div><div class="info-group st-kind">${icon(s.type)}${esc(ST[s.type]?.name || "")}</div><h3>${esc(s.area || ST[s.type]?.name || "Обследование")}</h3>
+      <div class="st-meta">${longDate(s.date)}${s.clinic ? " · " + esc(s.clinic) : ""}${s.doctor ? " · " + esc(s.doctor) : ""}</div></div>
       <button type="button" class="icon-btn" data-xclose aria-label="Закрыть">×</button></div>
-    <div class="st-tags">${s.status ? `<span class="st-badge ${s.status}">${esc(STATUS_NAME[s.status])}</span>` : ""}${due ? `<span class="st-badge ${left < 0 ? "find" : "watch"}">повторить ${left < 0 ? `— просрочено на ${spanText(left)}` : `до ${fmtDate(due)}`}</span>` : ""}</div>
+    ${s.status || due ? `<div class="st-tags">${s.status ? `<span class="st-status ${s.status}"><i></i>${esc(STATUS_NAME[s.status])}</span>` : ""}${due ? `<span class="st-due${left < 0 ? " late" : ""}">Повторить ${left < 0 ? `— просрочено на ${spanText(left)}` : `до ${fmtDate(due)}`}</span>` : ""}</div>` : ""}
     ${s.conclusion ? `<section class="st-sec"><h4>Заключение</h4><p class="st-text">${esc(s.conclusion)}</p></section>` : ""}
     ${s.recs ? `<section class="st-sec"><h4>Рекомендации</h4><p class="st-text">${esc(s.recs)}</p></section>` : ""}
     ${files.length ? `<section class="st-sec"><h4>Файлы · ${files.length}</h4><div class="st-gallery">${files.map((f, i) => isImg(f)
@@ -189,44 +199,59 @@ function openStudy(id) {
 /* ---------- form ---------- */
 function openStudyForm(id, presetType) {
   const s = id ? state.studies[id] : { type: presetType || "us", date: todayISO(), links: [] };
-  ui.stEdit = { id, files: [], links: new Set(s.links || []), removed: [] };
+  ui.stEdit = { id, files: [], links: new Set(s.links || []), removed: [], more: !COMMON_TYPES.includes(s.type), extra: !!(s.doctor || s.recs || s.repeat || s.note) };
   openX(`<div class="dlg-head"><h3>${id ? "Изменить обследование" : "Новое обследование"}</h3><button type="button" class="icon-btn" data-xclose aria-label="Закрыть">×</button></div>
     <form class="st-form" data-st-form>
-      <div class="fld"><span>Тип</span><div class="st-typepick">${STUDY_TYPES.map(([t, n]) => `<label class="st-tp"><input type="radio" name="type" value="${t}"${s.type === t ? " checked" : ""}>${icon(t)}<span>${esc(n)}</span></label>`).join("")}</div></div>
+      <div class="fld"><span>Тип</span><input type="hidden" name="type" value="${esc(s.type)}"><div data-typepick></div></div>
       <label class="fld"><span>Область или специалист</span><input class="input" name="area" value="${esc(s.area || "")}" placeholder="Например: щитовидная железа" autocomplete="off"></label>
-      <div class="tchips st-areas" data-areas></div>
-      <div class="ev-dates">
-        <label class="fld"><span>Дата</span><input class="input num" type="date" name="date" required value="${esc(s.date || todayISO())}"></label>
+      <div class="st-hints" data-areas></div>
+      <div class="st-row2">
+        <div class="fld"><span>Дата</span>${dfield('name="date"', s.date || todayISO())}</div>
         <label class="fld st-grow"><span>Клиника</span><input class="input" name="clinic" value="${esc(s.clinic || "")}" autocomplete="off"></label>
-        <label class="fld st-grow"><span>Врач</span><input class="input" name="doctor" value="${esc(s.doctor || "")}" autocomplete="off"></label>
       </div>
-      <div class="fld"><span>Итог</span><div class="tchips">${STUDY_STATUS.map(([k, n]) => `<label class="tchip radio"><input type="radio" name="status" value="${k}"${s.status === k ? " checked" : ""}>${n}</label>`).join("")}</div></div>
+      <div class="fld"><span>Итог</span><input type="hidden" name="status" value="${esc(s.status || "")}">
+        <div class="seg st-seg">${[["", "Не указан"], ...STUDY_STATUS].map(([k, n]) => `<button type="button" data-status="${k}" aria-pressed="${(s.status || "") === k}">${n}</button>`).join("")}</div></div>
       <label class="fld"><span>Заключение</span><textarea class="input" name="conclusion" rows="4" placeholder="Перепиши или вставь текст заключения">${esc(s.conclusion || "")}</textarea></label>
-      <label class="fld"><span>Рекомендации</span><textarea class="input" name="recs" rows="2" placeholder="Что посоветовал врач">${esc(s.recs || "")}</textarea></label>
-      <label class="fld"><span>Повторить через</span><select class="input" name="repeat" style="max-width:220px">${[[0, "не нужно"], [3, "3 мес."], [6, "6 мес."], [12, "12 мес."], [24, "24 мес."], [36, "3 года"], [60, "5 лет"]].map(([v, t]) => `<option value="${v}"${(s.repeat || 0) === v ? " selected" : ""}>${t}</option>`).join("")}</select></label>
       <div class="fld"><span>Связанные анализы</span><div class="st-linkbox" data-links></div>
-        <div class="st-linkadd"><input class="input" data-link-q placeholder="Добавить анализ: начни вводить название" autocomplete="off"><div class="tchips" data-link-sugg></div></div></div>
+        <input class="input st-linkq" data-link-q placeholder="Добавить анализ по названию" autocomplete="off"><div class="tchips" data-link-sugg></div></div>
       <div class="fld"><span>Файлы</span>
         ${canFiles() ? `<label class="st-drop" data-drop><input type="file" multiple accept="image/*,application/pdf,.pdf,.doc,.docx,.txt" data-files hidden>
-          <b>Перетащи файлы или нажми, чтобы выбрать</b><small>Снимки, фото бланка, PDF заключения · до 50 МБ каждый · на телефоне можно сфотографировать</small></label>
-          <div class="st-flist" data-flist></div>` : `<p class="muted">Файлы можно прикреплять после входа через Google — они хранятся в защищённом облаке.</p>`}</div>
-      <label class="fld"><span>Заметка</span><input class="input" name="note" value="${esc(s.note || "")}" autocomplete="off"></label>
-      <div class="dlg-foot"><span style="flex:1"></span><button type="button" class="btn ghost" data-xclose>Отмена</button><button type="submit" class="btn primary" data-st-save>Сохранить</button></div>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M20 11.5l-7.8 7.8a5 5 0 0 1-7.1-7.1l8.5-8.5a3.3 3.3 0 0 1 4.7 4.7l-8.5 8.5a1.7 1.7 0 0 1-2.4-2.4l7.8-7.8"/></svg>
+          <span>Прикрепить снимки или PDF</span><small>до 50 МБ</small></label>
+          <div class="st-flist" data-flist></div>` : `<p class="muted st-note">Файлы можно прикреплять после входа через Google.</p>`}</div>
+      <details class="st-more"${ui.stEdit.extra ? " open" : ""}><summary>Дополнительно: врач, рекомендации, повтор</summary>
+        <div class="st-more-in">
+          <label class="fld"><span>Врач</span><input class="input" name="doctor" value="${esc(s.doctor || "")}" autocomplete="off"></label>
+          <label class="fld"><span>Рекомендации</span><textarea class="input" name="recs" rows="2" placeholder="Что посоветовал врач">${esc(s.recs || "")}</textarea></label>
+          <div class="fld"><span>Повторить через</span>${csel('name="repeat"', [[0, "Не нужно"], [3, "3 месяца"], [6, "6 месяцев"], [12, "1 год"], [24, "2 года"], [36, "3 года"], [60, "5 лет"]], s.repeat || 0)}</div>
+          <label class="fld"><span>Заметка</span><input class="input" name="note" value="${esc(s.note || "")}" autocomplete="off"></label>
+        </div>
+      </details>
+      <div class="dlg-foot st-foot-bar"><span style="flex:1"></span><button type="button" class="btn ghost" data-xclose>Отмена</button><button type="submit" class="btn primary" data-st-save>Сохранить</button></div>
     </form>`, "st-dlg");
+  renderTypePick();
   refreshStudyForm();
+}
+function renderTypePick() {
+  const cur = $("[data-st-form] [name=type]").value, ed = ui.stEdit;
+  const btn = t => `<button type="button" class="tp" data-tpick="${t}" aria-pressed="${t === cur}">${esc(ST[t].name)}</button>`;
+  $("[data-typepick]").innerHTML = ed.more
+    ? `<div class="tp-groups">${TYPE_GROUPS.map(([g, l]) => `<div class="tp-g"><small>${esc(g)}</small><div class="tp-row">${l.map(btn).join("")}</div></div>`).join("")}</div>`
+    : `<div class="tp-row">${COMMON_TYPES.map(btn).join("")}<button type="button" class="tp tp-more" data-tmore>Ещё типы${CHEV}</button></div>`;
 }
 function formVals() { const f = $("[data-st-form]"); return f ? Object.fromEntries(new FormData(f)) : {}; }
 function refreshStudyForm() {
   const v = formVals(), ed = ui.stEdit;
-  $("[data-areas]").innerHTML = (STUDY_AREAS[v.type] || []).map(a => `<button type="button" class="tchip" data-area="${esc(a)}" aria-pressed="${norm(a) === norm(v.area)}">${esc(a)}</button>`).join("");
+  const areas = (STUDY_AREAS[v.type] || []), shown = ed.allAreas ? areas : areas.slice(0, 5);
+  $("[data-areas]").innerHTML = areas.length ? `<span>Часто:</span>${shown.map(a => `<button type="button" data-area="${esc(a)}" class="${norm(a) === norm(v.area) ? "on" : ""}">${esc(a.toLowerCase())}</button>`).join("")}${areas.length > 5 && !ed.allAreas ? `<button type="button" data-areas-all>ещё ${areas.length - 5}</button>` : ""}` : "";
   const sugg = suggestLinks(v.type, v.area), near = nearbyTaken(v.date).filter(m => !sugg.includes(m));
   const chip = m => { const n = nearValue(m, v.date); return `<button type="button" class="tchip st-lchip" data-link="${esc(m)}" aria-pressed="${ed.links.has(m)}">${esc(info(m).ru)}${n ? ` <small class="${status(n.r) || ""}">${fmt(n.r.v)}</small>` : ""}</button>`; };
   const extra = [...ed.links].filter(m => !sugg.includes(m) && !near.includes(m));
   $("[data-links]").innerHTML = `
-    ${sugg.length ? `<div class="st-lgroup"><small>Обычно смотрят вместе с этим обследованием</small><div class="tchips">${sugg.map(chip).join("")}</div></div>` : ""}
-    ${near.length ? `<div class="st-lgroup"><small>Сданы в пределах 2 месяцев от даты</small><div class="tchips">${near.slice(0, 16).map(chip).join("")}</div></div>` : ""}
-    ${extra.length ? `<div class="st-lgroup"><small>Добавлены вручную</small><div class="tchips">${extra.map(chip).join("")}</div></div>` : ""}
-    ${!sugg.length && !near.length && !extra.length ? `<p class="muted">Выбери тип и область — предложу подходящие анализы.</p>` : ""}`;
+    ${sugg.length ? `<div class="st-lgroup"><small>Обычно смотрят вместе</small><div class="tchips">${sugg.map(chip).join("")}</div></div>` : ""}
+    ${near.length ? `<div class="st-lgroup"><small>Сданы в пределах 2 месяцев</small><div class="tchips">${near.slice(0, 12).map(chip).join("")}</div></div>` : ""}
+    ${extra.length ? `<div class="st-lgroup"><small>Добавлены</small><div class="tchips">${extra.map(chip).join("")}</div></div>` : ""}
+    ${!sugg.length && !near.length && !extra.length ? `<p class="muted st-note">Укажи область — предложу подходящие анализы.</p>` : ""}`;
   renderFileList();
 }
 function renderFileList() {
@@ -295,7 +320,6 @@ function initStudies() {
     const t = e.target.closest("[data-st-type]"); if (t) { ui.stType = t.dataset.stType; renderStudies(); return; }
     const c = e.target.closest("[data-st]"); if (c) openStudy(c.dataset.st);
   });
-  page.addEventListener("keydown", e => { if (e.key === "Enter" && e.target.matches("[data-st]")) openStudy(e.target.dataset.st); });
   page.addEventListener("input", e => {
     if (!e.target.matches("[data-st-q]")) return;
     ui.stQ = e.target.value; const pos = e.target.selectionStart; renderStudies();
@@ -311,6 +335,10 @@ function initStudies() {
     const fi = t.closest("[data-file]");
     if (fi && ui.stOpen) { const f = state.studies[ui.stOpen].files[+fi.dataset.file]; openFile(f.path, f.name, f.mime); return; }
     if (!$("[data-st-form]")) return;
+    const tp = t.closest("[data-tpick]"); if (tp) { $("[data-st-form] [name=type]").value = tp.dataset.tpick; renderTypePick(); refreshStudyForm(); return; }
+    if (t.closest("[data-tmore]")) { ui.stEdit.more = true; renderTypePick(); return; }
+    const sb = t.closest("[data-status]"); if (sb) { $("[data-st-form] [name=status]").value = sb.dataset.status; $$("[data-status]").forEach(b => b.setAttribute("aria-pressed", b === sb)); return; }
+    if (t.closest("[data-areas-all]")) { ui.stEdit.allAreas = true; refreshStudyForm(); return; }
     const ar = t.closest("[data-area]"); if (ar) { $("[data-st-form] [name=area]").value = ar.dataset.area; refreshStudyForm(); return; }
     const lk = t.closest("[data-link]");
     if (lk) { const m = lk.dataset.link, s = ui.stEdit.links; s.has(m) ? s.delete(m) : s.add(m); if (t.closest("[data-link-sugg]")) { $("[data-link-q]").value = ""; $("[data-link-sugg]").innerHTML = ""; refreshStudyForm(); } else lk.setAttribute("aria-pressed", s.has(m)); return; }
@@ -319,7 +347,7 @@ function initStudies() {
   });
   xd.addEventListener("change", e => {
     const t = e.target; if (!$("[data-st-form]")) return;
-    if (t.name === "type" || t.name === "date") refreshStudyForm();
+    if (t.name === "date") refreshStudyForm();
     if (t.matches("[data-files]")) { addPicked(t.files); t.value = ""; }
   });
   xd.addEventListener("input", e => {

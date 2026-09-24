@@ -205,7 +205,6 @@ function markerSettings(id, list) {
   ].join("");
   const cur = presets[c.i];
   const months = state.prefs?.remind?.[id], auto = autoMonths(id, x);
-  const opt = (v, t) => `<option value="${v}"${String(months ?? "auto") === String(v) ? " selected" : ""}>${t}</option>`;
   return `<div class="dset" data-mid="${esc(id)}">
     <div class="dset-row"><span class="dset-k">Норма</span><div class="tchips">${tchips}</div></div>
     ${c.mode === "preset" && cur ? `<div class="dset-src">Цель из рекомендаций: ${esc(cur.src)}${c.auto ? " · выбрана автоматически" : ""}${cur.sex && !sex ? " · укажи пол в профиле для точной цели" : ""}</div>` : ""}
@@ -214,7 +213,7 @@ function markerSettings(id, list) {
       <span>–</span><input class="input num" data-tmax value="${esc(c.mode === "custom" ? c.max ?? "" : "")}" placeholder="до" inputmode="decimal">
       <span class="muted">${esc(x.unit || "")}</span><button type="button" class="btn sm primary" data-tsave>Применить</button></div></div>` : ""}
     <div class="dset-row"><span class="dset-k">Пересдать</span>
-      <select class="input dset-sel" data-remind>${opt("auto", auto ? `авто: через ${auto} мес.` : "авто: не напоминать")}${[1, 3, 6, 12, 24].map(n => opt(n, `через ${n} мес.`)).join("")}${opt(0, "не напоминать")}</select>
+      ${csel("data-remind", [["auto", auto ? `Авто — через ${auto} мес.` : "Авто — не напоминать"], ...[1, 3, 6, 12, 24].map(n => [n, `Через ${n} мес.`]), [0, "Не напоминать"]], months ?? "auto", "dset-sel")}
       ${(() => { const p = retestPlan().find(q => q.m === id); return p ? `<span class="dset-due ${p.left < 0 ? "late" : ""}">${p.left < 0 ? `просрочено на ${spanText(p.left)}` : `до ${fmtDate(p.due)}`}</span>` : ""; })()}
     </div>
     ${eventsFor(list).length ? `<div class="dset-row"><span class="dset-k">События</span><div class="evchips">${eventsFor(list).map(e => `<button type="button" class="evchip k-${e.kind}" data-ev="${esc(e.id)}">${esc(e.title)} <small>${fmtDate(e.start)}${e.end ? "–" + fmtDate(e.end) : e.end === null ? " → сейчас" : ""}</small></button>`).join("")}</div></div>` : ""}
@@ -263,9 +262,8 @@ function openEvents(editId, focusNew) {
       ${!e && titles.length ? `<div class="ev-sugg">${titles.map(t => `<button type="button" class="tchip" data-ev-title="${esc(t)}">${esc(t)}</button>`).join("")}</div>` : ""}
       <div class="fld"><span>Тип</span><div class="tchips">${EVENT_KINDS.map(([k, n]) => `<label class="tchip radio"><input type="radio" name="kind" value="${k}"${(e?.kind || "med") === k ? " checked" : ""}>${n}</label>`).join("")}</div></div>
       <div class="ev-dates">
-        <label class="fld"><span>Начало</span><input class="input num" type="date" name="start" required value="${esc(e?.start || todayISO())}"></label>
-        <label class="fld"><span>Конец</span><input class="input num" type="date" name="end" value="${esc(e?.end || "")}"></label>
-        <label class="ev-now"><input type="checkbox" name="ongoing"${!e || !e.end ? " checked" : ""}> продолжается</label>
+        <div class="fld"><span>Начало</span>${dfield('name="start"', e?.start || todayISO(), { future: true })}</div>
+        <div class="fld"><span>Конец</span>${dfield('name="end"', e?.end || "", { future: true, empty: "Продолжается", clear: true })}</div>
       </div>
       <label class="fld"><span>Заметка</span><input class="input" name="note" value="${esc(e?.note || "")}" placeholder="доза, схема, кто назначил"></label>
       <div class="dlg-foot">${e ? `<button type="button" class="btn ghost danger" data-ev-del="${esc(e.id)}">${ui.confirmEv === e.id ? "Точно удалить?" : "Удалить"}</button>` : ""}<span style="flex:1"></span>
@@ -357,7 +355,7 @@ function renderCompare() {
     const g = info(m).group, head = g !== lastG ? `<tr class="cmp-g"><td colspan="4">${esc(GROUP_NAME[g] || g)}</td></tr>` : ""; lastG = g;
     return head + `<tr data-goto="${esc(m)}"><td>${esc(info(m).ru)} <small class="muted">${esc((A || B).unit || "")}</small></td><td class="num">${cell(A, a)}</td><td class="num">${cell(B, b)}</td><td>${delta(A, B)}</td></tr>`;
   }).join("");
-  const sel = (k, v) => `<select class="input" data-cmp="${k}">${ds.map(x => `<option value="${x.d}"${x.d === v ? " selected" : ""}>${fmtDate(x.d)} · ${x.n}</option>`).join("")}</select>`;
+  const sel = (k, v) => csel(`data-cmp="${k}"`, ds.map(x => [x.d, fmtDate(x.d), `${x.n} ${plural(x.n, "показатель", "показателя", "показателей")}`]), v);
   openX(`<div class="dlg-head"><h3>Сравнение дат</h3><button type="button" class="icon-btn" data-xclose aria-label="Закрыть">×</button></div>
     <div class="cmp-ctl">${sel("a", a)}<span class="muted">→</span>${sel("b", b)}
       <label class="ev-now"><input type="checkbox" data-cmp-exact${ui.cmpExact ? " checked" : ""}> только сданные в эти дни</label>
@@ -409,7 +407,7 @@ function reportHtml(opt = {}) {
   return `<article class="rep">
     <header class="rep-head"><div><div class="rep-kicker">Медкарта · сводка для врача</div><h2>${esc(name || "Пациент")}</h2>
       <div class="rep-meta">${[p.sex ? (p.sex === "m" ? "мужчина" : "женщина") : "", age ? `${age} ${plural(age, "год", "года", "лет")}` : "", `сформировано ${fmtDate(todayISO())}`].filter(Boolean).join(" · ")}</div></div>
-      ${opt.controls ? `<div class="rep-ctl no-print"><select class="input" data-rep-years>${[[1, "за 1 год"], [2, "за 2 года"], [5, "за 5 лет"], [0, "за всё время"]].map(([v, t]) => `<option value="${v}"${v === years ? " selected" : ""}>${t}</option>`).join("")}</select></div>` : ""}
+      ${opt.controls ? `<div class="rep-ctl no-print">${csel("data-rep-years", [[1, "За 1 год"], [2, "За 2 года"], [5, "За 5 лет"], [0, "За всё время"]], years)}</div>` : ""}
     </header>
     ${sec("Вне нормы сейчас", bad.length ? `<table class="rep-t"><thead><tr><th>Показатель</th><th>Значение</th><th>Норма</th><th>Дата</th><th>Раньше</th></tr></thead><tbody>${bad.map(m => { const l = bm[m], x = latest(m), pv = l.length > 1 ? l[l.length - 2] : null; return `<tr><td><b>${esc(info(m).ru)}</b>${harmHit(x) ? ` <span class="rep-harm">порог действия</span>` : ""}</td><td class="num ${status(x)}">${val(x)}</td><td class="num">${norm(x)}</td><td class="num">${fmtDate(x.date)}</td><td class="num">${pv ? `${fmt(pv.v)} (${fmtDate(pv.date)})` : "—"}</td></tr>`; }).join("")}</tbody></table>` : `<p>Все последние значения в норме.</p>`)}
     ${sec("Давление", bpTxt() ? `<p>${esc(bpTxt())}</p>` : "")}
@@ -580,8 +578,6 @@ function initExtras() {
     else if (t.matches("[data-cmp-all]")) { ui.cmpAll = t.checked; renderCompare(); }
     else if (t.matches("[data-cmp-exact]")) { ui.cmpExact = t.checked; renderCompare(); }
     else if (t.matches("[data-rep-years]")) { ui.repYears = +t.value; openReport(); }
-    else if (t.name === "ongoing") { const end = $(".ev-form [name=end]"); if (t.checked) end.value = ""; }
-    else if (t.name === "end" && t.value) { const on = $(".ev-form [name=ongoing]"); if (on) on.checked = false; }
   });
   xd.addEventListener("input", e => { if (e.target.matches("[data-rep-q]")) { clearTimeout(ui.qTimer); ui.qTimer = setTimeout(() => setPref(["questions"], e.target.value || undefined), 500); } });
   xd.addEventListener("submit", e => {
@@ -589,8 +585,7 @@ function initExtras() {
     const f = e.target, fd = new FormData(f);
     if (f.matches("[data-ev-form]")) {
       const id = f.dataset.evForm || newId("e");
-      const ongoing = fd.get("ongoing") === "on";
-      const ev = { title: String(fd.get("title")).trim(), kind: fd.get("kind") || "other", start: fd.get("start"), end: ongoing ? null : (fd.get("end") || null), note: String(fd.get("note") || "").trim() };
+      const ev = { title: String(fd.get("title")).trim(), kind: fd.get("kind") || "other", start: fd.get("start"), end: fd.get("end") || null, note: String(fd.get("note") || "").trim() };
       if (!ev.title || !ev.start) return;
       if (ev.end && ev.end < ev.start) { toast("Конец раньше начала"); return; }
       state.events ||= {}; state.events[id] = ev; save(); renderAll(); openEvents(); toast("Событие сохранено");

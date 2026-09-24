@@ -1361,6 +1361,7 @@ function toast(t) { const el = $("#toast"); el.textContent = t; el.hidden = fals
 
 /* ============ boot ============ */
 // with a Supabase project configured the site asks for Google sign-in; otherwise it works offline
+initUI();
 initExtras();
 initStudies();
 const shareToken = new URLSearchParams(location.search).get("share");

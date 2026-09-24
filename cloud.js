@@ -9,18 +9,26 @@ const toResultRow = (id, r) => ({ id, m: r.m, date: r.date || null, v: r.v ?? nu
 const toMarkerRow = (id, m) => ({ id, ru: m.ru, uk: m.uk || "", en: m.en || "", abbr: m.abbr || "", grp: m.group || "other", unit: m.unit || "" });
 const fromResultRow = row => Object.fromEntries(RESULT_COLS.map(k => [k, row[k] ?? (k === "unit" || k === "lab" || k === "note" ? "" : null)]));
 const fromMarkerRow = row => ({ ru: row.ru, uk: row.uk, en: row.en, abbr: row.abbr, group: row.grp, unit: row.unit });
+// events and preferences live in one generic table: one row per event, one row for prefs
+const itemsObj = () => ({ ...Object.fromEntries(Object.entries(state.events || {}).map(([id, e]) => [id, { kind: "event", data: e }])), prefs: { kind: "prefs", data: state.prefs || {} } });
+const toItemRow = (id, x) => ({ id, kind: x.kind, data: x.data });
 const snap = (rowFn, obj) => Object.fromEntries(Object.entries(obj).map(([id, v]) => [id, JSON.stringify(rowFn(id, v))]));
 
 function cloudConfigured() { return !!(window.MEDCARD_CLOUD?.url && window.supabase?.createClient); }
 
 async function cloudPull() {
   const c = cloud.client;
-  const [res, mk] = await Promise.all([c.from("results").select("*"), c.from("markers").select("*")]);
+  const [res, mk, it] = await Promise.all([c.from("results").select("*"), c.from("markers").select("*"), c.from("items").select("*")]);
   if (res.error) throw res.error;
   if (mk.error) throw mk.error;
   state.results = Object.fromEntries(res.data.map(r => [r.id, fromResultRow(r)]));
   state.markers = Object.fromEntries(mk.data.map(r => [r.id, fromMarkerRow(r)]));
-  cloud.synced = { results: snap(toResultRow, state.results), markers: snap(toMarkerRow, state.markers) };
+  cloud.itemsOk = !it.error;
+  if (cloud.itemsOk) {
+    state.events = Object.fromEntries(it.data.filter(r => r.kind === "event").map(r => [r.id, r.data]));
+    state.prefs = it.data.find(r => r.id === "prefs")?.data || {};
+  }
+  cloud.synced = { results: snap(toResultRow, state.results), markers: snap(toMarkerRow, state.markers), items: cloud.itemsOk ? snap(toItemRow, itemsObj()) : {} };
 }
 
 // push the difference between `state` and what the server last confirmed
@@ -29,7 +37,9 @@ async function cloudPush() {
   cloud.busy = true;
   try {
     const c = cloud.client;
-    for (const [table, obj, rowFn] of [["markers", state.markers, toMarkerRow], ["results", state.results, toResultRow]]) {
+    const tables = [["markers", state.markers, toMarkerRow], ["results", state.results, toResultRow]];
+    if (cloud.itemsOk) tables.push(["items", itemsObj(), toItemRow]);
+    for (const [table, obj, rowFn] of tables) {
       const now = snap(rowFn, obj), was = cloud.synced[table];
       const up = Object.keys(now).filter(id => now[id] !== was[id]).map(id => JSON.parse(now[id]));
       const gone = Object.keys(was).filter(id => !(id in now));
@@ -112,7 +122,7 @@ async function cloudBoot() {
   document.getElementById("localNote")?.remove(); // the browser-only warning is for offline mode
   document.getElementById("gate").hidden = true; document.body.classList.remove("gated");
   // show the last copy instantly, then refresh from the server
-  try { const j = JSON.parse(localStorage.getItem("medcard.cloud." + cloud.user.id) || "null"); if (j) { state.results = j.results || {}; state.markers = j.markers || {}; } } catch (e) { /* ignore */ }
+  try { const j = JSON.parse(localStorage.getItem("medcard.cloud." + cloud.user.id) || "null"); if (j) { state.results = j.results || {}; state.markers = j.markers || {}; state.events = j.events || {}; state.prefs = j.prefs || {}; } } catch (e) { /* ignore */ }
   renderAll(); renderAccount();
   try { await cloudPull(); renderAll(); renderAccount(); setSyncState("ok"); }
   catch (e) { console.error(e); setSyncState("error"); }

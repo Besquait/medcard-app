@@ -38,7 +38,7 @@ function mainUnit(mid) {
   return { tok, label, from: conv ? conv[1] : {} };
 }
 // A stored result converted to the marker's main unit. `o` keeps the numbers as printed on the blank.
-function view(id, r) {
+function viewBase(id, r) {
   const o = { v: r.v, min: r.min, max: r.max, unit: r.unit || "" };
   const mu = mainUnit(r.m), tok = unitToken(r.unit);
   let f = null;
@@ -48,6 +48,8 @@ function view(id, r) {
   const k = x => isNum(x) ? +(x * f).toPrecision(f === 1 ? 15 : 4) : x;
   return { id, ...r, v: k(r.v), min: k(r.min), max: k(r.max), unit: mu.label, o, converted: f !== 1 || unitKey(r.unit) !== unitKey(mu.label) };
 }
+// research targets and custom norms are applied on top of the blank (extras.js)
+const view = (id, r) => applyTarget(viewBase(id, r));
 const origText = r => `${fmt(r.o.v)} ${r.o.unit}`.trim();
 // value that shows the blank's original on hover
 const swap = (r, cls = "") => r.converted
@@ -137,13 +139,13 @@ function pos(r) {
 
 /* ============ storage ============ */
 const KEY = "medcard.v1";
-const state = { markers: {}, results: {} };
+const state = { markers: {}, results: {}, events: {}, prefs: {} };
 function load() {
   let raw = null;
   try { raw = localStorage.getItem(KEY); } catch (e) { /* storage blocked */ }
   if (raw) {
     try {
-      const j = JSON.parse(raw); state.markers = j.markers || {}; state.results = j.results || {};
+      const j = JSON.parse(raw); state.markers = j.markers || {}; state.results = j.results || {}; state.events = j.events || {}; state.prefs = j.prefs || {};
       // bring in seed rows added after this browser was first filled (matched by analysis + date)
       if ((j.seedVersion || 1) < (window.SEED_VERSION || 1)) {
         // seed rows (ids starting with "s") are replaced wholesale; rows entered on the site are kept
@@ -165,6 +167,7 @@ function load() {
   save();
 }
 function save() {
+  if (typeof ui !== "undefined" && ui.readonly) return true;
   if (typeof cloud !== "undefined" && cloud.user) {
     // signed in: keep a local copy for instant start, push the changes to Supabase
     try { localStorage.setItem("medcard.cloud." + cloud.user.id, JSON.stringify(state)); } catch (e) { /* cache only */ }
@@ -189,6 +192,7 @@ function matches(m, q) { const n = norm(q); return !n || searchable(m).includes(
 function byMarker() {
   const map = {};
   for (const [id, r] of Object.entries(state.results)) { if (r && r.m) (map[r.m] ||= []).push(view(id, r)); }
+  addCalculated(map);
   for (const k in map) map[k].sort((a, b) => (a.date || "").localeCompare(b.date || "") || (a.t || 0) - (b.t || 0));
   return map;
 }
@@ -245,6 +249,7 @@ function renderOverview() {
       <div class="ov-k">С прошлой сдачи</div>
       <div class="ov-v num"><span class="good">↑ ${better}</span> <span class="sep">·</span> <span class="${worse ? "bad" : ""}">↓ ${worse}</span></div>
       <div class="ov-s">стало лучше · стало хуже</div>
+      ${last ? `<button type="button" class="ov-link" data-digest="${last}">Что изменилось ${fmtDate(last)} →</button>` : ""}
     </div>
     <div class="ov">
       <div class="ov-k">Требуют внимания</div>
@@ -315,6 +320,10 @@ function chart(list) {
   const nSpan = nHi != null ? nHi - (nLo ?? 0) : (y1 - y0);
   if (nHi != null) y1 = Math.max(y1, nHi + nSpan * .35);
   if (nLo != null) y0 = Math.min(y0, nLo - nSpan * .35);
+  // action threshold: stretch the scale to show it when the value is already out of range
+  const hm = normalized ? null : harmOf(last), sl = status(last);
+  if (hm && isNum(hm.hi) && sl === "high") y1 = Math.max(y1, hm.hi * 1.04);
+  if (hm && isNum(hm.lo) && sl === "low") y0 = Math.min(y0, hm.lo * .96);
   const pad = (y1 - y0) * .06; y0 -= pad; y1 += pad;
   if (pts.every(r => val(r) >= 0) && y0 < 0) y0 = 0;
   const ts = pts.map(r => Date.parse(r.date)).filter(isFinite), t0 = Math.min(...ts), t1 = Math.max(...ts);
@@ -356,7 +365,12 @@ function chart(list) {
       + lbl(yl + 15, `низ нормы ${normalized ? "0%" : fmt(nLo)}`, "low")
       + (yBot - yl > 22 ? zlbl(yBot - 8, "ниже нормы", "low") : "");
   }
-  if (nHi != null) { const mid = Y(((nLo ?? 0) + nHi) / 2); limits += zlbl(mid + 4, "норма", "ok"); }
+  if (nHi != null) { const mid = Y(((nLo ?? 0) + nHi) / 2); limits += zlbl(mid + 4, last.tgt ? "цель" : "норма", "ok"); }
+  for (const [v, t] of hm ? [[hm.hi, "порог действия"], [hm.lo, "порог действия"]] : []) {
+    if (!isNum(v) || v < y0 || v > y1) continue;
+    limits += `<g><title>${esc(hm.text)}</title><line x1="${xL}" x2="${xR}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--high-strong)" stroke-width="2"/><text x="${xL + 10}" y="${Y(v) - 6}" font-size="11" font-weight="700" fill="var(--high-strong)">⚠ ${t} ${fmt(v)}</text></g>`;
+  }
+  const evBands = pts.length > 1 && t1 > t0 ? chartEvents(t0, t1, t => L + (t - t0) / (t1 - t0) * (W - L - R), T, H - B) : "";
   const line = pts.length > 1 ? `<polyline points="${pts.map((r, i) => `${X(r, i)},${Y(val(r))}`).join(" ")}" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>` : "";
   const dots = pts.map((r, i) => {
     const s = status(r), c = s === "high" ? "var(--high)" : s === "low" ? "var(--low)" : s === "edge" ? "var(--edge)" : s === "ok" ? "var(--ok)" : "var(--muted)";
@@ -369,8 +383,8 @@ function chart(list) {
   }).join("");
   const cap = normalized
     ? "Лаборатории давали разные единицы, поэтому график в % от нормы: 0% — нижняя граница, 100% — верхняя."
-    : `Единицы: ${[...units][0] || "—"}. Пунктир — границы нормы с последнего бланка. Наведи на точку, чтобы увидеть подробности.`;
-  return `<div class="panel-cap">${esc(cap)}</div><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="График значений">${zones}${band}${grid}${limits}${line}${dots}</svg>`;
+    : `Единицы: ${[...units][0] || "—"}. Пунктир — ${last.tgt ? `цель (${last.tgt})` : "границы нормы с последнего бланка"}. Наведи на точку, чтобы увидеть подробности.`;
+  return `<div class="panel-cap">${esc(cap)}</div><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="График значений">${zones}${band}${grid}${evBands}${limits}${line}${dots}</svg>`;
 }
 
 /* ============ list ============ */
@@ -521,7 +535,7 @@ const MINOR = {
   dbil: "смотрят, если общий билирубин повышен", ibil: "смотрят, если общий билирубин повышен", tp: "мало говорит сам по себе",
   amy: "для поджелудочной точнее липаза", ldh: "неспецифичен", ck: "нужен при болях в мышцах или статинах",
   homa: "расчётный индекс из глюкозы и инсулина", homocys: "рутинно не рекомендован", cystc: "уточняет СКФ при сомнениях", cpep: "нужен при диабете",
-  vldl: "расчётный, в рекомендациях не используется", ai: "расчётный, в рекомендациях не используется", apoa1: "не добавляет к ЛПВП",
+  vldl: "расчётный, в рекомендациях не используется", nlr: "общий маркер воспаления, смотрят вместе с картиной", deritis: "имеет смысл, если ферменты печени повышены", ai: "расчётный, в рекомендациях не используется", apoa1: "не добавляет к ЛПВП",
   fe: "скачет в течение дня, ферритин надёжнее", tibc: "насыщение трансферрина информативнее", transf: "насыщение трансферрина информативнее",
   zn: "нужен при подозрении на дефицит", cu: "нужен при подозрении на дефицит", se: "нужен при подозрении на дефицит",
   vita: "нужен при подозрении на дефицит", vite: "нужен при подозрении на дефицит", b1: "нужен при подозрении на дефицит", b6: "нужен при подозрении на дефицит",
@@ -580,7 +594,8 @@ function row(id, list) {
       <div><div class="mk-name">${esc(m.ru)}</div><div class="mk-alt">${esc(alt)}</div></div>
       <div>
         <div class="mk-val">${pair(x, "v num", "u")}</div>
-        ${s === "ok" || s === "none" || !s ? "" : `<div class="mk-meta">${statusBadge(x)}</div>`}
+        ${s === "ok" || s === "none" || !s ? (harmHit(x) ? `<div class="mk-meta">${harmBadge(x)}</div>` : "") : `<div class="mk-meta">${statusBadge(x)} ${harmBadge(x)}</div>`}
+        ${x.tgt ? `<div class="mk-tgt" title="${esc(`${x.tgt}. Норма бланка: ${rangeText(x.labMin, x.labMax) || "не указана"}`)}">цель из рекомендаций</div>` : ""}${x.calc ? `<div class="mk-tgt">рассчитано</div>` : ""}
         ${ageLine(x.date, !!outside(x))}
       </div>
       ${rangeBar(list)}
@@ -601,9 +616,9 @@ function detail(id, list) {
     return `<tr data-rid="${esc(r.id)}">
         <td class="num">${fmtDate(r.date)}</td>
         <td class="num">${pair(r, "b", "muted")}</td>
-        <td class="num">${esc(rangeText(r.min, r.max))} ${s && s !== "none" ? `<span class="badge ${s}">${STATUS_TXT[s]}</span>` : ""}</td>
+        <td class="num">${esc(r.tgt ? rangeText(r.labMin, r.labMax) : rangeText(r.min, r.max))} ${s && s !== "none" ? `<span class="badge ${s}">${STATUS_TXT[s]}</span>` : ""}</td>
         <td style="color:var(--muted)">${esc(r.lab || "")}${r.note ? `<br>${esc(r.note)}` : ""}</td>
-        <td class="acts"><button class="btn sm ghost" data-act="edit">Изменить</button><button class="btn sm ghost danger" data-act="del">${ui.confirmDel === r.id ? "Точно удалить?" : "Удалить"}</button></td></tr>`;
+        <td class="acts">${r.calc ? `<span class="muted">расчёт</span>` : `<button class="btn sm ghost" data-act="edit">Изменить</button><button class="btn sm ghost danger" data-act="del">${ui.confirmDel === r.id ? "Точно удалить?" : "Удалить"}</button>`}</td></tr>`;
   }).join("");
   const tabs = `<div class="dtabs" role="tablist">
       <button role="tab" data-tab="hist" aria-selected="${ui.tab === "hist"}">График и история</button>
@@ -611,27 +626,36 @@ function detail(id, list) {
     </div>`;
   const body = ui.tab === "about" ? `<div class="panel">${about(id)}</div>` : `
     <div class="panel chart">${chart(list)}</div>
-    <div class="panel"><div class="tbl-scroll"><table class="mtable"><thead><tr><th>Дата</th><th>Значение</th><th>Норма</th><th>Где</th><th></th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+    <div class="panel">${markerSettings(id, list)}</div>
+    <div class="panel"><div class="tbl-scroll"><table class="mtable"><thead><tr><th>Дата</th><th>Значение</th><th>Норма бланка</th><th>Где</th><th></th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
   return `<div class="detail${ui.animOpen ? " anim" : ""}">${tabs}${body}</div>`;
 }
 
 /* ============ timeline ============ */
 function renderTimeline() {
+  if (ui.histMode === "map") { $("#timeline").innerHTML = Object.keys(state.results).length ? heatmapHtml() : `<div class="empty">Здесь появится карта.</div>`; return; }
   const by = {};
   for (const [id, r] of Object.entries(state.results)) (by[r.date || ""] ||= []).push(view(id, r));
   const ds = Object.keys(by).sort().reverse();
   if (!ds.length) { $("#timeline").innerHTML = `<div class="empty">Здесь появятся твои сдачи.</div>`; return; }
-  $("#timeline").innerHTML = ds.map(d => {
+  const evs = eventList();
+  const evHtml = e => `<button type="button" class="tl-ev k-${e.kind}" data-ev="${esc(e.id)}"><i></i><span><b>${esc(e.title)}</b> · ${esc(EVENT_KIND[e.kind] || "")}</span><span class="num muted">${fmtDate(e.start)}${e.end ? " – " + fmtDate(e.end) : " → сейчас"}</span></button>`;
+  let ei = 0, html = "";
+  for (const d of ds) {
+    while (ei < evs.length && evs[ei].start > d) html += evHtml(evs[ei++]);
     const l = by[d].sort((a, b) => (GROUP_ORDER[info(a.m).group] - GROUP_ORDER[info(b.m).group]) || info(a.m).ru.localeCompare(info(b.m).ru, "ru"));
     const bad = l.filter(r => ["high", "low"].includes(status(r))).length;
     const labs = [...new Set(l.map(r => r.lab).filter(Boolean))].join(", ");
-    return `<details class="sess">
+    html += `<details class="sess">
       <summary><span class="sess-date num">${fmtDate(d)}</span>
         <span class="sess-meta">${l.length} ${plural(l.length, "показатель", "показателя", "показателей")}${labs ? " · " + esc(labs) : ""}${bad ? ` · <span style="color:var(--high)">${bad} вне нормы</span>` : ""}</span>
         <span class="sess-dots">${l.map(r => `<i class="${status(r) || "none"}"></i>`).join("")}</span></summary>
-      <div class="sess-body">${l.map(r => { const s = status(r); return `<div class="sess-row"><span>${esc(info(r.m).ru)}</span><span class="num ${s}">${pair(r, "", "muted")}</span></div>`; }).join("")}</div>
+      <div class="sess-body">${l.map(r => { const s = status(r); return `<div class="sess-row" data-goto="${esc(r.m)}"><span>${esc(info(r.m).ru)}</span><span class="num ${s}">${pair(r, "", "muted")}</span></div>`; }).join("")}
+        <button type="button" class="linkbtn" data-digest="${esc(d)}">Что изменилось по сравнению с прошлыми сдачами →</button></div>
     </details>`;
-  }).join("");
+  }
+  while (ei < evs.length) html += evHtml(evs[ei++]);
+  $("#timeline").innerHTML = html;
 }
 
 /* ============ about a marker: what, when, prep, panels ============ */
@@ -853,7 +877,7 @@ document.addEventListener("click", e => {
 });
 infoDlg.addEventListener("click", e => { if (e.target === infoDlg) infoDlg.close(); });
 
-function renderAll() { renderOverview(); renderGroups(); renderList(); renderTimeline(); }
+function renderAll() { renderOverview(); renderDue(); renderGroups(); renderList(); renderTimeline(); }
 
 /* ============ tooltip ============ */
 const tip = $("#tip");
@@ -1002,7 +1026,7 @@ $("#importInput").addEventListener("change", async e => {
   try {
     const j = JSON.parse(await f.text());
     if (!j || typeof j.results !== "object") throw new Error("bad");
-    state.markers = j.markers || {}; state.results = j.results; save(); renderAll();
+    state.markers = j.markers || {}; state.results = j.results; state.events = j.events || {}; state.prefs = j.prefs || {}; save(); renderAll();
     toast(`Загружено: ${Object.keys(state.results).length} замеров`);
   } catch (err) { toast("Это не файл Медкарты — ничего не изменено"); }
   e.target.value = ""; menu.hidden = true;
@@ -1326,6 +1350,7 @@ $("#entryForm").addEventListener("submit", e => {
   if (!save()) return;
   dlg.close(); renderAll();
   toast(`Сохранено: ${filled.length} ${plural(filled.length, "показатель", "показателя", "показателей")} за ${fmtDate(date)}${skipped ? ` · ${skipped} без значения пропущено` : ""}`);
+  if (changesFor(date).some(c => c.prev)) setTimeout(() => openDigest(date), 350);
 });
 
 /* ============ toast ============ */
@@ -1334,7 +1359,10 @@ function toast(t) { const el = $("#toast"); el.textContent = t; el.hidden = fals
 
 /* ============ boot ============ */
 // with a Supabase project configured the site asks for Google sign-in; otherwise it works offline
-if (typeof cloudConfigured === "function" && cloudConfigured()) cloudBoot();
+initExtras();
+const shareToken = new URLSearchParams(location.search).get("share");
+if (shareToken && typeof cloudConfigured === "function" && cloudConfigured()) shareBoot(shareToken);
+else if (typeof cloudConfigured === "function" && cloudConfigured()) cloudBoot();
 else { load(); renderAll(); }
 // entrance animation plays once; later re-renders (opening a row, sync) stay still
 setTimeout(() => $("#list").classList.add("settled"), 900);

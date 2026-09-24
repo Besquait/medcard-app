@@ -16,7 +16,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&display=swap">
-  <link rel="stylesheet" href="styles.css?v=33">
+  <link rel="stylesheet" href="styles.css?v=34">
 </head>
 <body>
   <div class="gate" id="gate" hidden>
@@ -45,6 +45,9 @@
         <button class="btn ghost" id="menuBtn" aria-haspopup="true" aria-expanded="false">Данные</button>
         <div class="menu" id="menu" hidden>
           <div class="acct" id="acct"></div>
+          <button id="reportBtn">Сводка для врача</button>
+          <button id="eventsBtn">События и лечение</button>
+          <button id="profileBtn">Профиль: пол и возраст</button>
           <button id="exportBtn">Сохранить копию в файл</button>
           <label class="menu-file">Загрузить из файла<input type="file" id="importInput" accept="application/json,.json"></label>
         </div>
@@ -53,6 +56,7 @@
     </header>
 
     <section class="overview" id="overview" aria-label="Сводка"></section>
+    <section class="due" id="due" hidden aria-label="Пора пересдать"></section>
 
     <section class="block">
       <div class="block-head">
@@ -87,7 +91,12 @@
     </section>
 
     <section class="block" id="historyBlock">
-      <div class="block-head"><h2>История сдач</h2></div>
+      <div class="block-head"><h2>История сдач</h2>
+        <div class="hist-ctl" id="histCtl">
+          <div class="seg"><button data-h="list" aria-pressed="true">Сдачи</button><button data-h="map" aria-pressed="false">Карта</button></div>
+          <button type="button" class="btn sm" data-cmp-open>Сравнить даты</button>
+          <button type="button" class="btn sm" data-ev-new>+ Событие</button>
+        </div></div>
       <div id="timeline" class="timeline"></div>
     </section>
 
@@ -149,6 +158,9 @@
     </form>
   </dialog>
 
+  <dialog id="xDlg" class="dialog x-dlg"><div id="xBody"></div></dialog>
+  <div id="printRoot"></div>
+
   <dialog id="infoDlg" class="dialog info-dlg" aria-label="Об анализе">
     <div class="info-wrap" id="infoBody"></div>
   </dialog>
@@ -157,14 +169,15 @@
   <div class="toast" id="toast" role="status" hidden></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="config.js?v=33"></script>
-  <script src="catalog.js?v=33"></script>
-  <script src="info.js?v=33"></script>
-  <script src="info-hl.js?v=33"></script>
-  <script src="guides.js?v=33"></script>
-  <script src="panels.js?v=33"></script>
-  <script src="seed.js?v=33"></script>
-  <script src="cloud.js?v=33"></script>
-  <script src="app.js?v=33"></script>
+  <script src="config.js?v=34"></script>
+  <script src="catalog.js?v=34"></script>
+  <script src="info.js?v=34"></script>
+  <script src="info-hl.js?v=34"></script>
+  <script src="guides.js?v=34"></script>
+  <script src="panels.js?v=34"></script>
+  <script src="seed.js?v=34"></script>
+  <script src="cloud.js?v=34"></script>
+  <script src="extras.js?v=34"></script>
+  <script src="app.js?v=34"></script>
 </body>
 </html>

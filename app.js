@@ -392,10 +392,68 @@ function visibleIds() {
     if (ui.filter === "bad" && s !== "high" && s !== "low") return false;
     if (ui.filter === "multi" && l.length < 2) return false;
     return true;
-  }).sort((a, b) => {
+  }).map(id => id === "dbp" && bm.sbp ? "sbp" : id).filter((id, i, a) => a.indexOf(id) === i).sort((a, b) => {
     const A = info(a), B = info(b);
     return (GROUP_ORDER[A.group] - GROUP_ORDER[B.group]) || ((CAT_ORDER[a] ?? 999) - (CAT_ORDER[b] ?? 999)) || A.ru.localeCompare(B.ru, "ru");
   });
+}
+/* ============ blood pressure: one row for systolic/diastolic ============ */
+// ESC/ESH 2023 office categories
+function bpClass(s, d) {
+  if (s >= 180 || d >= 110) return { k: "high", lvl: "sev", t: "Гипертония 3 степени" };
+  if (s >= 160 || d >= 100) return { k: "high", lvl: "sev", t: "Гипертония 2 степени" };
+  if (s >= 140 || d >= 90) return { k: "high", lvl: "mod", t: "Гипертония 1 степени" };
+  if (s >= 130 || d >= 85) return { k: "edge", lvl: "mild", t: "Высокое нормальное" };
+  if (s < 90 || d < 60) return { k: "low", lvl: "mild", t: "Пониженное" };
+  if (s >= 120 || d >= 80) return { k: "ok", t: "Нормальное" };
+  return { k: "ok", t: "Оптимальное" };
+}
+function bpPairs(bm) {
+  const dia = bm.dbp || [];
+  return (bm.sbp || []).map(s => { const d = dia.find(x => x.date === s.date); return d ? { date: s.date, s, d, c: bpClass(s.v, d.v) } : null; }).filter(Boolean);
+}
+function bpRow(bm) {
+  const ps = bpPairs(bm); if (!ps.length) return null;
+  const x = ps[ps.length - 1], open = ui.open === "sbp", prev = ps.slice(0, -1).slice(-4);
+  const badge = x.c.k === "ok" ? `<span class="badge ok">${x.c.t}</span>` : `<span class="badge ${x.c.k}${x.c.lvl ? " lvl-" + x.c.lvl : ""}">${x.c.t}</span>`;
+  const P = v => Math.max(0, Math.min(100, (v - 80) / (190 - 80) * 100));
+  return `<div class="mk bp ${open ? "open" : ""}" data-id="sbp" tabindex="0" role="button" aria-expanded="${open}">
+      <div><div class="mk-name">Давление</div><div class="mk-alt">верхнее / нижнее · SYS/DIA · Тиск · Blood pressure</div></div>
+      <div>
+        <div class="mk-val"><span class="v num">${fmt(x.s.v)}<span class="bp-sep">/</span>${fmt(x.d.v)}</span> <span class="u">мм рт. ст.</span></div>
+        <div class="mk-meta">${badge}</div>
+        ${ageLine(x.date, x.c.k === "high")}
+      </div>
+      <div class="bp-scale" aria-label="Шкала давления ESC">
+        <div class="bp-track"><i class="z1"></i><i class="z2"></i><i class="z3"></i><i class="z4"></i>
+          <span class="bp-dot" style="left:${P(x.s.v)}%" title="Верхнее ${fmt(x.s.v)}"></span></div>
+        <div class="bp-lbl num"><span style="left:${P(120)}%">120</span><span style="left:${P(130)}%">130</span><span style="left:${P(140)}%">140</span></div>
+      </div>
+      <div class="hist">${prev.length ? `<span class="hist-lbl">Раньше</span>${prev.map(p => `<span class="pill ${p.c.k}" title="${esc(fmtDate(p.date) + " · " + p.c.t)}">${fmt(p.s.v)}/${fmt(p.d.v)}</span>`).join('<span class="arrow">›</span>')}` : `<span class="first">Первая сдача</span>`}</div>
+      <svg class="chev" width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M7 4l6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+    ${open ? bpDetail(ps) : ""}`;
+}
+function bpDetail(ps) {
+  const W = 560, H = 220, L = 40, R = 20, T = 20, B = 30;
+  const vals = ps.flatMap(p => [p.s.v, p.d.v]), y0 = Math.min(50, ...vals) - 5, y1 = Math.max(150, ...vals) + 5;
+  const ts = ps.map(p => Date.parse(p.date)), t0 = Math.min(...ts), t1 = Math.max(...ts);
+  const X = (p, i) => ps.length === 1 ? (L + W - R) / 2 : t0 === t1 ? L + i * (W - L - R) / (ps.length - 1) : L + (Date.parse(p.date) - t0) / (t1 - t0) * (W - L - R);
+  const Y = v => T + (1 - (v - y0) / (y1 - y0)) * (H - T - B);
+  const line = (v, col, t) => `<line x1="${L}" x2="${W - R}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--${col})" stroke-dasharray="5 4" opacity=".7"/><text x="${W - R - 4}" y="${Y(v) - 5}" text-anchor="end" font-size="11" fill="var(--${col})">${t}</text>`;
+  const series = (k, col) => (ps.length > 1 ? `<polyline points="${ps.map((p, i) => `${X(p, i)},${Y(p[k].v)}`).join(" ")}" fill="none" stroke="var(--${col})" stroke-width="2" stroke-linejoin="round"/>` : "")
+    + ps.map((p, i) => `<circle cx="${X(p, i)}" cy="${Y(p[k].v)}" r="5.5" fill="var(--${col})" stroke="var(--card)" stroke-width="2.5"/><text x="${X(p, i)}" y="${Y(p[k].v) - 11}" text-anchor="middle" font-size="12" font-weight="600" fill="var(--ink)">${fmt(p[k].v)}</text>`).join("");
+  const dates = ps.map((p, i) => `<text x="${X(p, i)}" y="${H - 8}" text-anchor="middle" font-size="11" fill="var(--muted)">${fmtDate(p.date)}</text>`).join("");
+  const svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="График давления">${line(140, "high", "140 — гипертония")}${line(90, "high", "90")}${line(120, "ok", "120 — оптимальное")}${line(80, "ok", "80")}${series("s", "ink")}${series("d", "muted")}${dates}</svg>`;
+  const rows = [...ps].reverse().map(p => `<tr>
+      <td class="num">${fmtDate(p.date)}</td><td class="num"><b>${fmt(p.s.v)}/${fmt(p.d.v)}</b></td>
+      <td><span class="badge ${p.c.k}">${p.c.t}</span></td>
+      <td style="color:var(--muted)">${esc(p.s.note || p.d.note || "")}</td>
+      <td class="acts"><button class="btn sm ghost danger" data-bpdel="${esc(p.s.id)}|${esc(p.d.id)}">${ui.confirmDel === p.s.id ? "Точно удалить?" : "Удалить"}</button></td></tr>`).join("");
+  return `<div class="detail${ui.animOpen ? " anim" : ""}">
+    <div class="panel chart"><div class="panel-cap">Верхнее — тёмная линия, нижнее — серая. Пунктир — границы по ESC/ESH: до 120/80 оптимальное, от 140/90 гипертония.</div>${svg}</div>
+    <div class="panel"><div class="tbl-scroll"><table class="mtable"><thead><tr><th>Дата</th><th>Давление</th><th>Категория</th><th>Заметка</th><th></th></tr></thead><tbody>${rows}</tbody></table></div></div>
+  </div>`;
 }
 function renderList() {
   if (typeof renderReset === "function" && $("#resetBtn")) renderReset();
@@ -477,6 +535,7 @@ const MINOR = {
   pti: "устарел, вместо него МНО", pt: "вместо него смотрят МНО", temp: "разовый замер", bmi: "расчётный из веса и роста",
 };
 function miniRow(id, list) {
+  if (id === "sbp" && byMarker().dbp) return row(id, list);
   const m = info(id), x = list[list.length - 1], s = status(x);
   return `<div class="mk mini" data-id="${esc(id)}" tabindex="0" role="button" aria-expanded="false">
       <div><div class="mk-name">${esc(m.ru)}${m.abbr && m.abbr !== m.ru ? ` <span class="mk-abbr">${esc(m.abbr)}</span>` : ""}</div>${MINOR[id] ? `<div class="mk-why">${esc(MINOR[id])}</div>` : ""}</div>
@@ -513,6 +572,7 @@ function untaken(bm) {
   </section>`;
 }
 function row(id, list) {
+  if (id === "sbp") { const b = bpRow(byMarker()); if (b) return b; }
   const m = info(id), x = list[list.length - 1], s = status(x);
   const alt = [m.abbr && m.abbr !== m.ru ? m.abbr : "", m.uk && m.uk !== m.ru ? m.uk : "", m.en].filter(Boolean).join(" · ");
   const open = ui.open === id;
@@ -892,6 +952,12 @@ $("#list").addEventListener("click", e => {
     renderList(); return;
   }
   if (e.target.closest("[data-tab],[data-sit],[data-jump],[data-panel]")) return;
+  const bpd = e.target.closest("[data-bpdel]");
+  if (bpd) {
+    const [sid, did] = bpd.dataset.bpdel.split("|");
+    if (ui.confirmDel !== sid) { ui.confirmDel = sid; renderList(); return; }
+    delete state.results[sid]; delete state.results[did]; ui.confirmDel = null; save(); toast("Замер удалён"); renderAll(); return;
+  }
   const more = e.target.closest("[data-more]");
   if (more) { const g = more.dataset.more; if (ui.more.has(g)) ui.more.delete(g); else { ui.more.add(g); ui.justOpened = g; } renderList(); return; }
   const add =e.target.closest("[data-add]");
@@ -1272,3 +1338,24 @@ if (typeof cloudConfigured === "function" && cloudConfigured()) cloudBoot();
 else { load(); renderAll(); }
 // entrance animation plays once; later re-renders (opening a row, sync) stay still
 setTimeout(() => $("#list").classList.add("settled"), 900);
+
+/* ============ phone: bottom tab bar ============ */
+$("#tabbar").addEventListener("click", e => {
+  const b = e.target.closest("[data-tb]"); if (!b) return;
+  const k = b.dataset.tb;
+  if (k === "add") { openEntry(); return; }
+  if (k === "me") { e.stopPropagation(); $("#menuBtn").click(); return; }
+  if (k === "sit") { $(".toolbar").scrollIntoView({ behavior: "smooth", block: "start" }); setTimeout(() => sitPop.hidden && openSitPop(), 250); return; }
+  if (k === "history") { $("#historyBlock").scrollIntoView({ behavior: "smooth", block: "start" }); return; }
+  scrollTo({ top: 0, behavior: "smooth" });
+});
+// highlight "История" once the timeline is on screen
+addEventListener("scroll", () => {
+  const inHist = $("#historyBlock").getBoundingClientRect().top < innerHeight * .45;
+  $$("#tabbar [data-tb]").forEach(b => b.setAttribute("aria-current", String(b.dataset.tb === (inHist ? "history" : "list"))));
+}, { passive: true });
+
+/* ============ installable app ============ */
+if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
+  addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+}

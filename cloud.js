@@ -109,6 +109,7 @@ async function cloudBoot() {
   const { data: { session } } = await cloud.client.auth.getSession();
   if (!session) { showGate(); return; }
   cloud.user = session.user;
+  document.getElementById("localNote")?.remove(); // the browser-only warning is for offline mode
   document.getElementById("gate").hidden = true; document.body.classList.remove("gated");
   // show the last copy instantly, then refresh from the server
   try { const j = JSON.parse(localStorage.getItem("medcard.cloud." + cloud.user.id) || "null"); if (j) { state.results = j.results || {}; state.markers = j.markers || {}; } } catch (e) { /* ignore */ }

@@ -77,6 +77,20 @@ function rangeText(min, max) {
   return "";
 }
 const rangeInput = r => rangeText(r.min, r.max).replace(/\s/g, "").replace(/,/g, ".");
+// Units a lab may report this marker in: the main one plus every unit it converts from.
+function unitChoices(mid, current) {
+  const mu = mainUnit(mid), out = [];
+  const add = u => { if (u && !out.some(x => unitKey(x) === unitKey(u))) out.push(u); };
+  add(mu.label); Object.keys(mu.from).forEach(t => add(UNIT_LABEL[t])); add(current);
+  return out;
+}
+// factor turning a value in unit `a` into unit `b` for this marker, or null if unknown
+function unitFactor(mid, a, b) {
+  const mu = mainUnit(mid), f = u => { const t = unitToken(u); return t && t === mu.tok ? 1 : t ? mu.from[t] ?? null : null; };
+  if (unitKey(a) === unitKey(b)) return 1;
+  const fa = f(a), fb = f(b);
+  return fa != null && fb != null ? fa / fb : null;
+}
 function status(r) {
   const { v, min, max } = r;
   if (!isNum(v)) return null;
@@ -198,7 +212,7 @@ function trend(list) {
 const dates = () => [...new Set(Object.values(state.results).map(r => r.date).filter(Boolean))].sort();
 
 /* ============ UI state ============ */
-const ui = { q: "", group: "all", filter: "all", open: null, editing: null, confirmDel: null, showAll: false, tab: "hist", sit: "" };
+const ui = { q: "", group: "all", filter: "all", open: null, editing: null, confirmDel: null, showAll: false, tab: "hist", sit: "", more: new Set() };
 try { ui.showAll = !!localStorage.getItem("medcard.showAll"); } catch (e) { /* ignore */ }
 
 /* ============ overview ============ */
@@ -360,17 +374,17 @@ function chart(list) {
 }
 
 /* ============ list ============ */
-function renderGroups() {
-  const bm = byMarker(), counts = {};
-  Object.keys(bm).forEach(id => { const g = info(id).group; counts[g] = (counts[g] || 0) + 1; });
-  const list = [["all", "Все", Object.keys(bm).length], ...GROUPS.filter(([g]) => counts[g]).map(([g, n]) => [g, n, counts[g]])];
-  $("#groups").innerHTML = list.map(([g, n, c]) => `<button class="chip" data-g="${g}" aria-pressed="${ui.group === g}">${esc(n)}<span class="cnt">${c}</span></button>`).join("");
+// Group chips jump to a section of the list; the chip of the section in view is highlighted while scrolling.
+function renderGroups() {}
+function renderNav() {
+  const secs = $$("#list .sec");
+  $("#groups").innerHTML = secs.map(el => `<button class="chip" data-sec="${el.id}">${esc(el.dataset.name)}${+el.dataset.bad ? `<span class="cnt bad">${el.dataset.bad}</span>` : `<span class="cnt">${el.dataset.n}</span>`}</button>`).join("");
+  spy();
 }
 function visibleIds() {
   const bm = byMarker();
   return Object.keys(bm).filter(id => {
     const m = info(id);
-    if (ui.group !== "all" && m.group !== ui.group) return false;
     if (!matches(m, ui.q)) return false;
     if (ui.sit && !(INFO[id]?.when || []).includes(ui.sit)) return false;
     const l = bm[id], s = status(l[l.length - 1]);
@@ -384,7 +398,7 @@ function visibleIds() {
 }
 function renderList() {
   const bm = byMarker(), ids = visibleIds();
-  const total = Object.keys(bm).length, filtered = ui.q || ui.group !== "all" || ui.filter !== "all" || ui.sit;
+  const total = Object.keys(bm).length, filtered = ui.q || ui.filter !== "all" || ui.sit;
   $("#count").textContent = filtered ? `${ids.length} из ${total}` : String(total);
   const rest = untaken(bm);
   if (!ids.length) {
@@ -392,15 +406,82 @@ function renderList() {
       : rest ? "Среди сданных ничего не нашлось — смотри в справочнике ниже."
       : "Ничего не нашлось. Поиск понимает русский, украинский и английский.";
     $("#list").innerHTML = `<div class="empty">${msg}</div>${rest}`;
-    return;
+    renderNav(); return;
   }
-  const groups = [];
-  for (const id of ids) { const g = info(id).group; if (!groups.length || groups[groups.length - 1].g !== g) groups.push({ g, ids: [] }); groups[groups.length - 1].ids.push(id); }
-  $("#list").innerHTML = groups.map(({ g, ids }) => `
-    <div>
+  const byGroup = list => {
+    const out = [];
+    for (const id of list) { const g = info(id).group; if (!out.length || out[out.length - 1].g !== g) out.push({ g, ids: [] }); out[out.length - 1].ids.push(id); }
+    return out;
+  };
+  // search and filters show every match in full; the default view puts what matters first
+  if (ui.q || ui.filter !== "all" || ui.sit) {
+    $("#list").innerHTML = byGroup(ids).map(({ g, ids }) => `
+      <div class="sec" id="sec-${g}" data-name="${esc(GROUP_NAME[g] || g)}" data-n="${ids.length}" data-bad="${ids.filter(id => outside(bm[id][bm[id].length - 1])).length}">
+        <h3 class="group-title">${esc(GROUP_NAME[g] || g)}</h3>
+        <div class="card">${ids.map(id => row(id, bm[id])).join("")}</div>
+      </div>`).join("") + rest;
+    renderNav(); return;
+  }
+  const latest = id => bm[id][bm[id].length - 1];
+  const bad = ids.filter(id => outside(latest(id))).sort((a, b) => outside(latest(b)).pct - outside(latest(a)).pct);
+  const key = KEY_MARKERS.filter(id => ids.includes(id) && !bad.includes(id));
+  const top = [...bad, ...key], others = ids.filter(id => !top.includes(id));
+  const head = `<div class="sec" id="sec-top" data-name="Главное" data-n="${top.length}" data-bad="${bad.length}">
+      <h3 class="group-title">Главное <span class="gt-sub">${bad.length ? `${bad.length} ${plural(bad.length, "показатель", "показателя", "показателей")} вне нормы` : "всё в норме"}</span></h3>
+      ${bad.length ? `<div class="card">${bad.map(id => row(id, bm[id])).join("")}</div>` : ""}
+      ${key.length ? `<div class="card key-card">${key.map(id => ui.open === id ? row(id, bm[id]) : miniRow(id, bm[id])).join("")}</div>` : ""}
+    </div>`;
+  const tail = byGroup(others).map(({ g, ids }) => {
+    const main = ids.filter(id => !MINOR[id]), extra = ids.filter(id => MINOR[id]);
+    const more = ui.more.has(g) || extra.includes(ui.open);
+    const one = id => ui.open === id ? row(id, bm[id]) : miniRow(id, bm[id]);
+    return `<div class="sec" id="sec-${g}" data-name="${esc(GROUP_NAME[g] || g)}" data-n="${ids.length}" data-bad="0">
       <h3 class="group-title">${esc(GROUP_NAME[g] || g)}</h3>
-      <div class="card">${ids.map(id => row(id, bm[id])).join("")}</div>
-    </div>`).join("") + rest;
+      <div class="card">${main.map(one).join("")}
+        ${more ? `<div class="minor${ui.justOpened === g ? " reveal" : ""}"><div class="minor-cap">Маловажные: врачи смотрят на них редко, обычно только если основные показатели не в норме</div>${extra.map(one).join("")}</div>` : ""}
+        ${extra.length ? `<button type="button" class="more-btn" data-more="${esc(g)}" aria-expanded="${more}">${more ? "Скрыть маловажные" : `Показать маловажные · ${extra.length}`}</button>` : ""}
+      </div>
+    </div>`;
+  }).join("");
+  $("#list").innerHTML = head + (tail ? `<h2 class="list-sep">Остальное в норме</h2>` + tail : "") + rest;
+  ui.justOpened = null;
+  renderNav();
+}
+// Always shown on top, even when in range: the markers a doctor looks at first.
+const KEY_MARKERS = ["weight", "sbp", "dbp", "hgb", "wbc", "plt", "glu", "hba1c", "chol", "ldl", "tsh", "ft4", "crea", "alt", "ast", "ferritin", "testo", "crp"];
+// Markers clinicians rarely act on when they are in range (derived, duplicated or superseded
+// by a better test; Choosing Wisely, ATA, ESC/EAS 2019, ICSH). Hidden behind a button per group;
+// an out-of-range value still goes to the top.
+const MINOR = {
+  hct: "дублирует гемоглобин", mch: "расчётный индекс из Hb и эритроцитов", mchc: "расчётный индекс из Hb и гематокрита",
+  rdw_sd: "дублирует RDW-CV", mpv: "вспомогательный индекс тромбоцитов", pdw: "вспомогательный индекс тромбоцитов", pct: "вспомогательный индекс тромбоцитов",
+  eos_abs: "смотрят при аллергии и паразитах", baso_abs: "редко имеет значение", baso: "редко имеет значение", eos: "смотрят при аллергии и паразитах",
+  ig: "смотрят при подозрении на инфекцию или болезнь крови", ig_abs: "смотрят при подозрении на инфекцию или болезнь крови",
+  esr: "СРБ точнее отражает воспаление", retic: "нужен при анемии",
+  dbil: "смотрят, если общий билирубин повышен", ibil: "смотрят, если общий билирубин повышен", tp: "мало говорит сам по себе",
+  amy: "для поджелудочной точнее липаза", ldh: "неспецифичен", ck: "нужен при болях в мышцах или статинах",
+  homa: "расчётный индекс из глюкозы и инсулина", homocys: "рутинно не рекомендован", cystc: "уточняет СКФ при сомнениях", cpep: "нужен при диабете",
+  vldl: "расчётный, в рекомендациях не используется", ai: "расчётный, в рекомендациях не используется", apoa1: "не добавляет к ЛПВП",
+  fe: "скачет в течение дня, ферритин надёжнее", tibc: "насыщение трансферрина информативнее", transf: "насыщение трансферрина информативнее",
+  zn: "нужен при подозрении на дефицит", cu: "нужен при подозрении на дефицит", se: "нужен при подозрении на дефицит",
+  vita: "нужен при подозрении на дефицит", vite: "нужен при подозрении на дефицит", b1: "нужен при подозрении на дефицит", b6: "нужен при подозрении на дефицит",
+  omega3: "рутинно не рекомендован", cl: "смотрят вместе с другими электролитами", p: "смотрят при болезнях почек и паращитовидных",
+  ft3: "для оценки функции хватает ТТГ и Т4", tt4: "свободный Т4 точнее", tt3: "свободный Т3 точнее",
+  attg: "нужен в основном после рака щитовидки", thyroglob: "нужен после рака щитовидки", calcit: "нужен при узлах щитовидки",
+  e2: "у мужчин нужен при симптомах", dht: "рутинно не нужен", gh: "разовый замер малоинформативен", prog: "у мужчин почти не нужен",
+  oh17: "нужен при подозрении на ВДКН", mprl: "нужен, если пролактин повышен", acth: "смотрят, если кортизол вне нормы",
+  ige: "общий IgE мало говорит об аллергии", aso: "нужен при подозрении на стрептококк",
+  u_sg: "вспомогательный показатель мочи", u_ph: "вспомогательный показатель мочи",
+  pti: "устарел, вместо него МНО", pt: "вместо него смотрят МНО", temp: "разовый замер", bmi: "расчётный из веса и роста",
+};
+function miniRow(id, list) {
+  const m = info(id), x = list[list.length - 1], s = status(x);
+  return `<div class="mk mini" data-id="${esc(id)}" tabindex="0" role="button" aria-expanded="false">
+      <div><div class="mk-name">${esc(m.ru)}${m.abbr && m.abbr !== m.ru ? ` <span class="mk-abbr">${esc(m.abbr)}</span>` : ""}</div>${MINOR[id] ? `<div class="mk-why">${esc(MINOR[id])}</div>` : ""}</div>
+      <div class="mk-val">${pair(x, "v num", "u")}</div>
+      <div class="mini-meta"><span class="mini-dot ${s || "none"}" title="${esc(STATUS_TXT[s] || "")}"></span>${ageLine(x.date, false)}</div>
+      <svg class="chev" width="18" height="18" viewBox="0 0 20 20" aria-hidden="true"><path d="M7 4l6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>`;
 }
 // Catalog markers never taken: collapsed under the list, opened by a click or by a search that hits them.
 function untaken(bm) {
@@ -411,7 +492,7 @@ function untaken(bm) {
   const byGroup = [];
   for (const id of ids) { const g = info(id).group; let b = byGroup.find(x => x.g === g); if (!b) byGroup.push(b = { g, ids: [] }); b.ids.push(id); }
   byGroup.sort((a, b) => GROUP_ORDER[a.g] - GROUP_ORDER[b.g]);
-  return `<section class="untaken ${open ? "open" : ""}">
+  return `<section class="untaken sec ${open ? "open" : ""}" id="sec-untaken" data-name="Не сдавал" data-n="${ids.length}" data-bad="0">
     <button type="button" class="untaken-toggle" data-untaken aria-expanded="${open}">
       <span class="untaken-title">Ещё не сдавал <span class="cnt num">${ids.length}</span></span>
       <span class="untaken-hint">${ui.q ? "совпадения в справочнике" : open ? "Скрыть" : "Показать справочник анализов"}</span>
@@ -469,7 +550,7 @@ function detail(id, list) {
   const body = ui.tab === "about" ? `<div class="panel">${about(id)}</div>` : `
     <div class="panel chart">${chart(list)}</div>
     <div class="panel"><div class="tbl-scroll"><table class="mtable"><thead><tr><th>Дата</th><th>Значение</th><th>Норма</th><th>Где</th><th></th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
-  return `<div class="detail">${tabs}${body}</div>`;
+  return `<div class="detail${ui.animOpen ? " anim" : ""}">${tabs}${body}</div>`;
 }
 
 /* ============ timeline ============ */
@@ -679,7 +760,45 @@ $("#statusSeg").addEventListener("click", e => {
   const b = e.target.closest("button"); if (!b) return;
   ui.filter = b.dataset.s; $$("#statusSeg button").forEach(x => x.setAttribute("aria-pressed", x === b)); renderList();
 });
-$("#groups").addEventListener("click", e => { const b = e.target.closest(".chip"); if (!b) return; ui.group = b.dataset.g; renderGroups(); renderList(); });
+$("#groups").addEventListener("click", e => { const b = e.target.closest(".chip"); if (b) jumpTo(b.dataset.sec); });
+const toolbarEl = $(".toolbar"), groupsEl = $("#groups");
+function jumpTo(secId) {
+  const el = document.getElementById(secId); if (!el) return;
+  ui.jumping = secId; markChip(secId);
+  // measure the toolbar as it will be once stuck, so the section lands right under it
+  const was = toolbarEl.classList.contains("stuck"); toolbarEl.classList.add("stuck");
+  const h = toolbarEl.offsetHeight; if (!was) toolbarEl.classList.remove("stuck");
+  const y = el.getBoundingClientRect().top + scrollY - h - 6;
+  scrollTo({ top: y, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  el.classList.remove("flash"); void el.offsetWidth; el.classList.add("flash");
+  clearTimeout(ui.jumpTimer); ui.jumpTimer = setTimeout(() => { ui.jumping = null; spy(); }, 700);
+}
+function markChip(secId) {
+  let cur = null;
+  for (const c of groupsEl.children) { const on = c.dataset.sec === secId; c.setAttribute("aria-current", on); if (on) cur = c; }
+  if (cur && groupsEl.scrollWidth > groupsEl.clientWidth) groupsEl.scrollTo({ left: cur.offsetLeft - groupsEl.clientWidth / 2 + cur.offsetWidth / 2, behavior: "smooth" });
+}
+// which section is under the sticky toolbar; also shrink the toolbar once it is stuck
+function spy() {
+  const edge = toolbarEl.getBoundingClientRect().bottom + 12;
+  toolbarEl.classList.toggle("stuck", toolbarEl.getBoundingClientRect().top <= 0 && $("#list").getBoundingClientRect().top < edge);
+  if (ui.jumping) return;
+  let cur = null;
+  const secs = $$("#list .sec");
+  for (const el of secs) { if (el.getBoundingClientRect().top <= edge) cur = el.id; else break; }
+  const listEnd = $("#list").getBoundingClientRect().bottom;
+  if (secs.length && innerHeight + scrollY >= document.documentElement.scrollHeight - 4 && listEnd > edge) cur = secs[secs.length - 1].id;
+  markChip(cur || $("#list .sec")?.id);
+}
+let spyQueued = false;
+addEventListener("scroll", () => { if (spyQueued) return; spyQueued = true; requestAnimationFrame(() => { spyQueued = false; spy(); }); }, { passive: true });
+// back to top
+const topBtn = document.createElement("button");
+topBtn.className = "to-top"; topBtn.type = "button"; topBtn.setAttribute("aria-label", "Наверх");
+topBtn.innerHTML = `<svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 12l5-5 5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+topBtn.addEventListener("click", () => scrollTo({ top: 0, behavior: "smooth" }));
+document.body.appendChild(topBtn);
+addEventListener("scroll", () => topBtn.classList.toggle("show", scrollY > innerHeight), { passive: true });
 $("#overview").addEventListener("click", e => {
   const b = e.target.closest("[data-goto]"); if (!b) return;
   ui.open = b.dataset.goto; ui.group = "all"; ui.q = ""; ui.filter = "all"; $("#q").value = ""; $("#qClear").hidden = true;
@@ -696,7 +815,9 @@ $("#list").addEventListener("click", e => {
     renderList(); return;
   }
   if (e.target.closest("[data-tab],[data-sit],[data-jump],[data-panel]")) return;
-  const add = e.target.closest("[data-add]");
+  const more = e.target.closest("[data-more]");
+  if (more) { const g = more.dataset.more; if (ui.more.has(g)) ui.more.delete(g); else { ui.more.add(g); ui.justOpened = g; } renderList(); return; }
+  const add =e.target.closest("[data-add]");
   if (add) { openEntry([add.dataset.add]); return; }
   const inf = e.target.closest("[data-info]");
   if (inf) { openInfo(inf.dataset.info); return; }
@@ -719,7 +840,7 @@ $("#list").addEventListener("click", e => {
   }
   if (e.target.closest(".detail")) return;
   const mk = e.target.closest(".mk"); if (!mk) return;
-  ui.open = ui.open === mk.dataset.id ? null : mk.dataset.id; ui.editing = null; ui.confirmDel = null; hideTip(); renderList();
+  ui.open = ui.open === mk.dataset.id ? null : mk.dataset.id; ui.editing = null; ui.confirmDel = null; hideTip(); ui.animOpen = true; renderList(); ui.animOpen = false;
 });
 $("#list").addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && e.target.classList.contains("mk")) { e.preventDefault(); e.target.click(); } });
 
@@ -789,7 +910,10 @@ function rowCard(r, i) {
     <div class="ec-name"><b>${esc(r.name)}</b><span>${esc(m?.abbr || "")}${m?.abbr ? " · " : ""}${sub}</span></div>
     <div class="ec-val">
       <input class="input num val" id="val${i}" value="${esc(r.v)}" inputmode="decimal" autocomplete="off" placeholder="значение" aria-label="Значение ${esc(r.name)}">
-      <span class="ec-unit">${esc(r.unit)}</span>
+      ${r.mid ? `<select class="ec-unit-sel unit-sel" aria-label="Единицы ${esc(r.name)}" title="В чём измеряла лаборатория">
+        ${unitChoices(r.mid, r.unit).map(u => `<option value="${esc(u)}"${unitKey(u) === unitKey(r.unit) ? " selected" : ""}>${esc(u || "без единиц")}</option>`).join("")}
+        <option value="__other">другие…</option>
+      </select>` : `<span class="ec-unit">${esc(r.unit)}</span>`}
     </div>
     <button type="button" class="ec-x" data-rm aria-label="Убрать ${esc(r.name)}">×</button>
     ${meta}
@@ -1011,7 +1135,18 @@ $("#rows").addEventListener("input", e => {
   const el = e.target, card = el.closest(".ecard"); if (!card) return;
   const r = rows[+card.dataset.i];
   if (el.classList.contains("val")) { r.v = el.value; updateSave(); }
-  else if (el.classList.contains("unit")) { r.unit = el.value; $(".ec-unit", card).textContent = el.value; }
+  else if (el.classList.contains("unit")) { r.unit = el.value; const sp = $(".ec-unit", card); if (sp) sp.textContent = el.value; }
+  else if (el.classList.contains("unit-sel")) {
+    const i = +card.dataset.i;
+    if (el.value === "__other") { r.edit = true; renderRows(i, "unit"); return; }
+    // the norm prefilled from the last blank follows the new unit
+    const k = unitFactor(r.mid, r.unit, el.value), { min, max } = parseRange(r.range);
+    if (k != null && k !== 1 && (min != null || max != null)) {
+      const c = x => x == null ? null : +(x * k).toPrecision(3);
+      r.range = rangeInput({ min: c(min), max: c(max) });
+    }
+    r.unit = el.value; renderRows(i);
+  }
   else if (el.classList.contains("rng")) r.range = el.value;
 });
 $("#rows").addEventListener("keydown", e => {
@@ -1058,3 +1193,5 @@ function toast(t) { const el = $("#toast"); el.textContent = t; el.hidden = fals
 // with a Supabase project configured the site asks for Google sign-in; otherwise it works offline
 if (typeof cloudConfigured === "function" && cloudConfigured()) cloudBoot();
 else { load(); renderAll(); }
+// entrance animation plays once; later re-renders (opening a row, sync) stay still
+setTimeout(() => $("#list").classList.add("settled"), 900);

@@ -812,19 +812,6 @@ const toolbarEl = $(".toolbar"), groupsEl = $("#groups");
 // wide screens: side rail instead of the sticky toolbar
 const wideMQ = matchMedia("(min-width: 1180px)");
 const navOffset = () => wideMQ.matches ? 24 : null;
-// wide screens: search, filters and situation live in the sticky rail; narrow screens: in the top toolbar
-const searchEl = $(".toolbar .searchbox"), toolsRow = $(".toolbar .toolbar-row");
-let toolsWide = null;
-function placeTools() {
-  if (toolsWide === wideMQ.matches) return;
-  toolsWide = wideMQ.matches;
-  if (toolsWide) { $("#railTools").append(searchEl, toolsRow); }
-  else { toolbarEl.prepend(searchEl); searchEl.after(toolsRow); }
-  closeSitPop?.();
-  spy();
-}
-wideMQ.addEventListener("change", placeTools);
-addEventListener("resize", placeTools);
 function jumpTo(secId) {
   const el = document.getElementById(secId); if (!el) return;
   ui.jumping = secId; markChip(secId);
@@ -1258,4 +1245,3 @@ if (typeof cloudConfigured === "function" && cloudConfigured()) cloudBoot();
 else { load(); renderAll(); }
 // entrance animation plays once; later re-renders (opening a row, sync) stay still
 setTimeout(() => $("#list").classList.add("settled"), 900);
-placeTools();

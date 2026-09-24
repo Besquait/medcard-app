@@ -815,9 +815,9 @@ body.gated .page { display: none; }
 /* ---------- side rail (wide screens): search, filters, sections ---------- */
 .rail { display: none; }
 @media (min-width: 1180px) {
-  .toolbar { position: static; background: none; padding: 0; margin: 0; }
-  .toolbar:empty, .toolbar:not(:has(.sitbar:not([hidden]))) { display: none; }
-  .list-wrap { display: grid; grid-template-columns: 244px minmax(0, 1fr); gap: 36px; align-items: start; }
+  .toolbar { position: static; background: none; }
+  .toolbar .groups { display: none; }
+  .list-wrap { display: grid; grid-template-columns: 196px minmax(0, 1fr); gap: 36px; align-items: start; }
   .rail { display: flex; flex-direction: column; gap: 18px; position: sticky; top: 24px; max-height: calc(100vh - 48px); overflow-y: auto; scrollbar-width: none; padding: 2px 2px 12px; }
   .rail::-webkit-scrollbar { display: none; }
   .rail-tools { display: flex; flex-direction: column; gap: 10px; }
@@ -852,7 +852,7 @@ body.gated .page { display: none; }
   .sec { scroll-margin-top: 24px; }
 }
 /* enough room: the rail moves into the left margin and the list keeps the full column width */
-@media (min-width: 1640px) { .list-wrap { margin-left: -280px; } }
+@media (min-width: 1600px) { .list-wrap { margin-left: -232px; } }
 
 /* ---------- situation picker ---------- */
 .sitpick { position: relative; flex: none; }

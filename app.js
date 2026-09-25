@@ -236,11 +236,12 @@ function renderOverview() {
   for (const id of ids) {
     const l = bm[id], x = l[l.length - 1], s = status(x);
     if (s && s !== "none") { withNorm++; if (s === "ok" || s === "edge") okCount++; }
-    if (s === "high" || s === "low") attention.push({ id, x, s });
+    if (s === "high" || s === "low") attention.push({ id, x, s, g: significance(x) });
     const t = trend(l); if (t?.kind === "better") better++; if (t?.kind === "worse") worse++;
   }
-  attention.sort((a, b) => (a.x.date || "").localeCompare(b.x.date || ""));
-  const shown = attention.slice(0, 4);
+  attention.sort((a, b) => b.g.lvl - a.g.lvl || (b.x.date || "").localeCompare(a.x.date || ""));
+  const worth = attention.filter(a => a.g.lvl >= 1), calm = attention.length - worth.length;
+  const shown = worth.slice(0, 4);
   $("#overview").innerHTML = `
     <div class="ov">
       <div class="ov-k">Последняя сдача</div>
@@ -259,11 +260,12 @@ function renderOverview() {
       ${last ? `<button type="button" class="ov-link" data-digest="${last}">Что изменилось ${fmtDate(last)} →</button>` : ""}
     </div>
     <div class="ov">
-      <div class="ov-k">Требуют внимания</div>
-      ${attention.length ? `<div class="attn">${shown.map(a => `
-        <button class="attn-item" data-goto="${esc(a.id)}"><span class="attn-name">${esc(info(a.id).ru)} <span class="attn-pct ${a.s} lvl-${outside(a.x).lvl}">${a.s === "high" ? "↑" : "↓"} ${diffText(outside(a.x))}</span></span><span class="attn-meta ${ageClass(a.x.date)}">${agoText(a.x.date)}</span></button>`).join("")}
-        ${attention.length > shown.length ? `<div class="ov-s">и ещё ${attention.length - shown.length}</div>` : ""}</div>`
-      : `<div class="ov-v" style="font-size:18px;color:var(--ok)">Всё в норме</div>`}
+      <div class="ov-k">Стоит обсудить с врачом</div>
+      ${worth.length ? `<div class="attn">${shown.map(a => `
+        <button class="attn-item" data-goto="${esc(a.id)}"><span class="attn-name">${esc(info(a.id).ru)}</span><span class="sig s${a.g.lvl}">${esc(a.g.label)}</span></button>`).join("")}
+        ${worth.length > shown.length ? `<div class="ov-s">и ещё ${worth.length - shown.length}</div>` : ""}
+        ${calm ? `<div class="ov-s">${calm} ${plural(calm, "отклонение", "отклонения", "отклонений")} — не опасно</div>` : ""}</div>`
+      : `<div class="ov-v" style="font-size:18px;color:var(--ok)">Ничего важного</div>${calm ? `<div class="ov-s">${calm} небольших отклонений — не опасно</div>` : ""}`}
     </div>`;
 }
 
@@ -506,7 +508,7 @@ function renderList() {
   // inside every group: out-of-range first (worst on top), then the key markers; the rest behind a button
   const latest = id => bm[id][bm[id].length - 1];
   $("#list").innerHTML = byGroup(ids).map(({ g, ids }) => {
-    const bad = ids.filter(id => outside(latest(id))).sort((a, b) => outside(latest(b)).pct - outside(latest(a)).pct);
+    const bad = ids.filter(id => outside(latest(id))).sort((a, b) => significance(latest(b)).lvl - significance(latest(a)).lvl || dev(latest(b)) - dev(latest(a)));
     let top = [...bad, ...ids.filter(id => KEY_MARKERS.includes(id) && !bad.includes(id))];
     if (!top.length) top = ids.filter(id => !MINOR[id]);
     let restIds = ids.filter(id => !top.includes(id));
@@ -601,7 +603,7 @@ function row(id, list) {
       <div><div class="mk-name">${esc(m.ru)}</div><div class="mk-alt">${esc(alt)}</div></div>
       <div>
         <div class="mk-val">${pair(x, "v num", "u")}</div>
-        ${s === "ok" || s === "none" || !s ? (harmHit(x) ? `<div class="mk-meta">${harmBadge(x)}</div>` : "") : `<div class="mk-meta">${statusBadge(x)} ${harmBadge(x)}</div>`}
+        ${s === "ok" || s === "none" || !s ? (harmHit(x) ? `<div class="mk-meta">${harmBadge(x)}</div>` : "") : `<div class="mk-meta">${outside(x) ? sigBadge(x) : statusBadge(x)}</div>`}
         ${x.tgt ? `<div class="mk-tgt" title="${esc(`${x.tgt}. Норма бланка: ${rangeText(x.labMin, x.labMax) || "не указана"}`)}">цель из рекомендаций</div>` : ""}${x.calc ? `<div class="mk-tgt">рассчитано</div>` : ""}
         ${ageLine(x.date, !!outside(x))}
       </div>
@@ -633,6 +635,7 @@ function detail(id, list) {
       <button role="tab" data-tab="treat" aria-selected="${ui.tab === "treat"}">Что обычно делают</button>
     </div>`;
   const body = ui.tab === "about" ? `<div class="panel">${about(id)}</div>` : ui.tab === "treat" ? `<div class="panel">${treatHtml(id, list)}</div>` : `
+    ${sigBox([...list].reverse().find(r => !r.calc) || list[list.length - 1])}
     <div class="panel chart">${chart(list)}</div>
     <div class="panel">${markerSettings(id, list)}</div>
     <div class="panel"><div class="tbl-scroll"><table class="mtable"><thead><tr><th>Дата</th><th>Значение</th><th>Норма бланка</th><th>Где</th><th></th></tr></thead><tbody>${rows}</tbody></table></div></div>`;

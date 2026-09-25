@@ -124,7 +124,7 @@ function statusBadge(r) {
   const s = status(r), out = outside(r);
   if (!out) return `<span class="badge ${s || "none"}">${STATUS_TXT[s] || ""}</span>`;
   const title = `${fmt(r.v)} ${r.unit || ""} при норме ${out.dir === "high" ? "до" : "от"} ${fmt(out.limit)} — ${LVL_TXT[out.lvl]} ${out.dir === "high" ? "выше" : "ниже"}`;
-  return `<span class="badge ${out.dir} lvl-${out.lvl}" title="${esc(title)}">${out.dir === "high" ? "↑ выше" : "↓ ниже"} нормы на ${diffText(out)}</span>`;
+  return `<span class="badge ${out.dir} lvl-${out.lvl}" title="${esc(title)}">${out.dir === "high" ? "↑ выше" : "↓ ниже"} на ${diffText(out)}</span>`;
 }
 // How old a result is: fresh < 6 months, aging 6–12, old > 12.
 function ageClass(d) { const m = monthsAgo(d); return m == null ? "" : m < 6 ? "age-fresh" : m < 12 ? "age-aging" : "age-old"; }

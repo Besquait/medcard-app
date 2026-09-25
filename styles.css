@@ -1522,11 +1522,11 @@ td.out-high b { color: var(--high); } td.out-low b { color: var(--low); }
 .sig-note.s3 { color: #fff; background: var(--high-strong); padding: 2px 8px; border-radius: 999px; font-weight: 700; }
 
 /* colour strength follows clinical significance, not just "outside the range" */
-.sigv.s0 .v, td.sigv.s0 b { color: color-mix(in srgb, var(--edge) 75%, var(--ink)); }
+.sigv.s0 .v, td.sigv.s0 b { color: color-mix(in srgb, var(--edge) 38%, var(--ink)); }
 .sigv.s1 .v, td.sigv.s1 b { color: var(--edge); }
 .sigv.s2 .v, td.sigv.s2 b { color: var(--high); }
 .sigv.s3 .v, td.sigv.s3 b { color: var(--high-strong); }
-.badge.sigb.s0 { color: color-mix(in srgb, var(--edge) 75%, var(--ink)); background: color-mix(in srgb, var(--edge-bg) 60%, transparent); }
+.badge.sigb.s0 { color: color-mix(in srgb, var(--edge) 45%, var(--muted)); background: var(--soft); }
 .badge.sigb.s1 { color: var(--edge); background: var(--edge-bg); }
 .badge.sigb.s2 { color: var(--high); background: var(--high-bg); }
 .badge.sigb.s3 { color: #fff; background: var(--high-strong); }

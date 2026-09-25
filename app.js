@@ -499,7 +499,7 @@ function renderList() {
   // search and filters show every match in full; the default view puts what matters first
   if (ui.q || ui.filter !== "all" || ui.sit) {
     $("#list").innerHTML = byGroup(ids).map(({ g, ids }) => `
-      <div class="sec" id="sec-${g}" data-name="${esc(GROUP_NAME[g] || g)}" data-n="${ids.length}" data-bad="${ids.filter(id => outside(bm[id][bm[id].length - 1])).length}">
+      <div class="sec" id="sec-${g}" data-name="${esc(GROUP_NAME[g] || g)}" data-n="${ids.length}" data-bad="${ids.filter(id => (significance(bm[id][bm[id].length - 1])?.lvl || 0) >= 1).length}">
         <h3 class="group-title">${esc(GROUP_NAME[g] || g)}</h3>
         <div class="card">${ids.map(id => row(id, bm[id])).join("")}</div>
       </div>`).join("") + rest;
@@ -516,8 +516,9 @@ function renderList() {
     const main = restIds.filter(id => !MINOR[id]), minor = restIds.filter(id => MINOR[id]);
     const open = ui.more.has(g) || restIds.includes(ui.open);
     const one = id => ui.open === id ? row(id, bm[id]) : miniRow(id, bm[id]);
-    return `<div class="sec" id="sec-${g}" data-name="${esc(GROUP_NAME[g] || g)}" data-n="${ids.length}" data-bad="${bad.length}">
-      <h3 class="group-title">${esc(GROUP_NAME[g] || g)}${bad.length ? ` <span class="gt-sub bad">${bad.length} вне нормы</span>` : ""}</h3>
+    const worth = bad.filter(id => significance(latest(id)).lvl >= 1).length, calm = bad.length - worth;
+    return `<div class="sec" id="sec-${g}" data-name="${esc(GROUP_NAME[g] || g)}" data-n="${ids.length}" data-bad="${worth}">
+      <h3 class="group-title">${esc(GROUP_NAME[g] || g)}${worth ? ` <span class="gt-sub bad">${worth} стоит обсудить</span>` : ""}${calm ? ` <span class="gt-sub">${calm} ${plural(calm, "небольшое отклонение", "небольших отклонения", "небольших отклонений")}</span>` : ""}</h3>
       <div class="card">${top.map(id => row(id, bm[id])).join("")}
         ${open ? `<div class="minor${ui.justOpened === g ? " reveal" : ""}">
           ${main.length ? `<div class="minor-cap">Остальное в норме</div>${main.map(one).join("")}` : ""}
@@ -605,7 +606,7 @@ function row(id, list) {
         <div class="mk-val">${pair(x, "v num", "u")}</div>
         ${s === "ok" || s === "none" || !s ? (harmHit(x) ? `<div class="mk-meta">${harmBadge(x)}</div>` : "") : `<div class="mk-meta">${outside(x) ? sigBadge(x) : statusBadge(x)}</div>`}
         ${x.tgt ? `<div class="mk-tgt" title="${esc(`${x.tgt}. Норма бланка: ${rangeText(x.labMin, x.labMax) || "не указана"}`)}">цель из рекомендаций</div>` : ""}${x.calc ? `<div class="mk-tgt">рассчитано</div>` : ""}
-        ${ageLine(x.date, !!outside(x))}
+        ${ageLine(x.date, (significance(x)?.lvl || 0) >= 1)}
       </div>
       ${rangeBar(list)}
       ${historyPills(list)}

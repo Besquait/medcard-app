@@ -410,8 +410,8 @@ function chart(list) {
 function renderGroups() {}
 function renderNav() {
   const secs = $$("#list .sec");
-  $("#groups").innerHTML = secs.map(el => `<button class="chip" data-sec="${el.id}">${+el.dataset.bad ? `<i class="chip-dot${+el.dataset.worth ? "" : " calm"}" title="${el.dataset.bad} вне нормы${+el.dataset.worth ? `, ${el.dataset.worth} стоит обсудить` : ""}"></i>` : ""}${esc(el.dataset.name)}<span class="cnt">${el.dataset.n}</span></button>`).join("");
-  $("#rail").innerHTML = `<div class="rail-cap">Разделы</div><div class="rail-list">${secs.map(el => `<button type="button" class="rail-item" data-sec="${el.id}"><span class="rail-name">${esc(el.dataset.name)}</span>${+el.dataset.bad ? `<span class="rail-bad${+el.dataset.worth ? "" : " calm"}" title="${el.dataset.bad} вне нормы${+el.dataset.worth ? `, ${el.dataset.worth} стоит обсудить` : " — не опасно"}">${el.dataset.bad}</span>` : `<span class="rail-n">${el.dataset.n}</span>`}</button>`).join("")}</div>`;
+  $("#groups").innerHTML = secs.map(el => `<button class="chip" data-sec="${el.id}">${+el.dataset.bad ? `<i class="chip-dot s${el.dataset.max}" title="${el.dataset.bad} вне нормы${+el.dataset.worth ? `, ${el.dataset.worth} стоит обсудить` : ""}"></i>` : ""}${esc(el.dataset.name)}<span class="cnt">${el.dataset.n}</span></button>`).join("");
+  $("#rail").innerHTML = `<div class="rail-cap">Разделы</div><div class="rail-list">${secs.map(el => `<button type="button" class="rail-item" data-sec="${el.id}"><span class="rail-name">${esc(el.dataset.name)}</span>${+el.dataset.bad ? `<span class="rail-bad s${el.dataset.max}" title="${el.dataset.bad} вне нормы${+el.dataset.worth ? `, ${el.dataset.worth} стоит обсудить` : " — не опасно"}">${el.dataset.bad}</span>` : `<span class="rail-n">${el.dataset.n}</span>`}</button>`).join("")}</div>`;
   spy();
 }
 function visibleIds() {
@@ -508,7 +508,7 @@ function renderList() {
   // search and filters show every match in full; the default view puts what matters first
   if (ui.q || ui.filter !== "all" || ui.sit) {
     $("#list").innerHTML = byGroup(ids).map(({ g, ids }) => `
-      <div class="sec" id="sec-${g}" data-name="${esc(GROUP_NAME[g] || g)}" data-n="${ids.length}" data-bad="${ids.filter(id => outside(bm[id][bm[id].length - 1])).length}" data-worth="${ids.filter(id => (significance(bm[id][bm[id].length - 1])?.lvl || 0) >= 1).length}">
+      <div class="sec" id="sec-${g}" data-name="${esc(GROUP_NAME[g] || g)}" data-n="${ids.length}" data-bad="${ids.filter(id => outside(bm[id][bm[id].length - 1])).length}" data-worth="${ids.filter(id => (significance(bm[id][bm[id].length - 1])?.lvl || 0) >= 1).length}" data-max="${Math.max(-1, ...ids.map(id => significance(bm[id][bm[id].length - 1])?.lvl ?? -1))}">
         <h3 class="group-title">${esc(GROUP_NAME[g] || g)}</h3>
         <div class="card">${ids.map(id => row(id, bm[id])).join("")}</div>
       </div>`).join("") + rest;
@@ -526,8 +526,8 @@ function renderList() {
     const open = ui.more.has(g) || restIds.includes(ui.open);
     const one = id => ui.open === id ? row(id, bm[id]) : miniRow(id, bm[id]);
     const worth = bad.filter(id => significance(latest(id)).lvl >= 1).length, calm = bad.length - worth;
-    return `<div class="sec" id="sec-${g}" data-name="${esc(GROUP_NAME[g] || g)}" data-n="${ids.length}" data-bad="${bad.length}" data-worth="${worth}">
-      <h3 class="group-title">${esc(GROUP_NAME[g] || g)}${bad.length ? ` <span class="gt-sub out">${bad.length} вне нормы</span>` : ""}${worth ? ` <span class="gt-sub bad">${worth} стоит обсудить</span>` : ""}</h3>
+    return `<div class="sec" id="sec-${g}" data-name="${esc(GROUP_NAME[g] || g)}" data-n="${ids.length}" data-bad="${bad.length}" data-worth="${worth}" data-max="${Math.max(-1, ...bad.map(id => significance(latest(id)).lvl))}">
+      <h3 class="group-title">${esc(GROUP_NAME[g] || g)}${bad.length ? ` <span class="gt-sub out">${bad.length} вне нормы</span>` : ""}${worth ? ` <span class="gt-sub sigt s${Math.max(...bad.map(id => significance(latest(id)).lvl))}">${worth} стоит обсудить</span>` : ""}</h3>
       <div class="card">${top.map(id => row(id, bm[id])).join("")}
         ${open ? `<div class="minor${ui.justOpened === g ? " reveal" : ""}">
           ${main.length ? `<div class="minor-cap">Остальное в норме</div>${main.map(one).join("")}` : ""}

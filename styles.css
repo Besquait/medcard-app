@@ -1530,3 +1530,13 @@ td.out-high b { color: var(--high); } td.out-low b { color: var(--low); }
 .badge.sigb.s1 { color: var(--edge); background: var(--edge-bg); }
 .badge.sigb.s2 { color: var(--high); background: var(--high-bg); }
 .badge.sigb.s3 { color: #fff; background: var(--high-strong); }
+
+/* counters and headers: amber for "discuss", red only when a visit is due soon */
+.rail-bad.s0 { color: var(--muted); background: var(--soft); }
+.rail-bad.s1 { color: var(--edge); background: var(--edge-bg); }
+.rail-bad.s2 { color: var(--high); background: var(--high-bg); }
+.rail-bad.s3 { color: #fff; background: var(--high-strong); }
+.chip-dot.s0 { background: var(--faint); } .chip-dot.s1 { background: var(--edge); } .chip-dot.s2 { background: var(--high); } .chip-dot.s3 { background: var(--high-strong); }
+.gt-sub.out { color: var(--muted); }
+.gt-sub.sigt.s1 { color: var(--edge); } .gt-sub.sigt.s2 { color: var(--high); } .gt-sub.sigt.s3 { color: var(--high-strong); }
+.attn-urg.s2 { color: var(--high); } .attn-urg.s3 { color: var(--high-strong); }

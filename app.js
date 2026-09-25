@@ -107,17 +107,24 @@ const STATUS_TXT = { ok: "в норме", high: "выше нормы", low: "н�
 // How far past the limit, in % of that limit, and how bad that is.
 function outside(r) {
   const s = status(r);
-  if (s === "high") { const pct = (r.v - r.max) / Math.abs(r.max || 1) * 100; return { dir: "high", pct, diff: r.v - r.max, limit: r.max, lvl: pct < 10 ? "mild" : pct < 50 ? "mod" : "sev" }; }
-  if (s === "low") { const pct = (r.min - r.v) / Math.abs(r.min || 1) * 100; return { dir: "low", pct, diff: r.min - r.v, limit: r.min, lvl: pct < 10 ? "mild" : pct < 50 ? "mod" : "sev" }; }
+  if (s !== "high" && s !== "low") return null;
+  const hi = s === "high", diff = hi ? r.v - r.max : r.min - r.v, limit = hi ? r.max : r.min;
+  const pct = diff / Math.abs(limit || 1) * 100;
+  // how bad: distance in norm widths (a one-sided norm uses the limit itself), action threshold = severe
+  const width = isNum(r.min) && isNum(r.max) && r.max > r.min ? r.max - r.min : Math.abs(limit) || 1;
+  const d = diff / width, harm = typeof harmHit === "function" && harmHit(r);
+  return { dir: hi ? "high" : "low", pct, diff, limit, lvl: harm ? "sev" : d < .25 ? "mild" : d < 1 ? "mod" : "sev" };
   return null;
 }
 const pctText = p => p < 1 ? "<1" : String(Math.round(p));
+// distance past the limit in the marker's own units: "0,6", "88"
+const diffText = out => fmt(+out.diff.toPrecision(out.diff >= 10 ? 3 : 2));
 const LVL_TXT = { mild: "немного", mod: "заметно", sev: "сильно" };
 function statusBadge(r) {
   const s = status(r), out = outside(r);
   if (!out) return `<span class="badge ${s || "none"}">${STATUS_TXT[s] || ""}</span>`;
-  const title = `${LVL_TXT[out.lvl]} ${out.dir === "high" ? "выше верхней" : "ниже нижней"} границы ${fmt(out.limit)}: на ${fmt(+out.diff.toPrecision(3))} ${r.unit || ""} (${pctText(out.pct)}%)`;
-  return `<span class="badge ${out.dir} lvl-${out.lvl}" title="${esc(title)}">${out.dir === "high" ? "↑ выше" : "↓ ниже"} на ${pctText(out.pct)}%</span>`;
+  const title = `${fmt(r.v)} ${r.unit || ""} при норме ${out.dir === "high" ? "до" : "от"} ${fmt(out.limit)} — ${LVL_TXT[out.lvl]} ${out.dir === "high" ? "выше" : "ниже"}`;
+  return `<span class="badge ${out.dir} lvl-${out.lvl}" title="${esc(title)}">${out.dir === "high" ? "↑ выше" : "↓ ниже"} нормы на ${diffText(out)}</span>`;
 }
 // How old a result is: fresh < 6 months, aging 6–12, old > 12.
 function ageClass(d) { const m = monthsAgo(d); return m == null ? "" : m < 6 ? "age-fresh" : m < 12 ? "age-aging" : "age-old"; }
@@ -254,7 +261,7 @@ function renderOverview() {
     <div class="ov">
       <div class="ov-k">Требуют внимания</div>
       ${attention.length ? `<div class="attn">${shown.map(a => `
-        <button class="attn-item" data-goto="${esc(a.id)}"><span class="attn-name">${esc(info(a.id).ru)} <span class="attn-pct ${a.s} lvl-${outside(a.x).lvl}">${a.s === "high" ? "+" : "−"}${pctText(outside(a.x).pct)}%</span></span><span class="attn-meta ${ageClass(a.x.date)}">${agoText(a.x.date)}</span></button>`).join("")}
+        <button class="attn-item" data-goto="${esc(a.id)}"><span class="attn-name">${esc(info(a.id).ru)} <span class="attn-pct ${a.s} lvl-${outside(a.x).lvl}">${a.s === "high" ? "↑" : "↓"} ${diffText(outside(a.x))}</span></span><span class="attn-meta ${ageClass(a.x.date)}">${agoText(a.x.date)}</span></button>`).join("")}
         ${attention.length > shown.length ? `<div class="ov-s">и ещё ${attention.length - shown.length}</div>` : ""}</div>`
       : `<div class="ov-v" style="font-size:18px;color:var(--ok)">Всё в норме</div>`}
     </div>`;
@@ -664,7 +671,7 @@ function memberChip(mid, self, bm) {
   const m = info(mid), l = bm[mid];
   if (!l) return `<button type="button" class="mchip untaken ${self ? "self" : ""}" data-jump="${esc(mid)}" title="Не сдавал — открыть описание"><i></i>${esc(m.ru)}<span class="mv">не сдавал</span></button>`;
   const x = l[l.length - 1], s = status(x), out = outside(x);
-  const v = out ? `${out.dir === "high" ? "↑" : "↓"}${pctText(out.pct)}%` : fmt(x.v);
+  const v = out ? `${fmt(x.v)} ${out.dir === "high" ? "↑" : "↓"}` : fmt(x.v);
   return `<button type="button" class="mchip st-${s || "none"} ${out ? "lvl-" + out.lvl : ""} ${self ? "self" : ""}" data-jump="${esc(mid)}" title="${esc(`${fmtDate(x.date)}: ${fmt(x.v)} ${x.unit}`)}"><i></i>${esc(m.ru)}<span class="mv num">${esc(v)}</span></button>`;
 }
 // "If high / if low" cards; the side matching the latest result is highlighted.
@@ -689,7 +696,7 @@ function memberRow(mid, text, self, bm) {
     const x = l[l.length - 1], s = status(x), out = outside(x);
     st = s || "none";
     val = out
-      ? `<span class="tr-val ${out.dir}">${out.dir === "high" ? "↑" : "↓"} ${pctText(out.pct)}%</span>`
+      ? `<span class="tr-val ${out.dir}">${fmt(x.v)} <small>${esc(x.unit)}</small> ${out.dir === "high" ? "↑" : "↓"}</span>`
       : `<span class="tr-val">${fmt(x.v)} <small>${esc(x.unit)}</small></span>`;
   }
   return `<button type="button" class="trow st-${st} ${self ? "self" : ""}" data-jump="${esc(mid)}">

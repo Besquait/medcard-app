@@ -262,7 +262,7 @@ function renderOverview() {
     <div class="ov">
       <div class="ov-k">Стоит обсудить с врачом</div>
       ${worth.length ? `<div class="attn">${shown.map(a => `
-        <button class="attn-item" data-goto="${esc(a.id)}"><span class="attn-name">${esc(info(a.id).ru)}</span><span class="sig s${a.g.lvl}">${esc(a.g.label)}</span></button>`).join("")}
+        <button class="attn-item" data-goto="${esc(a.id)}" title="${esc(a.g.why)}"><span class="attn-name"><i class="attn-dot s${a.g.lvl}"></i>${esc(info(a.id).ru)}${a.g.lvl >= 2 ? ` <small class="attn-urg s${a.g.lvl}">${a.g.lvl === 3 ? "срочно" : "в ближайшие недели"}</small>` : ""}</span><span class="attn-val num">${fmt(a.x.v)} ${a.s === "high" ? "↑" : "↓"}</span></button>`).join("")}
         ${worth.length > shown.length ? `<div class="ov-s">и ещё ${worth.length - shown.length}</div>` : ""}
         ${calm ? `<div class="ov-s">${calm} ${plural(calm, "отклонение", "отклонения", "отклонений")} — не опасно</div>` : ""}</div>`
       : `<div class="ov-v" style="font-size:18px;color:var(--ok)">Ничего важного</div>${calm ? `<div class="ov-s">${calm} небольших отклонений — не опасно</div>` : ""}`}

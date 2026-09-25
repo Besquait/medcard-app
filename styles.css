@@ -1510,3 +1510,13 @@ button, a, input, select { touch-action: manipulation; }
 .attn-dot.s0 { background: var(--edge); opacity: .6; }
 .attn-calm { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
 .attn-item.calm .attn-name { color: var(--muted); }
+
+/* out-of-range numbers are coloured everywhere */
+.mk-val.out-high .v, .mk-val.out-high .c .v, .mk-val.out-high .o .v { color: var(--high); }
+.mk-val.out-low .v, .mk-val.out-low .c .v, .mk-val.out-low .o .v { color: var(--low); }
+td.out-high b { color: var(--high); } td.out-low b { color: var(--low); }
+.sig-note { margin-left: 8px; font-size: 12px; font-weight: 500; white-space: nowrap; }
+.sig-note.s0 { color: var(--muted); }
+.sig-note.s1 { color: var(--edge); font-weight: 600; }
+.sig-note.s2 { color: var(--high); font-weight: 700; }
+.sig-note.s3 { color: #fff; background: var(--high-strong); padding: 2px 8px; border-radius: 999px; font-weight: 700; }

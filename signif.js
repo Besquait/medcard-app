@@ -112,7 +112,7 @@ function significance(r) {
 const sigBadge = r => {
   const g = significance(r); if (!g) return "";
   const out = outside(r), hi = out.dir === "high";
-  return `<span class="badge ${out.dir}" title="${esc(`${fmt(r.v)} ${r.unit || ""} при норме ${hi ? "до" : "от"} ${fmt(out.limit)}`)}">${hi ? "↑ выше" : "↓ ниже"} нормы на ${diffText(out)}</span><span class="sig-note s${g.lvl}" title="${esc(`${g.why}. ${g.todo}`)}">${esc(g.label.toLowerCase())}</span>`;
+  return `<span class="badge sigb s${g.lvl}" title="${esc(`${fmt(r.v)} ${r.unit || ""} при норме ${hi ? "до" : "от"} ${fmt(out.limit)}`)}">${hi ? "↑ выше" : "↓ ниже"} нормы на ${diffText(out)}</span><span class="sig-note s${g.lvl}" title="${esc(`${g.why}. ${g.todo}`)}">${esc(g.label.toLowerCase())}</span>`;
 };
 function sigBox(r) {
   const g = significance(r); if (!g) return "";

@@ -569,7 +569,7 @@ function miniRow(id, list) {
   const m = info(id), x = list[list.length - 1], s = status(x);
   return `<div class="mk mini" data-id="${esc(id)}" tabindex="0" role="button" aria-expanded="false">
       <div><div class="mk-name">${esc(m.ru)}${m.abbr && m.abbr !== m.ru ? ` <span class="mk-abbr">${esc(m.abbr)}</span>` : ""}</div>${MINOR[id] ? `<div class="mk-why">${esc(MINOR[id])}</div>` : ""}</div>
-      <div class="mk-val${outside(x) ? " out-" + outside(x).dir : ""}">${pair(x, "v num", "u")}</div>
+      <div class="mk-val${outside(x) ? " sigv s" + significance(x).lvl : ""}">${pair(x, "v num", "u")}</div>
       <div class="mini-meta"><span class="mini-dot ${s || "none"}" title="${esc(STATUS_TXT[s] || "")}"></span>${ageLine(x.date, false)}</div>
       <svg class="chev" width="18" height="18" viewBox="0 0 20 20" aria-hidden="true"><path d="M7 4l6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </div>`;
@@ -609,7 +609,7 @@ function row(id, list) {
   return `<div class="mk ${open ? "open" : ""}" data-id="${esc(id)}" tabindex="0" role="button" aria-expanded="${open}">
       <div><div class="mk-name">${esc(m.ru)}</div><div class="mk-alt">${esc(alt)}</div></div>
       <div>
-        <div class="mk-val${outside(x) ? " out-" + outside(x).dir : ""}">${pair(x, "v num", "u")}</div>
+        <div class="mk-val${outside(x) ? " sigv s" + significance(x).lvl : ""}">${pair(x, "v num", "u")}</div>
         ${s === "ok" || s === "none" || !s ? (harmHit(x) ? `<div class="mk-meta">${harmBadge(x)}</div>` : "") : `<div class="mk-meta">${outside(x) ? sigBadge(x) : statusBadge(x)}</div>`}
         ${x.tgt ? `<div class="mk-tgt" title="${esc(`${x.tgt}. Норма бланка: ${rangeText(x.labMin, x.labMax) || "не указана"}`)}">цель из рекомендаций</div>` : ""}${x.calc ? `<div class="mk-tgt">рассчитано</div>` : ""}
         ${ageLine(x.date, (significance(x)?.lvl || 0) >= 1)}
@@ -631,7 +631,7 @@ function detail(id, list) {
     const s = status(r);
     return `<tr data-rid="${esc(r.id)}">
         <td class="num">${fmtDate(r.date)}</td>
-        <td class="num${outside(r) ? " out-" + outside(r).dir : ""}">${pair(r, "b", "muted")}</td>
+        <td class="num${outside(r) ? " sigv s" + significance(r).lvl : ""}">${pair(r, "b", "muted")}</td>
         <td class="num">${esc(r.tgt ? rangeText(r.labMin, r.labMax) : rangeText(r.min, r.max))} ${s && s !== "none" ? `<span class="badge ${s}">${STATUS_TXT[s]}</span>` : ""}</td>
         <td style="color:var(--muted)">${esc(r.lab || "")}${r.note ? `<br>${esc(r.note)}` : ""}</td>
         <td class="acts">${r.calc ? `<span class="muted">расчёт</span>` : `<button class="btn sm ghost" data-act="edit">Изменить</button><button class="btn sm ghost danger" data-act="del">${ui.confirmDel === r.id ? "Точно удалить?" : "Удалить"}</button>`}</td></tr>`;

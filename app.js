@@ -401,8 +401,8 @@ function chart(list) {
 function renderGroups() {}
 function renderNav() {
   const secs = $$("#list .sec");
-  $("#groups").innerHTML = secs.map(el => `<button class="chip" data-sec="${el.id}">${+el.dataset.bad ? `<i class="chip-dot" title="${el.dataset.bad} вне нормы"></i>` : ""}${esc(el.dataset.name)}<span class="cnt">${el.dataset.n}</span></button>`).join("");
-  $("#rail").innerHTML = `<div class="rail-cap">Разделы</div><div class="rail-list">${secs.map(el => `<button type="button" class="rail-item" data-sec="${el.id}"><span class="rail-name">${esc(el.dataset.name)}</span>${+el.dataset.bad ? `<span class="rail-bad" title="вне нормы">${el.dataset.bad}</span>` : `<span class="rail-n">${el.dataset.n}</span>`}</button>`).join("")}</div>`;
+  $("#groups").innerHTML = secs.map(el => `<button class="chip" data-sec="${el.id}">${+el.dataset.bad ? `<i class="chip-dot" title="${el.dataset.bad} стоит обсудить с врачом"></i>` : ""}${esc(el.dataset.name)}<span class="cnt">${el.dataset.n}</span></button>`).join("");
+  $("#rail").innerHTML = `<div class="rail-cap">Разделы</div><div class="rail-list">${secs.map(el => `<button type="button" class="rail-item" data-sec="${el.id}"><span class="rail-name">${esc(el.dataset.name)}</span>${+el.dataset.bad ? `<span class="rail-bad" title="стоит обсудить с врачом">${el.dataset.bad}</span>` : `<span class="rail-n">${el.dataset.n}</span>`}</button>`).join("")}</div>`;
   spy();
 }
 function visibleIds() {

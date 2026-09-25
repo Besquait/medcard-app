@@ -331,7 +331,7 @@ function chart(list) {
   if (nLo != null) y0 = Math.min(y0, nLo - nSpan * .35);
   // action threshold: stretch the scale to show it when the value is already out of range
   const hm = normalized ? null : harmOf(last), sl = status(last);
-  if (hm && isNum(hm.hi) && sl === "high") y1 = Math.max(y1, hm.hi * 1.04);
+  if (hm && isNum(hm.hi) && sl === "high") y1 = Math.max(y1, hm.hi * 1.15);
   if (hm && isNum(hm.lo) && sl === "low") y0 = Math.min(y0, hm.lo * .96);
   const pad = (y1 - y0) * .06; y0 -= pad; y1 += pad;
   if (pts.every(r => val(r) >= 0) && y0 < 0) y0 = 0;
@@ -365,7 +365,7 @@ function chart(list) {
     zones += `<rect x="${xL}" y="${yTop}" width="${xR - xL}" height="${Math.max(0, yh - yTop)}" fill="var(--high-bg)" opacity=".55"/>`;
     limits += `<line x1="${xL}" x2="${xR}" y1="${yh}" y2="${yh}" stroke="var(--high)" stroke-width="1.5" stroke-dasharray="5 4" opacity=".8"/>`
       + lbl(yh - 6, `верх нормы ${normalized ? "100%" : fmt(nHi)}`, "high")
-      + (yh - yTop > 22 ? zlbl(yTop + 16, "выше нормы", "high") : "");
+      + (yh - yTop > 22 && !(hm && isNum(hm.hi) && Y(hm.hi) - yTop < 30) ? zlbl(yTop + 16, "выше нормы", "high") : "");
   }
   if (nLo != null && (normalized || isNum(last.min))) {
     const yl = Y(nLo);
@@ -377,7 +377,7 @@ function chart(list) {
   if (nHi != null) { const mid = Y(((nLo ?? 0) + nHi) / 2); limits += zlbl(mid + 4, last.tgt ? "цель" : "норма", "ok"); }
   for (const [v, t] of hm ? [[hm.hi, "порог действия"], [hm.lo, "порог действия"]] : []) {
     if (!isNum(v) || v < y0 || v > y1) continue;
-    limits += `<g><title>${esc(hm.text)}</title><line x1="${xL}" x2="${xR}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--high-strong)" stroke-width="2"/><text x="${xL + 10}" y="${Y(v) - 6}" font-size="11" font-weight="700" fill="var(--high-strong)">⚠ ${t} ${fmt(v)}</text></g>`;
+    limits += `<g><title>${esc(hm.text)}</title><line x1="${xL}" x2="${xR}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--high-strong)" stroke-width="2"/><text x="${xR - 6}" y="${v === hm.lo ? Y(v) + 15 : Y(v) - 6}" text-anchor="end" font-size="11" font-weight="700" fill="var(--high-strong)">${t} ${fmt(v)}</text></g>`;
   }
   const evBands = pts.length > 1 && t1 > t0 ? chartEvents(t0, t1, t => L + (t - t0) / (t1 - t0) * (W - L - R), T, H - B) : "";
   const line = pts.length > 1 ? `<polyline points="${pts.map((r, i) => `${X(r, i)},${Y(val(r))}`).join(" ")}" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>` : "";

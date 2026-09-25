@@ -284,14 +284,17 @@ function rangeBar(list) {
   if (same.every(r => r.v >= 0) && dmin < 0) dmin = 0;
   const P = v => Math.max(0, Math.min(100, (v - dmin) / (dmax - dmin) * 100));
   const zl = P(lo), zr = b ? P(hi) : 100;
-  const s = status(x), col = s === "high" ? "var(--high)" : s === "low" ? "var(--low)" : s === "edge" ? "var(--edge)" : "var(--ok)";
+  // out of range: colour by clinical significance, so a harmless deviation does not shout
+  const s = status(x), g = (s === "high" || s === "low") ? significance(x) : null;
+  const SIGC = ["color-mix(in srgb, var(--edge) 38%, var(--ink))", "var(--edge)", "var(--high)", "var(--high-strong)"];
+  const col = g ? SIGC[g.lvl] : s === "edge" ? "var(--edge)" : "var(--ok)";
   const ghosts = same.slice(0, -1).slice(-3).map(r => `<span class="range-ghost" style="left:${P(r.v)}%"></span>`).join("");
   return `<div class="range" aria-label="Значение относительно нормы">
     <div class="range-track">
       <span class="range-zone" style="left:${zl}%;right:${100 - zr}%;${!b ? "border-radius:999px 0 0 999px" : ""}${!a ? ";border-radius:0 999px 999px 0" : ""}"></span>
       ${ghosts}
-      ${s === "high" && b ? `<span class="range-over high" style="left:${zr}%;width:${Math.max(0, P(x.v) - zr)}%"></span>` : ""}
-      ${s === "low" && a ? `<span class="range-over low" style="left:${P(x.v)}%;width:${Math.max(0, zl - P(x.v))}%"></span>` : ""}
+      ${s === "high" && b ? `<span class="range-over" style="left:${zr}%;width:${Math.max(0, P(x.v) - zr)}%;background:${col}"></span>` : ""}
+      ${s === "low" && a ? `<span class="range-over" style="left:${P(x.v)}%;width:${Math.max(0, zl - P(x.v))}%;background:${col}"></span>` : ""}
       <span class="range-dot" style="left:${P(x.v)}%;background:${col}"></span>
     </div>
     <div class="range-lbl num">${a ? `<span style="left:${zl}%">${fmt(x.min)}</span>` : ""}${b ? `<span style="left:${zr}%">${fmt(x.max)}</span>` : ""}</div>

@@ -1540,3 +1540,6 @@ td.out-high b { color: var(--high); } td.out-low b { color: var(--low); }
 .gt-sub.out { color: var(--muted); }
 .gt-sub.sigt.s1 { color: var(--edge); } .gt-sub.sigt.s2 { color: var(--high); } .gt-sub.sigt.s3 { color: var(--high-strong); }
 .attn-urg.s2 { color: var(--high); } .attn-urg.s3 { color: var(--high-strong); }
+.gt-sub.out { color: color-mix(in srgb, var(--edge) 55%, var(--ink)); }
+.rail-bad.s0 { color: color-mix(in srgb, var(--edge) 55%, var(--ink)); background: color-mix(in srgb, var(--edge-bg) 55%, transparent); }
+.chip-dot.s0 { background: color-mix(in srgb, var(--edge) 55%, var(--ink)); }

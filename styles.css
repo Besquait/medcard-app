@@ -1625,3 +1625,4 @@ td.out-high b { color: var(--high); } td.out-low b { color: var(--low); }
   .sy-sevs { width: 100%; } .sy-sevb { flex: 1; justify-content: center; }
   .sy-logrow .btn { width: 100%; }
 }
+.sy-heatcap { margin: 8px 0 0; font-size: 12px; }

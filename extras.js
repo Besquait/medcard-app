@@ -409,6 +409,7 @@ function reportHtml(opt = {}) {
       <div class="rep-meta">${[p.sex ? (p.sex === "m" ? "мужчина" : "женщина") : "", age ? `${age} ${plural(age, "год", "года", "лет")}` : "", `сформировано ${fmtDate(todayISO())}`].filter(Boolean).join(" · ")}</div></div>
       ${opt.controls ? `<div class="rep-ctl no-print">${csel("data-rep-years", [[1, "За 1 год"], [2, "За 2 года"], [5, "За 5 лет"], [0, "За всё время"]], years)}</div>` : ""}
     </header>
+    ${sec("Жалобы", symptomsReport(from))}
     ${sec("Вне нормы сейчас", bad.length ? `<table class="rep-t"><thead><tr><th>Показатель</th><th>Значение</th><th>Норма</th><th>Дата</th><th>Раньше</th></tr></thead><tbody>${bad.map(m => { const l = bm[m], x = latest(m), pv = l.length > 1 ? l[l.length - 2] : null; return `<tr><td><b>${esc(info(m).ru)}</b>${harmHit(x) ? ` <span class="rep-harm">порог действия</span>` : ""}</td><td class="num ${status(x)}">${val(x)}</td><td class="num">${norm(x)}</td><td class="num">${fmtDate(x.date)}</td><td class="num">${pv ? `${fmt(pv.v)} (${fmtDate(pv.date)})` : "—"}</td></tr>`; }).join("")}</tbody></table>` : `<p>Все последние значения в норме.</p>`)}
     ${sec("Давление", bpTxt() ? `<p>${esc(bpTxt())}</p>` : "")}
     ${sec(`Динамика ключевых показателей${years ? ` за ${years} ${plural(years, "год", "года", "лет")}` : ""}`, trendIds.length ? `<table class="rep-t"><thead><tr><th>Показатель</th><th>Значения по датам</th><th>Тренд</th></tr></thead><tbody>${trendIds.map(m => { const l = bm[m].filter(r => r.date >= from).slice(-5); return `<tr><td>${esc(info(m).ru)} <small>${esc(l[l.length - 1].unit || "")}</small></td><td class="num">${l.map(r => `<span class="rep-v ${status(r) || ""}">${fmt(r.v)}</span> <small>${fmtDate(r.date).slice(3)}</small>`).join(" → ")}</td><td>${spark(l)}</td></tr>`; }).join("")}</tbody></table>` : "")}
@@ -455,7 +456,7 @@ async function renderShares(fresh) {
 async function createShare(days) {
   const token = randomToken(), expires = new Date(Date.now() + days * 864e5).toISOString();
   const studies = Object.fromEntries(Object.entries(state.studies || {}).map(([id, s]) => [id, { ...s, files: [] }]));
-  const data = { v: 1, name: cloud.user.user_metadata?.full_name || "", results: state.results, markers: state.markers, events: state.events || {}, studies,
+  const data = { v: 1, name: cloud.user.user_metadata?.full_name || "", results: state.results, markers: state.markers, events: state.events || {}, studies, symptoms: state.symptoms || {},
     prefs: { profile: profile(), targets: state.prefs?.targets || {}, research: state.prefs?.research, questions: state.prefs?.questions || "" } };
   const { error } = await cloud.client.from("shares").insert({ token, data, expires_at: expires });
   if (error) { toast("Не получилось создать ссылку: " + error.message); return; }
@@ -473,7 +474,7 @@ async function shareBoot(token) {
     const { data, error } = await client.rpc("get_share", { t: token });
     if (error || !data) throw error || new Error("gone");
     const d = data.data;
-    state.results = d.results || {}; state.markers = d.markers || {}; state.events = d.events || {}; state.prefs = d.prefs || {}; state.studies = d.studies || {};
+    state.results = d.results || {}; state.markers = d.markers || {}; state.events = d.events || {}; state.prefs = d.prefs || {}; state.studies = d.studies || {}; state.symptoms = d.symptoms || {};
     page.innerHTML = `<div class="share-top no-print"><span class="brand"><span class="logo" aria-hidden="true"></span>Медкарта</span>
         <span class="muted">Только просмотр · ссылка действует до ${fmtDate(String(data.expires_at).slice(0, 10))}</span>
         <button type="button" class="btn primary" data-print>Печать или PDF</button></div>

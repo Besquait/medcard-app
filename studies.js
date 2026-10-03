@@ -330,15 +330,18 @@ async function deleteStudy(id) {
 }
 
 /* ---------- views ---------- */
+// views: labs (the default), studies, symptoms; the hash keeps the tab across reloads
+const VIEWS = { labs: "#labsView", studies: "#studiesView", symptoms: "#symptomsView" };
+const TB_VIEW = { list: "labs", studies: "studies", symptoms: "symptoms" };
 function setView(v) {
-  ui.view = v === "studies" ? "studies" : "labs";
-  $("#labsView").hidden = ui.view !== "labs";
-  $("#studiesView").hidden = ui.view !== "studies";
-  $$(".top .tabs [data-view]").forEach(b => b.toggleAttribute("aria-current", b.dataset.view === ui.view));
+  ui.view = VIEWS[v] ? v : "labs";
+  Object.entries(VIEWS).forEach(([k, sel]) => { $(sel).hidden = ui.view !== k; });
   $$(".top .tabs [data-view]").forEach(b => { if (b.dataset.view === ui.view) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); });
-  $$("#tabbar [data-tb]").forEach(b => { if (["list", "studies"].includes(b.dataset.tb)) b.setAttribute("aria-current", String((b.dataset.tb === "studies") === (ui.view === "studies"))); });
-  if (location.hash !== (ui.view === "studies" ? "#studies" : "") ) history.replaceState(null, "", ui.view === "studies" ? "#studies" : location.pathname + location.search);
+  $$("#tabbar [data-tb]").forEach(b => { if (TB_VIEW[b.dataset.tb]) b.setAttribute("aria-current", String(TB_VIEW[b.dataset.tb] === ui.view)); });
+  const hash = ui.view === "labs" ? "" : "#" + ui.view;
+  if (location.hash !== hash) history.replaceState(null, "", hash || location.pathname + location.search);
   if (ui.view === "studies") renderStudies();
+  if (ui.view === "symptoms") renderSymptoms();
   scrollTo({ top: 0 });
 }
 
@@ -413,5 +416,5 @@ function initStudies() {
   const lb = $("#lightbox");
   lb.addEventListener("click", e => { if (e.target === lb || e.target.closest("[data-lb-close]")) lb.close(); });
 
-  setView(location.hash === "#studies" ? "studies" : "labs");
+  setView(location.hash.slice(1));
 }

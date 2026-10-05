@@ -1702,7 +1702,7 @@ td.out-high b { color: var(--high); } td.out-low b { color: var(--low); }
   .sy-chips { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
   .sy-chip { display: grid; grid-template-columns: 8px minmax(0, 1fr); gap: 1px 8px; align-items: center; text-align: left; padding: 8px 10px; font-size: 13.5px; line-height: 1.3; border-radius: 10px; }
   .sy-chip i { width: 8px; height: 8px; }
-  .sy-chip small { grid-column: 2; font-size: 11.5px; }
+  .sy-chip small { display: none; }
   .sy-grid { grid-template-columns: minmax(0, 1fr); gap: 2px; }
   .sy-gcells { gap: 2px; margin-bottom: 8px; }
   .sy-gcells i { height: 16px; border-radius: 3px; }

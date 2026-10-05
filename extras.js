@@ -409,6 +409,7 @@ function reportHtml(opt = {}) {
       <div class="rep-meta">${[p.sex ? (p.sex === "m" ? "мужчина" : "женщина") : "", age ? `${age} ${plural(age, "год", "года", "лет")}` : "", `сформировано ${fmtDate(todayISO())}`].filter(Boolean).join(" · ")}</div></div>
       ${opt.controls ? `<div class="rep-ctl no-print">${csel("data-rep-years", [[1, "За 1 год"], [2, "За 2 года"], [5, "За 5 лет"], [0, "За всё время"]], years)}</div>` : ""}
     </header>
+    ${sec("История болезни", anamnesisReport())}
     ${sec("Жалобы", symptomsReport(from))}
     ${sec("Вне нормы сейчас", bad.length ? `<table class="rep-t"><thead><tr><th>Показатель</th><th>Значение</th><th>Норма</th><th>Дата</th><th>Раньше</th></tr></thead><tbody>${bad.map(m => { const l = bm[m], x = latest(m), pv = l.length > 1 ? l[l.length - 2] : null; return `<tr><td><b>${esc(info(m).ru)}</b>${harmHit(x) ? ` <span class="rep-harm">порог действия</span>` : ""}</td><td class="num ${status(x)}">${val(x)}</td><td class="num">${norm(x)}</td><td class="num">${fmtDate(x.date)}</td><td class="num">${pv ? `${fmt(pv.v)} (${fmtDate(pv.date)})` : "—"}</td></tr>`; }).join("")}</tbody></table>` : `<p>Все последние значения в норме.</p>`)}
     ${sec("Давление", bpTxt() ? `<p>${esc(bpTxt())}</p>` : "")}

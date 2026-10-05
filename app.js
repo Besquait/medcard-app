@@ -1388,7 +1388,7 @@ initSymptoms();
 const shareToken = new URLSearchParams(location.search).get("share");
 if (shareToken && typeof cloudConfigured === "function" && cloudConfigured()) shareBoot(shareToken);
 else if (typeof cloudConfigured === "function" && cloudConfigured()) cloudBoot();
-else { load(); renderAll(); }
+else { load(); if (sySeedMerge()) save(); renderAll(); }
 // entrance animation plays once; later re-renders (opening a row, sync) stay still
 setTimeout(() => $("#list").classList.add("settled"), 900);
 

@@ -131,7 +131,7 @@ async function cloudBoot() {
   // show the last copy instantly, then refresh from the server
   try { const j = JSON.parse(localStorage.getItem("medcard.cloud." + cloud.user.id) || "null"); if (j) { state.results = j.results || {}; state.markers = j.markers || {}; state.events = j.events || {}; state.prefs = j.prefs || {}; state.studies = j.studies || {}; state.symptoms = j.symptoms || {}; } } catch (e) { /* ignore */ }
   renderAll(); renderAccount();
-  try { await cloudPull(); renderAll(); renderAccount(); setSyncState("ok"); }
+  try { await cloudPull(); if (cloud.itemsOk && sySeedMerge()) save(); renderAll(); renderAccount(); setSyncState("ok"); }
   catch (e) { console.error(e); setSyncState("error"); }
   document.getElementById("acct").addEventListener("click", e => {
     if (e.target.closest("#logoutBtn")) cloud.client.auth.signOut().then(() => location.reload());

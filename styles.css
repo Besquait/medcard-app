@@ -1669,7 +1669,7 @@ td.out-high b { color: var(--high); } td.out-low b { color: var(--low); }
 .sy-eff.e-yes[aria-pressed="true"] { color: var(--ok); }
 .sy-eff.e-part[aria-pressed="true"] { color: var(--edge); }
 .sy-eff.e-no[aria-pressed="true"] { color: var(--high); }
-.sy-addf { display: flex; gap: 8px; flex-wrap: wrap; }
+.dialog form.sy-addf { flex-direction: row; flex-wrap: wrap; gap: 8px; }
 .sy-addf .input { flex: 1 1 160px; width: auto; font-size: 14px; }
 .sy-trigs { margin-bottom: 10px; }
 .sy-trigs .tchip { cursor: default; color: var(--ink); padding-right: 4px; }

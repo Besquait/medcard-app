@@ -285,7 +285,7 @@ function openSymptom(id) {
   ui.syOpen = id;
   const status = past ? `<span class="st-status"><i></i>Прошло</span>` : quiet ? `<span class="st-status watch"><i></i>Давно не было</span>` : `<span class="st-status find"><i></i>Беспокоит</span>`;
   const logTitle = s.pattern === "const" ? "Как сейчас" : s.pattern === "once" ? "Было ещё раз?" : "Отметить приступ";
-  const entry = e => [e.note, e.trig && `спровоцировало: ${e.trig}`, e.help && `помогло: ${e.help}`].filter(Boolean).join(" · ");
+  const entry = e => [syDurText(e.dur), e.note, e.trig && `спровоцировало: ${e.trig}`, e.help && `помогло: ${e.help}`].filter(Boolean).join(" · ");
   openX(`<div class="dlg-head"><div><div class="info-group">${esc(SY_ZONE[syZoneOf(s)])}</div><h3>${esc(s.name)}</h3>
       <div class="st-meta">${esc([SY_PATTERN[s.pattern], onset].filter(Boolean).join(" · "))}</div></div>
       <button type="button" class="icon-btn" data-xclose aria-label="Закрыть">×</button></div>
@@ -309,7 +309,7 @@ function openSymptom(id) {
         <div><button type="submit" class="btn primary">Записать</button></div>
         ${s.pattern === "once" ? `<p class="muted sy-hint">После записи в другой день симптом станет «приступами» — будет видно, как часто повторяется.</p>` : ""}
       </form></section>
-    ${log.length ? `<section class="st-sec"><h4>${s.pattern === "const" ? "Отметки" : "Когда было"} · ${log.length}</h4><div class="sy-log">${shown.map(e => `<div class="sy-lrow">${syDot(e.sev)}<span class="num">${fmtDate(e.d)}${syDurText(e.dur) ? ` <small>· ${esc(syDurText(e.dur))}</small>` : ""}</span><span class="sy-lsev">${esc(SY_SEV_NAME[e.sev] || "")}</span><span class="sy-lnote">${esc(entry(e))}</span><button type="button" class="icon-btn sm" data-sy-ldel="${esc(e.d)}|${esc(e.t || "")}" aria-label="Удалить запись">×</button></div>`).join("")}</div>
+    ${log.length ? `<section class="st-sec"><h4>${s.pattern === "const" ? "Отметки" : "Когда было"} · ${log.length}</h4><div class="sy-log">${shown.map(e => `<div class="sy-lrow">${syDot(e.sev)}<span class="num">${fmtDate(e.d)}</span><span class="sy-lnote">${e.sev ? `<b class="sy-sev s${e.sev}">${esc(SY_SEV_NAME[e.sev])}</b>${entry(e) ? " · " : ""}` : ""}${esc(entry(e))}</span><button type="button" class="icon-btn sm" data-sy-ldel="${esc(e.d)}|${esc(e.t || "")}" aria-label="Удалить запись">×</button></div>`).join("")}</div>
       ${log.length > shown.length ? `<button type="button" class="btn sm ghost" data-sy-alllog>Показать все ${log.length}</button>` : ""}</section>` : ""}
     <section class="st-sec"><h4>Что пробовал${tried.length ? ` · ${tried.length}` : ""}</h4>
       ${tried.length ? `<div class="sy-tried">${tried.map((x, i) => `<div class="sy-trow"><span class="sy-tname"><b>${esc(x.name)}</b>${x.note ? `<small>${esc(x.note)}</small>` : ""}</span>

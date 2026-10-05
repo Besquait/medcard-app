@@ -1698,6 +1698,10 @@ td.out-high b { color: var(--high); } td.out-low b { color: var(--low); }
 @media (max-width: 720px) {
   .sy-today, .sy-diary, .sy-anam { padding: 16px; }
   .sy-thead .seg { width: 100%; } .sy-thead .seg button { flex: 1; }
+  .sy-chips { gap: 6px; }
+  .sy-chip { gap: 6px; padding: 7px 10px; font-size: 13.5px; border-radius: 10px; }
+  .sy-chip i { width: 8px; height: 8px; }
+  .sy-chip small { font-size: 11.5px; }
   .sy-grid { grid-template-columns: minmax(0, 1fr); gap: 2px; }
   .sy-gcells { gap: 2px; margin-bottom: 8px; }
   .sy-gcells i { height: 16px; border-radius: 3px; }

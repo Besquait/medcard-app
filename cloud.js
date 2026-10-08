@@ -10,12 +10,13 @@ const toMarkerRow = (id, m) => ({ id, ru: m.ru, uk: m.uk || "", en: m.en || "", 
 const fromResultRow = row => Object.fromEntries(RESULT_COLS.map(k => [k, row[k] ?? (k === "unit" || k === "lab" || k === "note" ? "" : null)]));
 const fromMarkerRow = row => ({ ru: row.ru, uk: row.uk, en: row.en, abbr: row.abbr, group: row.grp, unit: row.unit });
 // events and preferences live in one generic table: one row per event, one row for prefs
-const itemsObj = () => ({
-  ...Object.fromEntries(Object.entries(state.events || {}).map(([id, e]) => [id, { kind: "event", data: e }])),
-  ...Object.fromEntries(Object.entries(state.studies || {}).map(([id, s]) => [id, { kind: "study", data: s }])),
-  ...Object.fromEntries(Object.entries(state.symptoms || {}).map(([id, s]) => [id, { kind: "symptom", data: s }])),
-  prefs: { kind: "prefs", data: state.prefs || {} },
+const itemsObj = (st = state) => ({
+  ...Object.fromEntries(Object.entries(st.events || {}).map(([id, e]) => [id, { kind: "event", data: e }])),
+  ...Object.fromEntries(Object.entries(st.studies || {}).map(([id, s]) => [id, { kind: "study", data: s }])),
+  ...Object.fromEntries(Object.entries(st.symptoms || {}).map(([id, s]) => [id, { kind: "symptom", data: s }])),
+  prefs: { kind: "prefs", data: st.prefs || {} },
 });
+const ITEM_KEY = { event: "events", study: "studies", symptom: "symptoms" };
 const toItemRow = (id, x) => ({ id, kind: x.kind, data: x.data });
 const snap = (rowFn, obj) => Object.fromEntries(Object.entries(obj).map(([id, v]) => [id, JSON.stringify(rowFn(id, v))]));
 
@@ -60,6 +61,7 @@ async function cloudPush() {
       }
       cloud.synced[table] = now;
     }
+    keepSynced();
     setSyncState("ok");
   } catch (e) {
     console.error("sync failed", e);
@@ -69,6 +71,32 @@ async function cloudPush() {
     if (cloud.again) { cloud.again = false; cloudPush(); }
   }
 }
+// What the server last confirmed is kept next to the local copy: their difference is what this browser
+// changed but never got to send (tab closed within the push delay, no network). It is sent on the next start
+// instead of being overwritten by the server copy.
+const cacheKey = () => "medcard.cloud." + cloud.user.id;
+const syncedKey = () => "medcard.synced." + cloud.user.id;
+function keepSynced() { try { localStorage.setItem(syncedKey(), JSON.stringify(cloud.synced)); } catch (e) { /* cache only */ } }
+function restoreUnsent(local, was) {
+  if (!local || !was) return 0;
+  let n = 0;
+  const tables = [["results", local.results || {}, toResultRow], ["markers", local.markers || {}, toMarkerRow]];
+  if (cloud.itemsOk && was.items) tables.push(["items", itemsObj(local), toItemRow]);
+  for (const [table, src, rowFn] of tables) {
+    const now = snap(rowFn, src), old = was[table] || {};
+    for (const id of new Set([...Object.keys(now), ...Object.keys(old)])) {
+      if (now[id] === old[id]) continue;
+      n++;
+      if (table !== "items") { if (id in src) state[table][id] = src[id]; else delete state[table][id]; continue; }
+      const x = src[id] || JSON.parse(old[id]);
+      if (x.kind === "prefs") { if (src[id]) state.prefs = x.data; continue; }
+      const box = (state[ITEM_KEY[x.kind]] ||= {});
+      if (src[id]) box[id] = x.data; else delete box[id];
+    }
+  }
+  return n;
+}
+
 function cloudSave() { setSyncState("saving"); clearTimeout(cloud.timer); cloud.timer = setTimeout(cloudPush, 400); }
 
 function setSyncState(s) {
@@ -129,9 +157,17 @@ async function cloudBoot() {
   document.getElementById("localNote")?.remove(); // the browser-only warning is for offline mode
   document.getElementById("gate").hidden = true; document.body.classList.remove("gated");
   // show the last copy instantly, then refresh from the server
-  try { const j = JSON.parse(localStorage.getItem("medcard.cloud." + cloud.user.id) || "null"); if (j) { state.results = j.results || {}; state.markers = j.markers || {}; state.events = j.events || {}; state.prefs = j.prefs || {}; state.studies = j.studies || {}; state.symptoms = j.symptoms || {}; } } catch (e) { /* ignore */ }
+  let local = null, was = null;
+  try { local = JSON.parse(localStorage.getItem(cacheKey()) || "null"); was = JSON.parse(localStorage.getItem(syncedKey()) || "null"); } catch (e) { /* ignore */ }
+  try { const j = local; if (j) { state.results = j.results || {}; state.markers = j.markers || {}; state.events = j.events || {}; state.prefs = j.prefs || {}; state.studies = j.studies || {}; state.symptoms = j.symptoms || {}; } } catch (e) { /* ignore */ }
   renderAll(); renderAccount();
-  try { await cloudPull(); if (cloud.itemsOk && sySeedMerge()) save(); renderAll(); renderAccount(); setSyncState("ok"); }
+  try {
+    await cloudPull(); keepSynced();
+    const unsent = restoreUnsent(local, was), seeded = cloud.itemsOk && sySeedMerge();
+    if (unsent || seeded) save(); else try { localStorage.setItem(cacheKey(), JSON.stringify(state)); } catch (e) { /* cache only */ }
+    renderAll(); renderAccount(); setSyncState("ok");
+    if (unsent) toast("Отправлено в облако то, что не успело сохраниться в прошлый раз");
+  }
   catch (e) { console.error(e); setSyncState("error"); }
   document.getElementById("acct").addEventListener("click", e => {
     if (e.target.closest("#logoutBtn")) cloud.client.auth.signOut().then(() => location.reload());

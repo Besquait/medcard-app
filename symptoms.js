@@ -173,8 +173,7 @@ function renderSymptoms() {
       <div><h2>Симптомы</h2><p class="st-sub">${sub}</p></div>
       <button type="button" class="btn primary" data-sy-new>Добавить</button>
     </div>
-    ${syToday(now)}
-    ${syDiary(all)}
+    ${"" /* daily check-in (syToday) and the four-week diary (syDiary) are hidden for now: they got in the way */}
     ${now.length ? syListHtml(now) : `<div class="empty">Сейчас ничего не беспокоит.</div>`}
     ${syAnamCard()}
     ${past.length ? `<details class="sy-past"${ui.syPastOpen ? " open" : ""}><summary class="st-year">Прошло · ${past.length}</summary><div class="card st-list">${past.map(syRow).join("")}</div></details>` : ""}`;

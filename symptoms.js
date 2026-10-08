@@ -195,12 +195,21 @@ function renderSymptoms() {
   const eps = now.reduce((n, s) => n + (s.pattern === "const" ? 0 : syCount(s, 30)), 0);
   const sub = [`${now.length} ${plural(now.length, "жалоба", "жалобы", "жалоб")} сейчас`, strong ? `${strong} ${plural(strong, "сильная", "сильные", "сильных")}` : "",
     eps ? `${eps} ${plural(eps, "приступ", "приступа", "приступов")} за 30 дней` : "", past.length ? `${past.length} прошло` : ""].filter(Boolean).join(" · ");
+  // the shared read-only view shows complaints only: the diary stays private
+  const page = ui.readonly ? "list" : ui.syPage || "list";
+  const tabs = ui.readonly ? "" : `<div class="seg sy-ptabs" role="tablist" aria-label="Раздел">${[["list", "Жалобы"], ["diary", "Дневник"], ["links", "Связи"]].map(([k, n]) => `<button type="button" role="tab" data-sy-page="${k}" aria-pressed="${page === k}">${n}</button>`).join("")}</div>`;
   box.innerHTML = `
     <div class="st-head">
       <div><h2>Симптомы</h2><p class="st-sub">${sub}</p></div>
       <div class="sy-hbtns"><button type="button" class="btn" data-sy-report>Сводка для врача</button><button type="button" class="btn primary" data-sy-new>Добавить</button></div>
     </div>
-    ${"" /* daily check-in (syToday) and the four-week diary (syDiary) are hidden for now: they got in the way */}
+    ${tabs}
+    ${page === "diary" ? dyTab() : page === "links" ? dyLinksTab() : syListPage(now, main, past)}`;
+  $$("#symptomsView .sy-grow").forEach(syGrow);
+}
+// complaints: main ones first, then one card per organ, the history of illness and what has passed
+function syListPage(now, main, past) {
+  return `
     ${main.length ? syGroup("Главное", main, true) : now.length > 3 ? `<p class="sy-tip">Открой жалобу и нажми «☆ Главное» — главные встанут сюда и первыми пойдут в сводку для врача.</p>` : ""}
     ${now.length ? `<div class="sy-organs">${SY_ZONES.map(([z, n]) => { const l = now.filter(s => syZoneOf(s) === z); return l.length ? syGroup(n, l) : ""; }).join("")}</div>`
       : `<div class="empty">Сейчас ничего не беспокоит.</div>`}
@@ -543,9 +552,8 @@ function initSymptoms() {
     const tdy = t.closest("[data-sy-today]");
     if (tdy) {
       // the same button again clears today's mark, unless it carries a note
-      const s = cur(), k = +tdy.dataset.syToday, d = todayISO(), e = (s.log || []).filter(x => x.d === d).pop();
-      if (!e) { syAddEntry(ui.syOpen, { d, sev: k }); syReopen(); return; }
-      if (e.sev === k && !e.note && !e.trig && !e.help) s.log.splice(s.log.indexOf(e), 1); else e.sev = k;
+      const k = +tdy.dataset.syToday, d = todayISO(), now = (cur().log || []).filter(x => x.d === d).pop()?.sev;
+      dyMark(ui.syOpen, d, now === k ? null : k);
       reopen(); return;
     }
     const ao = t.closest("[data-sy-addopen]");

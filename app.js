@@ -146,13 +146,13 @@ function pos(r) {
 
 /* ============ storage ============ */
 const KEY = "medcard.v1";
-const state = { markers: {}, results: {}, events: {}, prefs: {}, studies: {}, symptoms: {} };
+const state = { markers: {}, results: {}, events: {}, prefs: {}, studies: {}, symptoms: {}, days: {} };
 function load() {
   let raw = null;
   try { raw = localStorage.getItem(KEY); } catch (e) { /* storage blocked */ }
   if (raw) {
     try {
-      const j = JSON.parse(raw); state.markers = j.markers || {}; state.results = j.results || {}; state.events = j.events || {}; state.prefs = j.prefs || {}; state.studies = j.studies || {}; state.symptoms = j.symptoms || {};
+      const j = JSON.parse(raw); state.markers = j.markers || {}; state.results = j.results || {}; state.events = j.events || {}; state.prefs = j.prefs || {}; state.studies = j.studies || {}; state.symptoms = j.symptoms || {}; state.days = j.days || {};
       // bring in seed rows added after this browser was first filled (matched by analysis + date)
       if ((j.seedVersion || 1) < (window.SEED_VERSION || 1)) {
         // seed rows (ids starting with "s") are replaced wholesale; rows entered on the site are kept
@@ -1048,7 +1048,7 @@ $("#importInput").addEventListener("change", async e => {
   try {
     const j = JSON.parse(await f.text());
     if (!j || typeof j.results !== "object") throw new Error("bad");
-    state.markers = j.markers || {}; state.results = j.results; state.events = j.events || {}; state.prefs = j.prefs || {}; state.studies = j.studies || {}; state.symptoms = j.symptoms || {}; save(); renderAll();
+    state.markers = j.markers || {}; state.results = j.results; state.events = j.events || {}; state.prefs = j.prefs || {}; state.studies = j.studies || {}; state.symptoms = j.symptoms || {}; state.days = j.days || {}; save(); renderAll();
     toast(`Загружено: ${Object.keys(state.results).length} замеров`);
   } catch (err) { toast("Это не файл Медкарты — ничего не изменено"); }
   e.target.value = ""; menu.hidden = true;
@@ -1385,6 +1385,7 @@ initUI();
 initExtras();
 initStudies();
 initSymptoms();
+initDiary();
 const shareToken = new URLSearchParams(location.search).get("share");
 if (shareToken && typeof cloudConfigured === "function" && cloudConfigured()) shareBoot(shareToken);
 else if (typeof cloudConfigured === "function" && cloudConfigured()) cloudBoot();

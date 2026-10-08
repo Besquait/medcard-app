@@ -38,7 +38,6 @@ const SY_ZONES = [
 const SY_ZONE = Object.fromEntries(SY_ZONES.map(([id, name]) => [id, name]));
 const SY_ZONE_ORDER = Object.fromEntries(SY_ZONES.map(([id], i) => [id, i]));
 const SY_PRESETS = SY_ZONES.flatMap(([zone, , list]) => list.map(([name, pattern, sit]) => ({ name, pattern, sit, zone })));
-const SY_POPULAR = ["Головная боль", "Боль в спине", "Шум в ушах", "Боль в глазах", "Зубная боль", "Изжога", "Усталость", "Плохо сплю", "Тревога", "Хруст в колене"];
 const SY_ONCE_DAYS = 14, SY_QUIET_DAYS = 90, SY_DIARY_DAYS = 28;
 // history that belongs to the person, not to one complaint; kept in prefs and printed in the doctor report
 const SY_ANAM = [
@@ -159,7 +158,6 @@ function renderSymptoms() {
       <div class="st-empty">
         <h3>Что беспокоит?</h3>
         <p>Записывай всё, что чувствуешь: головные боли, шум в ушах, боль в глазах, хруст в колене. Отмечай дни, когда было, и что пробовал — помогло или нет. Перед приёмом всё соберётся в сводку для врача.</p>
-        <div class="tchips sy-quick">${SY_POPULAR.map(n => `<button type="button" class="tchip" data-sy-new="${esc(n)}">${esc(n)}</button>`).join("")}</div>
         <button type="button" class="btn primary" data-sy-new>Добавить симптом</button>
       </div>
       ${syAnamCard()}`;

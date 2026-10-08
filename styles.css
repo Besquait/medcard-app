@@ -1547,7 +1547,6 @@ td.out-high b { color: var(--high); } td.out-low b { color: var(--low); }
 /* ================= symptoms ================= */
 /* strength colors: s1 слабо, s2 заметно, s3 сильно, su — отмечено без силы */
 .symptoms, .sy-dlg { --sy1: color-mix(in srgb, var(--edge) 50%, var(--card)); --sy2: var(--edge); --sy3: var(--high); --syu: color-mix(in srgb, var(--faint) 55%, var(--card)); }
-.sy-quick { margin: -6px 0 20px; }
 .symptoms > .card { margin-bottom: 14px; }
 .sy-thead { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
 .sy-thead h3 { margin: 0; font-size: 16px; font-weight: 600; }
@@ -1680,11 +1679,6 @@ td.out-high b { color: var(--high); } td.out-low b { color: var(--low); }
 
 /* form */
 .sy-name { font-size: 17px !important; padding: 12px 15px; }
-.sy-zones { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; margin-top: 4px; }
-.sy-zones::-webkit-scrollbar { display: none; }
-.sy-zones button { flex: none; border: 0; background: none; padding: 6px 10px; border-radius: 9px; font: 500 13px var(--font); color: var(--muted); }
-.sy-zones button[aria-pressed="true"] { background: var(--soft); color: var(--ink); }
-.sy-presets:empty { display: none; }
 .sy-pat { flex-direction: column; gap: 2px; padding: 10px 8px; }
 .sy-pat b { font-weight: 600; font-size: 14.5px; color: var(--ink); }
 .sy-pat small { font-size: 12px; color: var(--muted); font-weight: 400; }
@@ -1694,7 +1688,6 @@ td.out-high b { color: var(--high); } td.out-low b { color: var(--low); }
 .sy-grow { resize: none !important; overflow: hidden; overflow-wrap: anywhere; display: block; }
 .sy-form .sy-name { font-size: 17px; line-height: 1.4; font-weight: 500; }
 .sy-form .sy-line { font-size: 15px; line-height: 1.45; }
-.sy-own { font-size: 13px; color: var(--muted); padding: 4px 2px; }
 .sy-moref .input { width: 100%; }
 .sy-moref textarea { font-size: 14.5px; line-height: 1.5; }
 

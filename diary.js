@@ -105,7 +105,8 @@ function dyRecent() {
 }
 
 /* ---------- links ---------- */
-// days with the factor against days without it; the stronger of "same day" and "next day" is kept per pair
+// days with the factor against days without it. A difference is shown only when it is unlikely to be chance:
+// Welch's t of 2 and more (roughly p < 0.05); per pair the surer of "same day" and "next day" is kept.
 function dyLinks() {
   const days = state.days || {}, dates = Object.keys(days).filter(d => dyHas(days[d])).sort();
   const outs = [{ name: "Самочувствие", mood: true, scale: 4, get: d => days[d]?.mood || null }];
@@ -113,6 +114,7 @@ function dyLinks() {
   const facs = [["sleep", "", "сон 6 часов и меньше", 0], ...dyFactors()];
   const fv = (d, id) => { const x = days[d]; if (!x) return null; if (id === "sleep") return x.sleep ? x.sleep <= 6 : null; return x.f ? !!x.f[id] : null; };
   const avg = a => a.reduce((s, v) => s + v, 0) / a.length;
+  const vari = (a, m) => a.length > 1 ? a.reduce((s, v) => s + (v - m) ** 2, 0) / (a.length - 1) : 0;
   const best = new Map();
   for (const o of outs) for (const [fid, , phrase, later] of facs) for (const lag of later && !o.mood ? [0, 1] : [0]) {
     const on = [], off = [];
@@ -122,12 +124,12 @@ function dyLinks() {
       (f ? on : off).push(y);
     }
     if (on.length < DY_MIN || off.length < DY_MIN) continue;
-    const a = avg(on), b = avg(off), r = { o, phrase, lag, a, b, na: on.length, nb: off.length, diff: a - b, w: Math.abs(a - b) / o.scale };
+    const a = avg(on), b = avg(off), se = Math.sqrt(vari(on, a) / on.length + vari(off, b) / off.length);
+    const r = { o, phrase, lag, a, b, na: on.length, nb: off.length, diff: a - b, w: Math.abs(a - b) / o.scale, t: se ? Math.abs(a - b) / se : a !== b ? 9 : 0 };
     const key = (o.id || "mood") + "|" + fid, prev = best.get(key);
-    if (!prev || r.w > prev.w) best.set(key, r);
+    if (!prev || r.t > prev.t) best.set(key, r);
   }
-  const weight = r => r.w * Math.sqrt(Math.min(r.na, r.nb));
-  return [...best.values()].filter(r => r.w >= 0.12).sort((x, y) => weight(y) - weight(x)).slice(0, 12);
+  return [...best.values()].filter(r => r.w >= 0.12 && r.t >= 2).sort((x, y) => y.t - x.t).slice(0, 12);
 }
 // four weeks side by side: the overall state on top, complaints below
 function dyGrid() {
@@ -161,7 +163,7 @@ function dyLinksTab() {
     const what = r.o.mood ? `самочувствие ${r.diff > 0 ? "лучше" : "хуже"}` : `«${esc(r.o.name)}» ${r.diff > 0 ? "сильнее" : "слабее"}`;
     return `<div class="dy-link${worse ? " worse" : ""}"><div class="dy-lt"><b>${esc(dyCap(r.phrase))}</b> → ${what}${r.lag ? " на следующий день" : ""}</div>
       <div class="dy-lbar"><i style="width:${Math.min(100, Math.round(r.w * 250))}%"></i></div>
-      <small>В среднем ${dyNum(r.a)} против ${dyNum(r.b)} ${r.o.mood ? "из 5" : "по шкале 0–3"} · дней с этим ${r.na}, без — ${r.nb}</small></div>`;
+      <small>${r.t >= 3 ? "Чёткая связь" : "Есть связь"} · в среднем ${dyNum(r.a)} против ${dyNum(r.b)} ${r.o.mood ? "из 5" : "по шкале 0–3"} · дней с этим ${r.na}, без — ${r.nb}</small></div>`;
   };
   return `<section class="card dy-links"><h3>Что связано с самочувствием</h3>
       <p>По ${n} ${plural(n, "записанному дню", "записанным дням", "записанным дням")}${n < DY_GOAL ? " — пока предварительно" : ""}: в какие дни становится лучше или хуже.</p>

@@ -770,6 +770,7 @@ body.gated .page { display: none; }
 .sync { font-size: 12.5px; color: var(--ok); }
 .sync[data-s="saving"] { color: var(--muted); }
 .sync[data-s="error"] { color: var(--high); }
+.sync[data-s="offline"] { color: var(--edge); }
 .acct button { padding: 7px 0 !important; color: var(--accent); }
 .acct #logoutBtn { color: var(--muted); }
 

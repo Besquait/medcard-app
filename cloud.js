@@ -1,8 +1,11 @@
 // Cloud mode: Google sign-in through Supabase and two-way sync of `state`.
 // app.js keeps working on the in-memory `state`; save() calls cloudSave(), which pushes only what changed.
+// Nothing is pushed until the first download from the server has succeeded: a tab that started from its
+// local copy and could not reach the server must not overwrite newer data with that copy. Until then edits
+// wait in the pending list, and the download is retried.
 "use strict";
 
-const cloud = { client: null, user: null, synced: { results: {}, markers: {} }, timer: null, busy: false, again: false };
+const cloud = { client: null, user: null, synced: { results: {}, markers: {}, items: {} }, timer: null, busy: false, again: false, ready: false, connecting: false, tries: 0, base: null, bootPending: null };
 
 const RESULT_COLS = ["m", "date", "v", "unit", "min", "max", "lab", "note", "t"];
 const toResultRow = (id, r) => ({ id, m: r.m, date: r.date || null, v: r.v ?? null, unit: r.unit || "", min: r.min ?? null, max: r.max ?? null, lab: r.lab || "", note: r.note || "", t: r.t ?? null });
@@ -28,28 +31,28 @@ async function cloudPull() {
   const [res, mk, it] = await Promise.all([c.from("results").select("*"), c.from("markers").select("*"), c.from("items").select("*")]);
   if (res.error) throw res.error;
   if (mk.error) throw mk.error;
+  if (it.error) throw it.error;
   state.results = Object.fromEntries(res.data.map(r => [r.id, fromResultRow(r)]));
   state.markers = Object.fromEntries(mk.data.map(r => [r.id, fromMarkerRow(r)]));
-  cloud.itemsOk = !it.error;
-  if (cloud.itemsOk) {
+  cloud.itemsOk = true;
+  {
     state.events = Object.fromEntries(it.data.filter(r => r.kind === "event").map(r => [r.id, r.data]));
     state.prefs = it.data.find(r => r.id === "prefs")?.data || {};
     state.studies = Object.fromEntries(it.data.filter(r => r.kind === "study").map(r => [r.id, r.data]));
     state.symptoms = Object.fromEntries(it.data.filter(r => r.kind === "symptom").map(r => [r.id, r.data]));
     state.days = Object.fromEntries(it.data.filter(r => r.kind === "day").map(r => [r.id, r.data]));
   }
-  cloud.synced = { results: snap(toResultRow, state.results), markers: snap(toMarkerRow, state.markers), items: cloud.itemsOk ? snap(toItemRow, itemsObj()) : {} };
+  cloud.synced = { results: snap(toResultRow, state.results), markers: snap(toMarkerRow, state.markers), items: snap(toItemRow, itemsObj()) };
 }
 
 // push the difference between `state` and what the server last confirmed
 async function cloudPush() {
+  if (!cloud.ready) return;
   if (cloud.busy) { cloud.again = true; return; }
   cloud.busy = true;
   try {
     const c = cloud.client;
-    const tables = [["markers", state.markers, toMarkerRow], ["results", state.results, toResultRow]];
-    if (cloud.itemsOk) tables.push(["items", itemsObj(), toItemRow]);
-    for (const [table, obj, rowFn] of tables) {
+    for (const [table, obj, rowFn] of pushTables()) {
       const now = snap(rowFn, obj), was = cloud.synced[table];
       const up = Object.keys(now).filter(id => now[id] !== was[id]).map(id => JSON.parse(now[id]));
       const gone = Object.keys(was).filter(id => !(id in now));
@@ -77,15 +80,13 @@ async function cloudPush() {
 // are kept in localStorage and sent on the next start instead of being overwritten by the server copy.
 // Only the tab's own edits go there, so another open tab can never bring back a stale version.
 const pendingKey = () => "medcard.pending." + cloud.user.id;
-function pushTables() {
-  const t = [["markers", state.markers, toMarkerRow], ["results", state.results, toResultRow]];
-  if (cloud.itemsOk) t.push(["items", itemsObj(), toItemRow]);
-  return t;
-}
+const pushTables = () => [["markers", state.markers, toMarkerRow], ["results", state.results, toResultRow], ["items", itemsObj(), toItemRow]];
+// before the first download the reference is the local copy the tab started from, plus what was pending then
 function keepPending() {
-  const out = {};
+  const ref = cloud.ready ? cloud.synced : cloud.base; if (!ref) return;
+  const out = cloud.ready ? {} : JSON.parse(JSON.stringify(cloud.bootPending || {}));
   for (const [table, obj, rowFn] of pushTables()) {
-    const now = snap(rowFn, obj), was = cloud.synced[table] || {}, ch = {};
+    const now = snap(rowFn, obj), was = ref[table] || {}, ch = out[table] || {};
     for (const id of Object.keys(now)) if (now[id] !== was[id]) ch[id] = now[id];
     for (const id of Object.keys(was)) if (!(id in now)) ch[id] = null;
     if (Object.keys(ch).length) out[table] = ch;
@@ -95,7 +96,6 @@ function keepPending() {
 function restorePending(p) {
   let n = 0;
   for (const [table, ch] of Object.entries(p || {})) {
-    if (table === "items" && !cloud.itemsOk) continue;
     for (const [id, json] of Object.entries(ch)) {
       const row = json && JSON.parse(json); n++;
       if (table === "results") { if (row) state.results[id] = fromResultRow(row); else delete state.results[id]; }
@@ -108,12 +108,34 @@ function restorePending(p) {
   return n;
 }
 
-function cloudSave() { keepPending(); setSyncState("saving"); clearTimeout(cloud.timer); cloud.timer = setTimeout(cloudPush, 400); }
+function cloudSave() {
+  keepPending();
+  if (!cloud.ready) { setSyncState("offline"); return; }
+  setSyncState("saving"); clearTimeout(cloud.timer); cloud.timer = setTimeout(cloudPush, 400);
+}
+// first download; on failure retry with a growing pause (and at once when the network comes back)
+async function cloudConnect() {
+  if (cloud.ready || cloud.connecting) return;
+  cloud.connecting = true;
+  try { await cloudPull(); }
+  catch (e) {
+    console.error("cloud download failed", e); setSyncState("offline");
+    cloud.tries++; setTimeout(cloudConnect, Math.min(60000, 2000 * 2 ** Math.min(cloud.tries, 5)));
+    return;
+  } finally { cloud.connecting = false; }
+  cloud.ready = true;
+  let pending = null;
+  try { pending = JSON.parse(localStorage.getItem(pendingKey()) || "null"); } catch (e) { /* ignore */ }
+  const unsent = restorePending(pending), seeded = sySeedMerge();
+  if (unsent || seeded) save(); else keepPending();
+  renderAll(); renderAccount(); setSyncState("ok");
+  if (unsent) toast("Отправлено в облако то, что не успело сохраниться");
+}
 
 function setSyncState(s) {
   const el = document.getElementById("syncState"); if (!el) return;
   el.dataset.s = s;
-  el.textContent = s === "saving" ? "Сохраняю…" : s === "error" ? "Не сохранилось — проверь интернет" : "Сохранено в облаке";
+  el.textContent = s === "saving" ? "Сохраняю…" : s === "error" ? "Не сохранилось — проверь интернет" : s === "offline" ? "Нет связи с облаком — сохранено в браузере" : "Сохранено в облаке";
   if (s === "error") setTimeout(() => cloudPush(), 5000);
 }
 
@@ -168,18 +190,12 @@ async function cloudBoot() {
   document.getElementById("localNote")?.remove(); // the browser-only warning is for offline mode
   document.getElementById("gate").hidden = true; document.body.classList.remove("gated");
   // show the last copy instantly, then refresh from the server
-  let pending = null;
-  try { pending = JSON.parse(localStorage.getItem(pendingKey()) || "null"); } catch (e) { /* ignore */ }
+  try { cloud.bootPending = JSON.parse(localStorage.getItem(pendingKey()) || "null"); } catch (e) { /* ignore */ }
   try { const j = JSON.parse(localStorage.getItem("medcard.cloud." + cloud.user.id) || "null"); if (j) { state.results = j.results || {}; state.markers = j.markers || {}; state.events = j.events || {}; state.prefs = j.prefs || {}; state.studies = j.studies || {}; state.symptoms = j.symptoms || {}; state.days = j.days || {}; } } catch (e) { /* ignore */ }
+  cloud.base = Object.fromEntries(pushTables().map(([table, obj, rowFn]) => [table, snap(rowFn, obj)]));
   renderAll(); renderAccount();
-  try {
-    await cloudPull();
-    const unsent = restorePending(pending), seeded = cloud.itemsOk && sySeedMerge();
-    if (unsent || seeded) save();
-    renderAll(); renderAccount(); setSyncState("ok");
-    if (unsent) toast("Отправлено в облако то, что не успело сохраниться в прошлый раз");
-  }
-  catch (e) { console.error(e); setSyncState("error"); }
+  addEventListener("online", cloudConnect);
+  await cloudConnect();
   document.getElementById("acct").addEventListener("click", e => {
     if (e.target.closest("#logoutBtn")) cloud.client.auth.signOut().then(() => location.reload());
     if (e.target.closest("#migrateBtn")) migrateLegacy();

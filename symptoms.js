@@ -53,7 +53,28 @@ const syLog = s => [...(s.log || [])].sort((a, b) => (a.d || "").localeCompare(b
 const syLast = s => { const l = syLog(s); return l.length ? l[l.length - 1].d : ""; };
 const syAgoDays = s => { const d = syLast(s); return d ? daysBetween(d, todayISO()) : null; };
 const syPreset = name => SY_PRESETS.find(p => norm(p.name) === norm(name));
-const syZoneOf = s => SY_ZONE[s.zone] ? s.zone : "other";
+// complaints written in own words get their organ from the words: stems matched at the start of a word,
+// the zone with most hits wins. "other" set by hand (zoneHand) is kept as is.
+const SY_ZONE_WORDS = {
+  head: ["голов", "мигрен", "виск", "затыл", "темечк", "темя"],
+  ent: ["уш", "ухо", "уха", "ухе", "нос", "насморк", "сопл", "слиз", "горл", "глота", "гланд", "миндал", "кашл", "храп", "чиха", "пазух", "гаймор", "заложен", "звон", "сморк", "высморк"],
+  eyes: ["глаз", "зрени", "мушк", "век", "слез", "светочувств"],
+  teeth: ["зуб", "десн", "челюст", "рот", "рту", "язык", "слюн"],
+  heart: ["сердц", "сердеч", "пульс", "давлен", "одышк", "груд", "задыха", "дыха", "отек"],
+  gut: ["живот", "желуд", "изжог", "тошн", "вздут", "стул", "запор", "понос", "диаре", "кишеч", "отрыж", "рвот", "печен", "газ"],
+  mind: ["тревог", "паник", "сон", "сплю", "спать", "бессон", "настроен", "депресс", "апати", "мотивац", "сонлив", "устал", "раздраж"],
+  joints: ["спин", "поясниц", "ше", "сустав", "колен", "плеч", "локт", "хруст", "мышц", "судорог", "онеме", "немеют", "лопат", "позвон", "кисть", "пальц"],
+  skin: ["кож", "сып", "зуд", "чеш", "акне", "прыщ", "волос", "ногт", "перхот", "пятн"],
+  uro: ["моч", "писа", "туалет", "либид", "потенц", "почк", "эрекц"],
+};
+const SY_ZONE_RE = Object.fromEntries(Object.entries(SY_ZONE_WORDS).map(([z, w]) => [z, new RegExp(`(?:^|[^а-я])(?:${w.join("|")})`, "g")]));
+function syGuessZone(text) {
+  const t = String(text || "").toLowerCase().replace(/ё/g, "е");
+  let best = "other", top = 0;
+  for (const [z, re] of Object.entries(SY_ZONE_RE)) { const n = (t.match(re) || []).length; if (n > top) { top = n; best = z; } }
+  return best;
+}
+const syZoneOf = s => SY_ZONE[s.zone] && (s.zone !== "other" || s.zoneHand) ? s.zone : syGuessZone(s.name) !== "other" ? syGuessZone(s.name) : syGuessZone(s.note);
 const syAnam = () => state.prefs?.anamnesis || {};
 const syAnamHas = () => SY_ANAM.some(([k]) => (syAnam()[k] || "").trim());
 
@@ -207,13 +228,12 @@ function syDiary(list) {
 }
 // five and more complaints are grouped by body area inside one card
 function syListHtml(now) {
-  const grouped = now.length >= 5;
-  let out = "", zone = null;
-  now.forEach(s => {
-    if (grouped && syZoneOf(s) !== zone) { zone = syZoneOf(s); out += `<div class="sy-ghead">${esc(SY_ZONE[zone])}</div>`; }
-    out += syRow(s);
-  });
-  return `<h3 class="st-year">Беспокоит сейчас · ${now.length}</h3><div class="card st-list sy-list">${out}</div>`;
+  const zones = [...new Set(now.map(syZoneOf))];
+  const worst = l => Math.max(0, ...l.map(sySev));
+  const by = Object.fromEntries(zones.map(z => [z, now.filter(s => syZoneOf(s) === z)]));
+  const map = zones.length > 1 ? `<nav class="sy-organs" aria-label="По органам">${zones.map(z => `<button type="button" class="sy-organ" data-sy-zjump="${z}">${syDot(worst(by[z]))}<b>${esc(SY_ZONE[z])}</b><span class="num">${by[z].length}</span></button>`).join("")}</nav>` : "";
+  return `<h3 class="st-year">Беспокоит сейчас · ${now.length}</h3>${map}
+    ${zones.map(z => `<section class="sy-zone" id="syz-${z}"><h4 class="sy-zhead">${esc(SY_ZONE[z])}<span class="num">${by[z].length}</span></h4><div class="card st-list sy-list">${by[z].map(syRow).join("")}</div></section>`).join("")}`;
 }
 // last 14 days as small ticks, filled on days with an episode
 function syTicks(s) {
@@ -366,7 +386,7 @@ function openSymptomForm(id, presetName) {
         <textarea class="input sy-grow sy-line" name="since" rows="1" placeholder="Уточнение, если есть: после COVID, с детства" autocomplete="off" enterkeyhint="done">${esc(s.since || "")}</textarea></div>
       ${id ? "" : `<div class="fld" data-sy-firstf${s.pattern === "const" ? " hidden" : ""}><span>Когда было последний раз</span>${dfield('name="first"', today, { empty: "Не отмечать", clear: true })}</div>`}
       <label class="fld"><span>Как проявляется</span><textarea class="input sy-grow" name="note" rows="3" placeholder="Где именно, какая боль, когда начинается и проходит">${esc(s.note || "")}</textarea></label>
-      <div class="fld"><span>Область</span>${csel('name="zonePick"', [["", "Определится сама"], ...SY_ZONES.map(([k, n]) => [k, n])], s.zone || "")}</div>
+      <div class="fld"><span>Область</span>${csel('name="zonePick"', [["", "Определится сама"], ...SY_ZONES.map(([k, n]) => [k, n])], s.zone && (s.zone !== "other" || s.zoneHand) ? s.zone : "")}</div>
       <div class="dlg-foot"><span style="flex:1"></span><button type="button" class="btn ghost" data-xclose>Отмена</button><button type="submit" class="btn primary">Сохранить</button></div>
     </form>`, "st-dlg sy-dlg");
   syGrowAll();
@@ -388,7 +408,7 @@ function sySetCsel(name, value, label) {
 function saveSymptom() {
   const f = $("[data-sy-form]"), v = Object.fromEntries(new FormData(f)), ed = ui.syEdit;
   const name = v.name.trim(); if (!name) { toast("Напиши, что беспокоит"); syF("name").focus(); return; }
-  const p = syPreset(name), zone = v.zonePick || v.zone || p?.zone || "other", prev = ed.id ? state.symptoms[ed.id] : {};
+  const p = syPreset(name), zone = v.zonePick || v.zone || p?.zone || syGuessZone(name) !== "other" && syGuessZone(name) || syGuessZone(v.note), prev = ed.id ? state.symptoms[ed.id] : {};
   // month precision keeps an exact day that was already known
   let start = v.sy ? (v.sm ? `${v.sy}-${v.sm}` : v.sy) : "";
   if (start.length === 7 && (prev.start || "").length === 10 && prev.start.startsWith(start)) start = prev.start;
@@ -396,7 +416,7 @@ function saveSymptom() {
   const same = !ed.id && syList().find(s => norm(s.name) === norm(name) && !s.end);
   if (same) { syAddEntry(same.id, { d: v.first || todayISO(), sev: v.sev, note: v.note.trim() }); openSymptom(same.id); toast(`Записано в «${same.name}»`); return; }
   const id = ed.id || newId("sy");
-  const sym = { ...prev, name, zone, pattern: v.pattern, sev: +v.sev || 0, start, since: v.since.trim(), note: v.note.trim(), sit: v.sit || p?.sit || prev.sit || "", end: prev.end || "" };
+  const sym = { ...prev, name, zone, zoneHand: v.zonePick === "other", pattern: v.pattern, sev: +v.sev || 0, start, since: v.since.trim(), note: v.note.trim(), sit: v.sit || p?.sit || prev.sit || "", end: prev.end || "" };
   if (!ed.id) { sym.log = v.pattern !== "const" && v.first ? [{ d: v.first, sev: +v.sev || 0, t: Date.now() }] : []; sym.tried = []; sym.trig = []; }
   state.symptoms ||= {}; state.symptoms[id] = sym;
   save(); renderAll(); openSymptom(id);
@@ -412,6 +432,7 @@ function initSymptoms() {
     const n = t.closest("[data-sy-new]"); if (n) { openSymptomForm(null, n.dataset.syNew || undefined); return; }
     const tap = t.closest("[data-sy-tap]"); if (tap) { syTap(tap.dataset.syTap, syDayISO()); return; }
     const day = t.closest("[data-sy-day]"); if (day) { ui.syDay = +day.dataset.syDay; renderSymptoms(); return; }
+    const zj = t.closest("[data-sy-zjump]"); if (zj) { $(`#syz-${zj.dataset.syZjump}`)?.scrollIntoView({ behavior: "smooth", block: "start" }); return; }
     if (t.closest("[data-sy-anam]")) { openAnamnesis(); return; }
     if (t.closest("[data-sy-anamfull]")) { ui.syAnamFull = !ui.syAnamFull; renderSymptoms(); return; }
     if (t.closest(".sy-past summary")) { ui.syPastOpen = !t.closest("details").open; return; }

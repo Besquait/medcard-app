@@ -61,7 +61,7 @@ async function cloudPush() {
       }
       cloud.synced[table] = now;
     }
-    keepSynced();
+    keepPending();
     setSyncState("ok");
   } catch (e) {
     console.error("sync failed", e);
@@ -71,33 +71,42 @@ async function cloudPush() {
     if (cloud.again) { cloud.again = false; cloudPush(); }
   }
 }
-// What the server last confirmed is kept next to the local copy: their difference is what this browser
-// changed but never got to send (tab closed within the push delay, no network). It is sent on the next start
-// instead of being overwritten by the server copy.
-const cacheKey = () => "medcard.cloud." + cloud.user.id;
-const syncedKey = () => "medcard.synced." + cloud.user.id;
-function keepSynced() { try { localStorage.setItem(syncedKey(), JSON.stringify(cloud.synced)); } catch (e) { /* cache only */ } }
-function restoreUnsent(local, was) {
-  if (!local || !was) return 0;
+// Changes this tab made but the server has not confirmed yet (tab closed within the push delay, no network)
+// are kept in localStorage and sent on the next start instead of being overwritten by the server copy.
+// Only the tab's own edits go there, so another open tab can never bring back a stale version.
+const pendingKey = () => "medcard.pending." + cloud.user.id;
+function pushTables() {
+  const t = [["markers", state.markers, toMarkerRow], ["results", state.results, toResultRow]];
+  if (cloud.itemsOk) t.push(["items", itemsObj(), toItemRow]);
+  return t;
+}
+function keepPending() {
+  const out = {};
+  for (const [table, obj, rowFn] of pushTables()) {
+    const now = snap(rowFn, obj), was = cloud.synced[table] || {}, ch = {};
+    for (const id of Object.keys(now)) if (now[id] !== was[id]) ch[id] = now[id];
+    for (const id of Object.keys(was)) if (!(id in now)) ch[id] = null;
+    if (Object.keys(ch).length) out[table] = ch;
+  }
+  try { if (Object.keys(out).length) localStorage.setItem(pendingKey(), JSON.stringify(out)); else localStorage.removeItem(pendingKey()); } catch (e) { /* cache only */ }
+}
+function restorePending(p) {
   let n = 0;
-  const tables = [["results", local.results || {}, toResultRow], ["markers", local.markers || {}, toMarkerRow]];
-  if (cloud.itemsOk && was.items) tables.push(["items", itemsObj(local), toItemRow]);
-  for (const [table, src, rowFn] of tables) {
-    const now = snap(rowFn, src), old = was[table] || {};
-    for (const id of new Set([...Object.keys(now), ...Object.keys(old)])) {
-      if (now[id] === old[id]) continue;
-      n++;
-      if (table !== "items") { if (id in src) state[table][id] = src[id]; else delete state[table][id]; continue; }
-      const x = src[id] || JSON.parse(old[id]);
-      if (x.kind === "prefs") { if (src[id]) state.prefs = x.data; continue; }
-      const box = (state[ITEM_KEY[x.kind]] ||= {});
-      if (src[id]) box[id] = x.data; else delete box[id];
+  for (const [table, ch] of Object.entries(p || {})) {
+    if (table === "items" && !cloud.itemsOk) continue;
+    for (const [id, json] of Object.entries(ch)) {
+      const row = json && JSON.parse(json); n++;
+      if (table === "results") { if (row) state.results[id] = fromResultRow(row); else delete state.results[id]; }
+      else if (table === "markers") { if (row) state.markers[id] = fromMarkerRow(row); else delete state.markers[id]; }
+      else if (id === "prefs") { if (row) state.prefs = row.data; }
+      else if (row) (state[ITEM_KEY[row.kind]] ||= {})[id] = row.data;
+      else Object.values(ITEM_KEY).forEach(k => { if (state[k]) delete state[k][id]; });
     }
   }
   return n;
 }
 
-function cloudSave() { setSyncState("saving"); clearTimeout(cloud.timer); cloud.timer = setTimeout(cloudPush, 400); }
+function cloudSave() { keepPending(); setSyncState("saving"); clearTimeout(cloud.timer); cloud.timer = setTimeout(cloudPush, 400); }
 
 function setSyncState(s) {
   const el = document.getElementById("syncState"); if (!el) return;
@@ -157,14 +166,14 @@ async function cloudBoot() {
   document.getElementById("localNote")?.remove(); // the browser-only warning is for offline mode
   document.getElementById("gate").hidden = true; document.body.classList.remove("gated");
   // show the last copy instantly, then refresh from the server
-  let local = null, was = null;
-  try { local = JSON.parse(localStorage.getItem(cacheKey()) || "null"); was = JSON.parse(localStorage.getItem(syncedKey()) || "null"); } catch (e) { /* ignore */ }
-  try { const j = local; if (j) { state.results = j.results || {}; state.markers = j.markers || {}; state.events = j.events || {}; state.prefs = j.prefs || {}; state.studies = j.studies || {}; state.symptoms = j.symptoms || {}; } } catch (e) { /* ignore */ }
+  let pending = null;
+  try { pending = JSON.parse(localStorage.getItem(pendingKey()) || "null"); } catch (e) { /* ignore */ }
+  try { const j = JSON.parse(localStorage.getItem("medcard.cloud." + cloud.user.id) || "null"); if (j) { state.results = j.results || {}; state.markers = j.markers || {}; state.events = j.events || {}; state.prefs = j.prefs || {}; state.studies = j.studies || {}; state.symptoms = j.symptoms || {}; } } catch (e) { /* ignore */ }
   renderAll(); renderAccount();
   try {
-    await cloudPull(); keepSynced();
-    const unsent = restoreUnsent(local, was), seeded = cloud.itemsOk && sySeedMerge();
-    if (unsent || seeded) save(); else try { localStorage.setItem(cacheKey(), JSON.stringify(state)); } catch (e) { /* cache only */ }
+    await cloudPull();
+    const unsent = restorePending(pending), seeded = cloud.itemsOk && sySeedMerge();
+    if (unsent || seeded) save();
     renderAll(); renderAccount(); setSyncState("ok");
     if (unsent) toast("Отправлено в облако то, что не успело сохраниться в прошлый раз");
   }

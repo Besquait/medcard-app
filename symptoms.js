@@ -352,17 +352,14 @@ const syF = n => $(`[data-sy-form] [name=${n}]`);
 function openSymptomForm(id, presetName) {
   const p = presetName ? syPreset(presetName) : null, today = todayISO();
   const s = id ? state.symptoms[id] : { name: presetName || "", zone: p?.zone || "", pattern: p?.pattern || "recur", sev: 2, start: today.slice(0, 7), since: "", note: "", sit: p?.sit || "" };
-  ui.syEdit = { id, zone: "pop" };
-  const zones = [["pop", "Часто"], ...SY_ZONES.map(([k, n]) => [k, n])];
+  ui.syEdit = { id };
   const [sy, sm] = (s.start || "").split("-"), y0 = +today.slice(0, 4);
   const years = [["", "Год — не помню"], ...Array.from({ length: 61 }, (_, i) => [String(y0 - i), String(y0 - i)])];
   const months = [["", "Месяц — не важно"], ...MONTHS_NOM.map((n, i) => [String(i + 1).padStart(2, "0"), n])];
   openX(`<div class="dlg-head"><h3>${id ? "Изменить симптом" : "Что беспокоит"}</h3><button type="button" class="icon-btn" data-xclose aria-label="Закрыть">×</button></div>
     <form class="st-form sy-form" data-sy-form novalidate>
       <input type="hidden" name="zone" value="${esc(s.zone || "")}"><input type="hidden" name="sit" value="${esc(s.sit || "")}">
-      <div class="fld"><textarea class="input sy-name sy-grow" name="name" rows="1" placeholder="Например: болит голова" autocomplete="off" enterkeyhint="done" aria-label="Что беспокоит">${esc(s.name)}</textarea>
-        ${id ? "" : `<div class="sy-zones" role="group" aria-label="Области">${zones.map(([k, n]) => `<button type="button" data-sy-zone="${k}" aria-pressed="${ui.syEdit.zone === k}">${esc(n)}</button>`).join("")}</div>
-        <div class="tchips sy-presets" data-sy-presets></div>`}</div>
+      <div class="fld"><textarea class="input sy-name sy-grow" name="name" rows="1" placeholder="Например: болит голова" autocomplete="off" enterkeyhint="done" aria-label="Что беспокоит">${esc(s.name)}</textarea></div>
       <div class="fld"><span>Как часто</span><input type="hidden" name="pattern" value="${esc(s.pattern)}">
         <div class="wz-status sy-pats">${SY_PATTERNS.map(([k, n, h]) => `<button type="button" class="wz-st sy-pat" data-sy-pat="${k}" aria-pressed="${s.pattern === k}"><b>${n}</b><small>${h}</small></button>`).join("")}</div></div>
       <div class="fld"><span>Насколько сильно</span><input type="hidden" name="sev" value="${s.sev || ""}">
@@ -375,21 +372,8 @@ function openSymptomForm(id, presetName) {
       <div class="fld"><span>Область</span>${csel('name="zonePick"', [["", "Определится сама"], ...SY_ZONES.map(([k, n]) => [k, n])], s.zone || "")}</div>
       <div class="dlg-foot"><span style="flex:1"></span><button type="button" class="btn ghost" data-xclose>Отмена</button><button type="submit" class="btn primary">Сохранить</button></div>
     </form>`, "st-dlg sy-dlg");
-  syPresets(); syGrowAll();
+  syGrowAll();
   if (!presetName && !id) setTimeout(() => syF("name")?.focus(), 40);
-}
-// preset chips: typed text filters across all zones, otherwise the chosen zone (or your own + popular)
-function syPresets() {
-  const box = $("[data-sy-presets]"); if (!box) return;
-  const q = norm(syF("name").value), zone = ui.syEdit.zone;
-  const own = [...new Set(syList().map(s => s.name))];
-  let names;
-  if (q) names = [...new Set([...own, ...SY_PRESETS.map(p => p.name)])].filter(n => norm(n).includes(q) && norm(n) !== q).slice(0, 10);
-  else if (zone === "pop") names = [...new Set([...own.filter(n => !syList().some(s => s.name === n && !syPast(s))), ...SY_POPULAR])].slice(0, 12);
-  else names = SY_PRESETS.filter(p => p.zone === zone).map(p => p.name);
-  $(".sy-zones")?.toggleAttribute("hidden", !!q);
-  box.innerHTML = names.length ? names.map(n => `<button type="button" class="tchip" data-sy-pick="${esc(n)}" aria-pressed="${norm(n) === q}">${esc(n)}</button>`).join("")
-    : q && !syPreset(q) ? `<span class="sy-own">Нет в подсказках — запишется как написано</span>` : "";
 }
 // text fields grow with what is typed instead of scrolling inside a few lines
 function syGrow(el) { el.style.height = "auto"; el.style.height = el.scrollHeight + el.offsetHeight - el.clientHeight + "px"; }
@@ -403,17 +387,6 @@ function sySetCsel(name, value, label) {
   const c = syF(name)?.closest(".csel"); if (!c) return;
   $("input", c).value = value; $("[data-csel-open] span", c).textContent = label;
   $$("[data-csel-v]", c).forEach(b => b.setAttribute("aria-selected", b.dataset.cselV === value));
-}
-function syPick(name) {
-  const p = syPreset(name), own = syList().find(s => norm(s.name) === norm(name));
-  syF("name").value = name; syGrow(syF("name"));
-  const src = own || p;
-  if (src) {
-    sySetPattern(src.pattern === "once" && own ? "recur" : src.pattern);
-    syF("zone").value = src.zone || ""; syF("sit").value = src.sit || "";
-    sySetCsel("zonePick", src.zone || "", SY_ZONE[src.zone] || "Определится сама");
-  }
-  syPresets();
 }
 function saveSymptom() {
   const f = $("[data-sy-form]"), v = Object.fromEntries(new FormData(f)), ed = ui.syEdit;
@@ -478,8 +451,6 @@ function initSymptoms() {
     const td = t.closest("[data-sy-tdel]"); if (td) { cur().tried.splice(+td.dataset.syTdel, 1); reopen(); return; }
     const tr = t.closest("[data-sy-trdel]"); if (tr) { cur().trig.splice(+tr.dataset.syTrdel, 1); reopen(); return; }
     if (!$("[data-sy-form]")) return;
-    const z = t.closest("[data-sy-zone]"); if (z) { ui.syEdit.zone = z.dataset.syZone; $$("[data-sy-zone]").forEach(b => b.setAttribute("aria-pressed", b === z)); syPresets(); return; }
-    const pk = t.closest("[data-sy-pick]"); if (pk) { syPick(pk.dataset.syPick); return; }
     const pt = t.closest("[data-sy-pat]"); if (pt) { sySetPattern(pt.dataset.syPat); return; }
     const sv = t.closest("[data-sy-sev]");
     if (sv) { const on = syF("sev").value !== sv.dataset.sySev; syF("sev").value = on ? sv.dataset.sySev : ""; $$("[data-sy-sev]").forEach(b => b.setAttribute("aria-pressed", on && b === sv)); return; }
@@ -493,7 +464,6 @@ function initSymptoms() {
     if (!e.target.closest("[data-sy-form]") || e.target.name !== "name") return;
     const p = syPreset(e.target.value);
     if (p) { syF("zone").value = p.zone; syF("sit").value = p.sit; } else if (!ui.syEdit.id) syF("sit").value = "";
-    syPresets();
   });
   xd.addEventListener("keydown", e => {
     if (e.key !== "Enter" || !e.target.matches("input, .sy-name, .sy-line") || e.target.matches(".cal-type")) return;

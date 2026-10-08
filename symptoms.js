@@ -310,11 +310,11 @@ const SY_ZONE_STUDY = {
 function syTests(s) {
   const sit = sySit(s), g = sit && window.GUIDES?.[sit], own = s.labs || [];
   const plan = g ? ["core", "then"].flatMap(k => (g[k] || []).flatMap(it => it[0])) : [];
-  const core = g ? (g.core || []).flatMap(it => it[0]) : [];
   const bm = byMarker(), ids = [...new Set([...own, ...plan])];
   const rank = id => { const l = bm[id], st = status(l[l.length - 1]); return st === "high" || st === "low" ? 0 : st === "edge" ? 1 : st === "ok" ? 2 : 3; };
   const taken = ids.filter(id => bm[id]).sort((a, b) => rank(a) - rank(b));
-  const missing = ids.filter(id => !bm[id] && (own.includes(id) || core.includes(id)));
+  // a first-step item lists alternatives (breath test or stool antigen): one taken covers the item
+  const missing = [...new Set([...own.filter(id => !bm[id]), ...(g?.core || []).map(it => it[0]).filter(gr => !gr.some(id => bm[id])).flat()])];
   const re = SY_ZONE_STUDY[syZoneOf(s)];
   const studies = typeof studyList === "function" ? studyList().filter(st => (re && re.test([ST[st.type]?.name, st.area, st.conclusion].join(" "))) || (st.links || []).some(id => ids.includes(id))) : [];
   return { sit, own, bm, taken, missing, studies };

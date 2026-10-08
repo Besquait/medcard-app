@@ -6,6 +6,7 @@
 // Around each complaint: when it started (a year is enough), how it shows, what was tried and whether it
 // helped, what sets it off. A complaint can be marked as main. The page shows the main ones first, then every
 // complaint under its organ; the doctor report keeps that order: main complaints, then the rest by organ system.
+// One complaint opens as a card with tabs: overview, marks, what affects it, related tests and studies.
 // Loaded before app.js: definitions only; initSymptoms() wires the UI.
 "use strict";
 
@@ -294,15 +295,62 @@ function syHeat(s) {
   }
   return `<div class="sy-heat" aria-label="Эпизоды за 16 недель">${cells}</div>`;
 }
+/* ---------- one complaint: related tests and studies ---------- */
+// the usual test plan for an organ when the complaint has none of its own; "-" means "no plan" chosen by hand
+const SY_ZONE_SIT = { head: "Головные боли", heart: "Сердце и сосуды", gut: "ЖКТ и живот", mind: "Тревога и настроение", joints: "Суставы", skin: "Кожа и акне", uro: "Почки", other: "Усталость и слабость" };
+const sySit = s => s.sit === "-" ? "" : s.sit && window.GUIDES?.[s.sit] ? s.sit : SY_ZONE_SIT[syZoneOf(s)] || "";
+// studies of the same organ, matched against the type, the area and the conclusion
+const SY_ZONE_STUDY = {
+  head: /мрт|кт|головн|невролог|сосуды шеи/i, ent: /лор|пазух|нос|ух[оа]|горл|аудиом|сурдолог/i, eyes: /офтальм|глаз|окулист/i,
+  teeth: /стомат|зуб|челюст|ортодонт/i, heart: /экг|эхокг|холтер|сердц|кардиол/i,
+  gut: /гастроскоп|колоноскоп|брюшн|печен|желч|желуд|пищевод|гастроэнт/i, mind: /психиатр|психотерап|невролог/i,
+  joints: /позвоноч|сустав|ревмат|ортопед|шея/i, skin: /дерматол|кож/i, uro: /почк|мочев|простат|уролог/i, other: /эндокрин|щитов/i,
+};
+// tests from the plan (first and second step) plus the ones attached by hand; taken ones with worse results first
+function syTests(s) {
+  const sit = sySit(s), g = sit && window.GUIDES?.[sit], own = s.labs || [];
+  const plan = g ? ["core", "then"].flatMap(k => (g[k] || []).flatMap(it => it[0])) : [];
+  const core = g ? (g.core || []).flatMap(it => it[0]) : [];
+  const bm = byMarker(), ids = [...new Set([...own, ...plan])];
+  const rank = id => { const l = bm[id], st = status(l[l.length - 1]); return st === "high" || st === "low" ? 0 : st === "edge" ? 1 : st === "ok" ? 2 : 3; };
+  const taken = ids.filter(id => bm[id]).sort((a, b) => rank(a) - rank(b));
+  const missing = ids.filter(id => !bm[id] && (own.includes(id) || core.includes(id)));
+  const re = SY_ZONE_STUDY[syZoneOf(s)];
+  const studies = typeof studyList === "function" ? studyList().filter(st => (re && re.test([ST[st.type]?.name, st.area, st.conclusion].join(" "))) || (st.links || []).some(id => ids.includes(id))) : [];
+  return { sit, own, bm, taken, missing, studies };
+}
+function syTestsTab(s, t) {
+  const plan = csel('name="sySit"', [["-", "Без плана"], ...Object.keys(window.GUIDES || {}).map(k => [k, k])], t.sit || "-");
+  const row = id => {
+    const l = t.bm[id], x = l[l.length - 1], st = status(x) || "none", m = info(id);
+    return `<div class="sy-mkr"><button type="button" class="sy-mk ${st}" data-sy-mk="${esc(id)}"><span class="sy-mkn">${esc(m.ru)}</span>
+      <span class="sy-mkv num">${fmt(x.v)} <small>${esc(x.unit || "")}</small></span><span class="sy-mks">${esc([STATUS_TXT[st], fmtDate(x.date)].filter(Boolean).join(" · "))}</span></button>
+      ${t.own.includes(id) ? `<button type="button" class="icon-btn sm" data-sy-mkdel="${esc(id)}" aria-label="Открепить: ${esc(m.ru)}">×</button>` : ""}</div>`;
+  };
+  return `<section class="st-sec"><div class="sy-plan"><span>План анализов</span>${plan}</div>
+      ${t.taken.length ? `<div class="sy-mks-list">${t.taken.map(row).join("")}</div>`
+        : `<p class="muted sy-hint">${t.sit ? "Анализов из этого плана ещё нет." : "Для этой жалобы нет готового плана. Выбери план выше или прикрепи анализ."}</p>`}
+      ${t.missing.length ? `<div class="sy-miss"><span>Не сдавал:</span>${t.missing.map(id => `<button type="button" class="tchip" data-sy-mkinfo="${esc(id)}">${esc(info(id).ru)}</button>`).join("")}</div>` : ""}
+      <div class="sy-tbtns">${t.sit ? `<button type="button" class="btn sm" data-sy-sit="${esc(t.sit)}">Весь план: ${esc(t.sit.toLowerCase())}</button>` : ""}
+        <button type="button" class="btn sm ghost" data-sy-addopen="labs" aria-expanded="${ui.syAddOpen === "labs"}">+ Прикрепить анализ</button></div>
+      <form class="sy-addf" data-sy-mkadd${ui.syAddOpen === "labs" ? "" : " hidden"}><input class="input" name="q" list="syMkAll" placeholder="Название, например ферритин" autocomplete="off"><button type="submit" class="btn">Прикрепить</button>
+        <datalist id="syMkAll">${(window.CATALOG || []).map(m => `<option value="${esc(m.ru)}">`).join("")}</datalist></form>
+    </section>
+    ${t.studies.length ? `<section class="st-sec"><h4>Обследования · ${t.studies.length}</h4><div class="sy-mks-list">${t.studies.map(st => `<div class="sy-mkr"><button type="button" class="sy-mk ${st.status === "find" ? "high" : st.status === "watch" ? "edge" : ""}" data-sy-study="${esc(st.id)}">
+      <span class="sy-mkn">${esc(studyTitle(st))}</span><span class="sy-mkv num">${fmtDate(st.date)}</span>
+      <span class="sy-mks">${esc([STATUS_NAME[st.status], (st.conclusion || "").split("\n")[0]].filter(Boolean).join(" · "))}</span></button></div>`).join("")}</div></section>` : ""}`;
+}
+
 function openSymptom(id) {
   const s = state.symptoms?.[id]; if (!s) return;
   const past = syPast(s), quiet = syQuiet(s), log = syLog(s).reverse(), sev = sySev(s), last = syLast(s);
-  const g = s.sit && window.GUIDES?.[s.sit];
-  const shown = ui.syAllLog ? log : log.slice(0, 6);
+  const shown = ui.syAllLog ? log : log.slice(0, 8);
   const tried = s.tried || [], trig = s.trig || [];
   const onset = syOnsetFull(s).join(" · ");
   const today = todayISO(), todayE = (s.log || []).filter(e => e.d === today).pop();
+  const tests = syTests(s);
   ui.syOpen = id;
+  const tab = ["over", "log", "care", "labs"].includes(ui.syTab) ? ui.syTab : "over";
   const status = past ? `<span class="st-status"><i></i>Прошло</span>` : quiet ? `<span class="st-status watch"><i></i>Давно не было</span>` : `<span class="st-status find"><i></i>Беспокоит</span>`;
   const entry = e => [syDurText(e.dur), e.note, e.trig && `спровоцировало: ${e.trig}`, e.help && `помогло: ${e.help}`].filter(Boolean).join(" · ");
   const heatCap = s.pattern === "const" ? "16 недель: столбец — неделя, сверху понедельник. Цвет — как было в этот день." : "16 недель: столбец — неделя, сверху понедельник. Цвет — сила, серый — сила не указана.";
@@ -319,44 +367,45 @@ function openSymptom(id) {
       <div><button type="submit" class="btn primary">Записать</button></div>
       ${s.pattern === "once" ? `<p class="muted sy-hint">После записи в другой день симптом станет «приступами» — будет видно, как часто повторяется.</p>` : ""}
     </form>`;
-  // constant: one tap marks today, another day or a note go through the full form; episodic: the episode form
-  const track = s.pattern === "const"
-    ? `<section class="st-sec"><h4>Как сегодня</h4>
-        <div class="sy-sevs sy-now" role="group" aria-label="Как сегодня">${SY_SEV.map(([k, n]) => `<button type="button" class="sy-sevb s${k}" data-sy-today="${k}" aria-pressed="${todayE?.sev === k}">${n}</button>`).join("")}</div>
-        <p class="muted sy-hint">${todayE ? "Сегодня отмечено. Нажми ту же кнопку ещё раз, чтобы снять." : "Одно нажатие — и день отмечен. По таким отметкам видно, лучше становится или хуже."}</p>
-        <details class="sy-moref sy-other"><summary>Другой день или с заметкой</summary>${logForm(true)}</details>
-        ${log.length ? `${syHeat(s)}<p class="muted sy-heatcap">${heatCap}</p>` : ""}</section>`
-    : `${s.pattern === "recur" && log.length ? `<section class="st-sec"><h4>Как часто</h4>
-        <div class="sy-stats"><div><b class="num">${syCount(s, 30)}</b><span>приступов за 30 дней</span></div><div><b class="num">${syDaysIn(s, 30)}</b><span>дней с симптомом за 30</span></div><div><b>${esc(syAgo(last))}</b><span>последний раз</span></div></div>
-        ${syHeat(s)}<p class="muted sy-heatcap">${heatCap}</p></section>` : ""}
-      <section class="st-sec"><h4>${s.pattern === "once" ? "Было ещё раз?" : "Отметить приступ"}</h4>${logForm(false)}</section>`;
   const addBtn = k => `<button type="button" class="btn sm ghost" data-sy-addopen="${k}" aria-expanded="${ui.syAddOpen === k}">+ Добавить</button>`;
-  openX(`<div class="dlg-head"><div><div class="info-group">${esc(SY_ZONE[syZoneOf(s)])}</div><h3>${esc(s.name)}</h3>
-      <div class="st-meta">${esc([SY_PATTERN[s.pattern], onset].filter(Boolean).join(" · "))}</div></div>
-      <button type="button" class="icon-btn" data-xclose aria-label="Закрыть">×</button></div>
-    <div class="st-tags">${status}${sev ? `<span class="sy-sev s${sev}">${esc(SY_SEV_NAME[sev])}</span>` : ""}
-      <button type="button" class="sy-mainb" data-sy-main aria-pressed="${!!s.main}">${s.main ? "★ Главное" : "☆ Главное"}</button></div>
-    ${quiet ? `<div class="sy-ask"><span>Последний раз отмечено ${esc(longDate(last))}. Прошло?</span><button type="button" class="btn sm" data-sy-end="${esc(id)}">Да, прошло</button></div>` : ""}
-    ${s.note ? `<section class="st-sec"><h4>Как проявляется</h4><p class="st-text">${esc(s.note)}</p></section>` : ""}
-    ${track}
-    ${log.length ? `<section class="st-sec"><h4>${s.pattern === "const" ? "Отметки" : "Когда было"} · ${log.length}</h4><div class="sy-log">${shown.map(e => `<div class="sy-lrow">${syDot(e.sev)}<span class="num">${fmtDate(e.d)}</span><span class="sy-lnote">${e.sev ? `<b class="sy-sev s${e.sev}">${esc(SY_SEV_NAME[e.sev])}</b>${entry(e) ? " · " : ""}` : ""}${esc(entry(e))}</span><button type="button" class="icon-btn sm" data-sy-ldel="${esc(e.d)}|${esc(e.t || "")}" aria-label="Удалить запись">×</button></div>`).join("")}</div>
-      ${log.length > shown.length ? `<button type="button" class="btn sm ghost" data-sy-alllog>Показать все ${log.length}</button>` : ""}</section>` : ""}
-    <section class="st-sec"><div class="sy-sech"><h4>Что пробовал${tried.length ? ` · ${tried.length}` : ""}</h4>${addBtn("tried")}</div>
+  const body = {
+    // what it is and the one thing done most often: today's mark or a new episode
+    over: () => `${s.note ? `<section class="st-sec"><h4>Как проявляется</h4><p class="st-text">${esc(s.note)}</p></section>` : ""}
+      ${s.pattern === "const" ? `<section class="st-sec"><h4>Как сегодня</h4>
+        <div class="sy-sevs sy-now" role="group" aria-label="Как сегодня">${SY_SEV.map(([k, n]) => `<button type="button" class="sy-sevb s${k}" data-sy-today="${k}" aria-pressed="${todayE?.sev === k}">${n}</button>`).join("")}</div>
+        <p class="muted sy-hint">${todayE ? "Сегодня отмечено. Нажми ту же кнопку ещё раз, чтобы снять." : "Одно нажатие — и день отмечен. По таким отметкам видно, лучше становится или хуже."}</p></section>`
+        : `<section class="st-sec"><h4>${s.pattern === "once" ? "Было ещё раз?" : "Отметить приступ"}</h4>${logForm(false)}</section>`}`,
+    log: () => `${s.pattern === "recur" && log.length ? `<section class="st-sec"><h4>Как часто</h4>
+        <div class="sy-stats"><div><b class="num">${syCount(s, 30)}</b><span>приступов за 30 дней</span></div><div><b class="num">${syDaysIn(s, 30)}</b><span>дней с симптомом за 30</span></div><div><b>${esc(syAgo(last))}</b><span>последний раз</span></div></div></section>` : ""}
+      ${log.length ? `<section class="st-sec">${syHeat(s)}<p class="muted sy-heatcap">${heatCap}</p></section>` : ""}
+      ${s.pattern === "const" ? `<details class="sy-moref sy-other"><summary>Отметить другой день или с заметкой</summary>${logForm(true)}</details>` : ""}
+      ${log.length ? `<section class="st-sec"><h4>${s.pattern === "const" ? "Отметки" : "Когда было"} · ${log.length}</h4><div class="sy-log">${shown.map(e => `<div class="sy-lrow">${syDot(e.sev)}<span class="num">${fmtDate(e.d)}</span><span class="sy-lnote">${e.sev ? `<b class="sy-sev s${e.sev}">${esc(SY_SEV_NAME[e.sev])}</b>${entry(e) ? " · " : ""}` : ""}${esc(entry(e))}</span><button type="button" class="icon-btn sm" data-sy-ldel="${esc(e.d)}|${esc(e.t || "")}" aria-label="Удалить запись">×</button></div>`).join("")}</div>
+        ${log.length > shown.length ? `<button type="button" class="btn sm ghost" data-sy-alllog>Показать все ${log.length}</button>` : ""}</section>`
+        : `<p class="muted sy-hint">${s.pattern === "const" ? "Отметок пока нет. Отмечай на вкладке «Обзор», как сегодня, — здесь появится картина по дням." : "Приступов пока не отмечено."}</p>`}`,
+    care: () => `<section class="st-sec"><div class="sy-sech"><h4>Что пробовал${tried.length ? ` · ${tried.length}` : ""}</h4>${addBtn("tried")}</div>
       ${tried.length ? `<div class="sy-tried">${tried.map((x, i) => `<div class="sy-trow"><span class="sy-tname"><b>${esc(x.name)}</b>${x.note ? `<small>${esc(x.note)}</small>` : ""}</span>
         <div class="sy-effs" role="group" aria-label="Как подействовало: ${esc(x.name)}">${SY_EFF.map(([k, n]) => `<button type="button" class="sy-eff e-${k}" data-sy-eff="${i}|${k}" aria-pressed="${x.eff === k}">${n}</button>`).join("")}</div>
         <button type="button" class="icon-btn sm" data-sy-tdel="${i}" aria-label="Убрать: ${esc(x.name)}">×</button></div>`).join("")}</div>`
         : `<p class="muted sy-hint">Лекарства, капли, упражнения, процедуры — и помогло ли. Врачу важно и то, что не помогло.</p>`}
       <form class="sy-addf" data-sy-tadd${ui.syAddOpen === "tried" ? "" : " hidden"}><input class="input" name="name" placeholder="Например: парацетамол 500 мг" autocomplete="off"><input class="input" name="note" placeholder="как принимал — необязательно" autocomplete="off"><button type="submit" class="btn">Добавить</button></form>
     </section>
-    <section class="st-sec"><div class="sy-sech"><h4>Что провоцирует</h4>${addBtn("trig")}</div>
+    <section class="st-sec"><div class="sy-sech"><h4>Что провоцирует${trig.length ? ` · ${trig.length}` : ""}</h4>${addBtn("trig")}</div>
       ${trig.length ? `<div class="tchips sy-trigs">${trig.map((t, i) => `<span class="tchip">${esc(t)}<button type="button" data-sy-trdel="${i}" aria-label="Убрать: ${esc(t)}">×</button></span>`).join("")}</div>`
         : `<p class="muted sy-hint">Запахи, еда, недосып, погода, стресс — что замечаешь перед ухудшением.</p>`}
       <form class="sy-addf" data-sy-tradd${ui.syAddOpen === "trig" ? "" : " hidden"}><input class="input" name="t" placeholder="Например: недосып" autocomplete="off"><button type="submit" class="btn">Добавить</button></form>
-    </section>
-    ${g ? `<section class="st-sec"><h4>Анализы</h4><p class="sy-guide">${esc(g.lead)}</p>
-      <button type="button" class="btn" data-sy-sit="${esc(s.sit)}">Открыть план анализов: ${esc(s.sit.toLowerCase())}</button>
-      ${g.flags ? `<div class="g-flags"><b>Сразу к врачу, если:</b> ${esc(g.flags)}</div>` : ""}</section>` : ""}
-    <div class="dlg-foot"><button type="button" class="btn ghost danger" data-sy-del="${esc(id)}">${ui.confirmSy === id ? "Точно удалить?" : "Удалить"}</button><span style="flex:1"></span>
+    </section>`,
+    labs: () => syTestsTab(s, tests),
+  };
+  const tabs = [["over", "Обзор", 0], ["log", "Отметки", log.length], ["care", "Что влияет", tried.length + trig.length], ["labs", "Анализы", tests.taken.length + tests.studies.length]];
+  openX(`<div class="dlg-head"><div><div class="info-group">${esc(SY_ZONE[syZoneOf(s)])}</div><h3>${esc(s.name)}</h3>
+      <div class="st-meta">${esc([SY_PATTERN[s.pattern], onset].filter(Boolean).join(" · "))}</div></div>
+      <button type="button" class="icon-btn" data-xclose aria-label="Закрыть">×</button></div>
+    <div class="st-tags">${status}${sev ? `<span class="sy-sev s${sev}">${esc(SY_SEV_NAME[sev])}</span>` : ""}
+      <button type="button" class="sy-mainb" data-sy-main aria-pressed="${!!s.main}">${s.main ? "★ Главное" : "☆ Главное"}</button></div>
+    ${quiet ? `<div class="sy-ask"><span>Последний раз отмечено ${esc(longDate(last))}. Прошло?</span><button type="button" class="btn sm" data-sy-end="${esc(id)}">Да, прошло</button></div>` : ""}
+    <div class="sy-tabs" role="tablist">${tabs.map(([k, n, c]) => `<button type="button" role="tab" data-sy-tab="${k}" aria-selected="${tab === k}">${n}${c ? `<span class="num">${c}</span>` : ""}</button>`).join("")}</div>
+    <div class="sy-tabc" role="tabpanel">${body[tab]()}</div>
+    <div class="dlg-foot"><span style="flex:1"></span>
       <button type="button" class="btn ghost" data-sy-end="${esc(id)}">${past ? "Снова беспокоит" : "Прошло"}</button>
       <button type="button" class="btn primary" data-sy-edit="${esc(id)}">Изменить</button></div>`, "st-dlg sy-dlg");
 }
@@ -412,7 +461,7 @@ function openSymptomForm(id, presetName) {
       ${id ? "" : `<div class="fld" data-sy-firstf${s.pattern === "const" ? " hidden" : ""}><span>Когда было последний раз</span>${dfield('name="first"', today, { empty: "Не отмечать", clear: true })}</div>`}
       <label class="fld"><span>Как проявляется</span><textarea class="input sy-grow" name="note" rows="3" placeholder="Где именно, какая боль, когда начинается и проходит">${esc(s.note || "")}</textarea></label>
       <div class="fld"><span>Область</span>${csel('name="zonePick"', [["", "Определится сама"], ...SY_ZONES.map(([k, n]) => [k, n])], s.zone && (s.zone !== "other" || s.zoneHand) ? s.zone : "")}</div>
-      <div class="dlg-foot"><span style="flex:1"></span><button type="button" class="btn ghost" data-xclose>Отмена</button><button type="submit" class="btn primary">Сохранить</button></div>
+      <div class="dlg-foot">${id ? `<button type="button" class="btn ghost danger" data-sy-del="${esc(id)}">${ui.confirmSy === id ? "Точно удалить?" : "Удалить"}</button>` : ""}<span style="flex:1"></span><button type="button" class="btn ghost" data-xclose>Отмена</button><button type="submit" class="btn primary">Сохранить</button></div>
     </form>`, "st-dlg sy-dlg");
   syGrowAll();
   if (!presetName && !id) setTimeout(() => syF("name")?.focus(), 40);
@@ -451,7 +500,7 @@ function saveSymptom() {
 /* ---------- wiring ---------- */
 function initSymptoms() {
   const page = $("#symptomsView");
-  const rowAct = e => { const r = e.target.closest("[data-sy]"); if (r) { ui.confirmSy = null; ui.syAllLog = false; ui.syAddOpen = null; openSymptom(r.dataset.sy); } };
+  const rowAct = e => { const r = e.target.closest("[data-sy]"); if (r) { ui.confirmSy = null; ui.syAllLog = false; ui.syAddOpen = null; ui.syTab = "over"; openSymptom(r.dataset.sy); } };
   page.addEventListener("click", e => {
     const t = e.target;
     const n = t.closest("[data-sy-new]"); if (n) { openSymptomForm(null, n.dataset.syNew || undefined); return; }
@@ -479,6 +528,17 @@ function initSymptoms() {
     if (en) { const s = state.symptoms[en.dataset.syEnd], was = syPast(s); s.end = was ? "" : todayISO(); save(); renderAll(); openSymptom(en.dataset.syEnd); toast(was ? "Снова в списке «Беспокоит сейчас»" : "Отмечено, что прошло"); return; }
     const sit = t.closest("[data-sy-sit]"); if (sit) { closeX(); setView("labs"); setSit(sit.dataset.sySit); $(".toolbar")?.scrollIntoView({ behavior: "smooth", block: "start" }); return; }
     if (t.closest("[data-sy-alllog]")) { ui.syAllLog = true; syReopen(); return; }
+    const tb = t.closest("[data-sy-tab]");
+    if (tb) {
+      // keep the tab bar where it was; a long tab scrolled down does not drop the next one in its middle
+      const d = $("#xDlg"), y = d.scrollTop; ui.syTab = tb.dataset.syTab; ui.syAddOpen = null;
+      openSymptom(ui.syOpen); const bar = $(".sy-tabs"); d.scrollTop = Math.min(y, bar ? bar.offsetTop - 12 : 0);
+      return;
+    }
+    const mk = t.closest("[data-sy-mk]"); if (mk) { closeX(); focusRow(mk.dataset.syMk); return; }
+    const mi = t.closest("[data-sy-mkinfo]"); if (mi) { openInfo(mi.dataset.syMkinfo); return; }
+    const md = t.closest("[data-sy-mkdel]"); if (md) { const s = cur(); s.labs = (s.labs || []).filter(x => x !== md.dataset.syMkdel); reopen(); return; }
+    const sd = t.closest("[data-sy-study]"); if (sd) { openStudy(sd.dataset.syStudy); return; }
     if (t.closest("[data-sy-main]")) { const s = cur(); s.main = !s.main; reopen(); toast(s.main ? "Добавлено в главное" : "Убрано из главного"); return; }
     const tdy = t.closest("[data-sy-today]");
     if (tdy) {
@@ -490,7 +550,7 @@ function initSymptoms() {
     }
     const ao = t.closest("[data-sy-addopen]");
     if (ao) {
-      const k = ao.dataset.syAddopen, f = $(k === "tried" ? "[data-sy-tadd]" : "[data-sy-tradd]"), open = f.hidden;
+      const k = ao.dataset.syAddopen, f = $(k === "tried" ? "[data-sy-tadd]" : k === "labs" ? "[data-sy-mkadd]" : "[data-sy-tradd]"), open = f.hidden;
       f.hidden = !open; ui.syAddOpen = open ? k : null; ao.setAttribute("aria-expanded", open);
       if (open) $("input", f).focus();
       return;
@@ -514,6 +574,12 @@ function initSymptoms() {
     const pt = t.closest("[data-sy-pat]"); if (pt) { sySetPattern(pt.dataset.syPat); return; }
     const sv = t.closest("[data-sy-sev]");
     if (sv) { const on = syF("sev").value !== sv.dataset.sySev; syF("sev").value = on ? sv.dataset.sySev : ""; $$("[data-sy-sev]").forEach(b => b.setAttribute("aria-pressed", on && b === sv)); return; }
+  });
+  // the test plan of the open complaint, picked from the list on the tests tab
+  xd.addEventListener("change", e => {
+    if (e.target.name !== "sySit" || !ui.syOpen || !xd.classList.contains("sy-dlg")) return;
+    const s = cur(); if (!s) return;
+    s.sit = e.target.value; reopen();
   });
   xd.addEventListener("input", e => {
     if (e.target.matches(".sy-grow")) {
@@ -553,6 +619,14 @@ function initSymptoms() {
       const had = (s.tried || []).find(x => norm(x.name) === norm(name));
       if (had) { if (v.note.trim()) had.note = v.note.trim(); } else s.tried = [...(s.tried || []), { name, eff: "", note: (v.note || "").trim() }];
       reopen(); $("[data-sy-tadd] [name=name]")?.focus(); return;
+    }
+    if (f.matches("[data-sy-mkadd]")) {
+      e.preventDefault();
+      const q = (v.q || "").trim(); if (!q) return;
+      const m = (window.CATALOG || []).find(x => norm(x.ru) === norm(q)) || (window.CATALOG || []).find(x => matches(info(x.id), q));
+      if (!m) { toast("Такого анализа нет в справочнике"); return; }
+      if (!(s.labs || []).includes(m.id)) s.labs = [...(s.labs || []), m.id];
+      reopen(); toast(`Прикреплено: ${info(m.id).ru}`); return;
     }
     if (f.matches("[data-sy-tradd]")) {
       e.preventDefault();

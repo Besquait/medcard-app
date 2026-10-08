@@ -106,7 +106,7 @@ function dyRecent() {
 
 /* ---------- links ---------- */
 // days with the factor against days without it. A difference is shown only when it is unlikely to be chance:
-// Welch's t of 2 and more (roughly p < 0.05); per pair the surer of "same day" and "next day" is kept.
+// Welch's t of 2.5 and more (hundreds of pairs are compared, so the bar is above the usual 2); per pair the surer of "same day" and "next day" is kept.
 function dyLinks() {
   const days = state.days || {}, dates = Object.keys(days).filter(d => dyHas(days[d])).sort();
   const outs = [{ name: "Самочувствие", mood: true, scale: 4, get: d => days[d]?.mood || null }];
@@ -129,7 +129,7 @@ function dyLinks() {
     const key = (o.id || "mood") + "|" + fid, prev = best.get(key);
     if (!prev || r.t > prev.t) best.set(key, r);
   }
-  return [...best.values()].filter(r => r.w >= 0.12 && r.t >= 2).sort((x, y) => y.t - x.t).slice(0, 12);
+  return [...best.values()].filter(r => r.w >= 0.12 && r.t >= 2.5).sort((x, y) => y.t - x.t).slice(0, 12);
 }
 // four weeks side by side: the overall state on top, complaints below
 function dyGrid() {
@@ -163,7 +163,7 @@ function dyLinksTab() {
     const what = r.o.mood ? `самочувствие ${r.diff > 0 ? "лучше" : "хуже"}` : `«${esc(r.o.name)}» ${r.diff > 0 ? "сильнее" : "слабее"}`;
     return `<div class="dy-link${worse ? " worse" : ""}"><div class="dy-lt"><b>${esc(dyCap(r.phrase))}</b> → ${what}${r.lag ? " на следующий день" : ""}</div>
       <div class="dy-lbar"><i style="width:${Math.min(100, Math.round(r.w * 250))}%"></i></div>
-      <small>${r.t >= 3 ? "Чёткая связь" : "Есть связь"} · в среднем ${dyNum(r.a)} против ${dyNum(r.b)} ${r.o.mood ? "из 5" : "по шкале 0–3"} · дней с этим ${r.na}, без — ${r.nb}</small></div>`;
+      <small>${r.t >= 3.5 ? "Чёткая связь" : "Есть связь"} · в среднем ${dyNum(r.a)} против ${dyNum(r.b)} ${r.o.mood ? "из 5" : "по шкале 0–3"} · дней с этим ${r.na}, без — ${r.nb}</small></div>`;
   };
   return `<section class="card dy-links"><h3>Что связано с самочувствием</h3>
       <p>По ${n} ${plural(n, "записанному дню", "записанным дням", "записанным дням")}${n < DY_GOAL ? " — пока предварительно" : ""}: в какие дни становится лучше или хуже.</p>

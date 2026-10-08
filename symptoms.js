@@ -4,8 +4,8 @@
 //   recur — comes and goes (headaches); every episode is a dated entry with how long it lasted
 //   const — there all the time (ringing ears); entries are optional check-ins of how strong it is that day
 // Around each complaint: when it started (a year is enough), how it shows, what was tried and whether it
-// helped, what sets it off. The page opens with a one-tap check-in across all current complaints and a
-// four-week diary, so frequency and overlaps are visible at a glance and go into the doctor report.
+// helped, what sets it off. A complaint can be marked as main. The page shows the main ones first, then every
+// complaint under its organ; the doctor report keeps that order: main complaints, then the rest by organ system.
 // Loaded before app.js: definitions only; initSymptoms() wires the UI.
 "use strict";
 
@@ -84,7 +84,8 @@ const syPast = s => !!s.end || (s.pattern === "once" && (syAgoDays(s) ?? 0) > SY
 const syQuiet = s => !s.end && s.pattern === "recur" && (syAgoDays(s) ?? 0) > SY_QUIET_DAYS;
 // severity: the latest rated entry wins, otherwise the one set in the form
 const sySev = s => { const l = syLog(s).filter(e => e.sev); return l.length ? l[l.length - 1].sev : s.sev || 0; };
-const syOrder = (a, b) => SY_ZONE_ORDER[syZoneOf(a)] - SY_ZONE_ORDER[syZoneOf(b)] || sySev(b) - sySev(a) || a.name.localeCompare(b.name, "ru");
+const syOrder = (a, b) => SY_ZONE_ORDER[syZoneOf(a)] - SY_ZONE_ORDER[syZoneOf(b)] || !!b.main - !!a.main || sySev(b) - sySev(a) || a.name.localeCompare(b.name, "ru");
+const syByWeight = (a, b) => sySev(b) - sySev(a) || syOrder(a, b);
 
 /* ---------- dates ---------- */
 // start is a year ("2020"), a month ("2024-03") or a day; arithmetic uses its first day
@@ -124,15 +125,17 @@ const sySevWord = v => SY_SEV_NAME[v] || "отмечено";
 const syCount = (s, days) => (s.log || []).filter(e => e.d && e.d <= todayISO() && daysBetween(e.d, todayISO()) < days).length;
 const syDaysIn = (s, days) => Object.keys(syDays(s)).filter(d => d <= todayISO() && daysBetween(d, todayISO()) < days).length;
 const syDot = sev => `<i class="sy-dot ${syCls(sev)}" aria-hidden="true"></i>`;
-// one line under the name: how it behaves right now
-function syWhen(s) {
+// one short line under the name: how it behaves, without the long onset notes (those stay in the card)
+function syShort(s) {
   if (s.end) return `прошло ${fmtDate(s.end)}`;
-  if (s.pattern === "const") return syOnsetFull(s).join(" · ") || "постоянно";
-  const last = syLast(s);
-  if (s.pattern === "once") return last ? longDate(last) : syOnset(s);
-  if (!last) return syOnset(s) || "приступы ещё не отмечены";
-  const n = syCount(s, 30);
-  return `${n ? `${n} ${plural(n, "раз", "раза", "раз")} за 30 дней` : "за 30 дней не было"} · последний ${syAgo(last)}`;
+  const last = syLast(s), shortSince = s.since && s.since.length <= 24 ? s.since : "";
+  if (s.pattern === "once") return last ? `разово · ${longDate(last)}` : "разово";
+  if (s.pattern === "recur") {
+    if (!last) return ["приступами", syAge(s) || (s.start ? syOnset(s) : shortSince)].filter(Boolean).join(" · ");
+    const n = syCount(s, 30);
+    return `приступами · ${n ? `${n} ${plural(n, "раз", "раза", "раз")} за 30 дней` : `последний ${syAgo(last)}`}`;
+  }
+  return ["постоянно", syAge(s) || shortSince].filter(Boolean).join(" · ");
 }
 function syAddEntry(id, e) {
   const s = state.symptoms[id]; if (!s) return;
@@ -186,19 +189,22 @@ function renderSymptoms() {
   }
   const now = all.filter(s => !syPast(s)).sort(syOrder);
   const past = all.filter(syPast).sort((a, b) => (b.end || syLast(b) || "").localeCompare(a.end || syLast(a) || ""));
+  const main = now.filter(s => s.main).sort(syByWeight);
+  const strong = now.filter(s => sySev(s) === 3).length;
   const eps = now.reduce((n, s) => n + (s.pattern === "const" ? 0 : syCount(s, 30)), 0);
-  const sub = [`${now.length} ${plural(now.length, "беспокоит", "беспокоят", "беспокоят")} сейчас`, eps ? `${eps} ${plural(eps, "эпизод", "эпизода", "эпизодов")} за 30 дней` : "", past.length ? `${past.length} прошло` : ""].filter(Boolean).join(" · ");
-  const focus = document.activeElement?.dataset?.syTap;
+  const sub = [`${now.length} ${plural(now.length, "жалоба", "жалобы", "жалоб")} сейчас`, strong ? `${strong} ${plural(strong, "сильная", "сильные", "сильных")}` : "",
+    eps ? `${eps} ${plural(eps, "приступ", "приступа", "приступов")} за 30 дней` : "", past.length ? `${past.length} прошло` : ""].filter(Boolean).join(" · ");
   box.innerHTML = `
     <div class="st-head">
       <div><h2>Симптомы</h2><p class="st-sub">${sub}</p></div>
-      <button type="button" class="btn primary" data-sy-new>Добавить</button>
+      <div class="sy-hbtns"><button type="button" class="btn" data-sy-report>Сводка для врача</button><button type="button" class="btn primary" data-sy-new>Добавить</button></div>
     </div>
     ${"" /* daily check-in (syToday) and the four-week diary (syDiary) are hidden for now: they got in the way */}
-    ${now.length ? syListHtml(now) : `<div class="empty">Сейчас ничего не беспокоит.</div>`}
+    ${main.length ? syGroup("Главное", main, true) : now.length > 3 ? `<p class="sy-tip">Открой жалобу и нажми «☆ Главное» — главные встанут сюда и первыми пойдут в сводку для врача.</p>` : ""}
+    ${now.length ? `<div class="sy-organs">${SY_ZONES.map(([z, n]) => { const l = now.filter(s => syZoneOf(s) === z); return l.length ? syGroup(n, l) : ""; }).join("")}</div>`
+      : `<div class="empty">Сейчас ничего не беспокоит.</div>`}
     ${syAnamCard()}
-    ${past.length ? `<details class="sy-past"${ui.syPastOpen ? " open" : ""}><summary class="st-year">Прошло · ${past.length}</summary><div class="card st-list">${past.map(syRow).join("")}</div></details>` : ""}`;
-  if (focus) $(`[data-sy-tap="${CSS.escape(focus)}"]`)?.focus();
+    ${past.length ? `<details class="sy-past"${ui.syPastOpen ? " open" : ""}><summary class="st-year">Прошло · ${past.length}</summary><div class="card st-list">${past.map(s => syRow(s)).join("")}</div></details>` : ""}`;
 }
 const syDayISO = () => addDaysISO(todayISO(), -(ui.syDay || 0));
 // strength of an entry made on that very day; an episode carried over from earlier days is not a check-in
@@ -226,30 +232,25 @@ function syDiary(list) {
       <span class="sy-gpad"></span><div class="sy-gaxis"><span>${fmtDate(from)}</span><span>сегодня</span></div></div>
   </section>`;
 }
-// five and more complaints are grouped by body area inside one card
-function syListHtml(now) {
-  const zones = [...new Set(now.map(syZoneOf))];
-  const worst = l => Math.max(0, ...l.map(sySev));
-  const by = Object.fromEntries(zones.map(z => [z, now.filter(s => syZoneOf(s) === z)]));
-  const map = zones.length > 1 ? `<nav class="sy-organs" aria-label="По органам">${zones.map(z => `<button type="button" class="sy-organ" data-sy-zjump="${z}">${syDot(worst(by[z]))}<b>${esc(SY_ZONE[z])}</b><span class="num">${by[z].length}</span></button>`).join("")}</nav>` : "";
-  return `<h3 class="st-year">Беспокоит сейчас · ${now.length}</h3>${map}
-    ${zones.map(z => `<section class="sy-zone" id="syz-${z}"><h4 class="sy-zhead">${esc(SY_ZONE[z])}<span class="num">${by[z].length}</span></h4><div class="card st-list sy-list">${by[z].map(syRow).join("")}</div></section>`).join("")}`;
-}
+// one card per organ; in the "main" card each row also names its organ
+const syGroup = (title, list, main) => `<section class="card sy-group${main ? " sy-maing" : ""}" aria-label="${esc(title)}">
+  <h3 class="sy-ghd">${main ? "★ " : ""}${esc(title)}<span class="num">${list.length}</span></h3>
+  <div class="st-list">${list.map(s => syRow(s, main)).join("")}</div></section>`;
 // last 14 days as small ticks, filled on days with an episode
 function syTicks(s) {
   const by = syDays(s); let out = "";
   for (let i = 13; i >= 0; i--) { const d = addDaysISO(todayISO(), -i); out += `<i class="${syCls(by[d])}" title="${fmtDate(d)}"></i>`; }
   return `<span class="sy-ticks" aria-hidden="true">${out}</span>`;
 }
-function syRow(s) {
-  const past = syPast(s), sev = past ? 0 : sySev(s), lead = (s.note || "").split("\n")[0];
+function syRow(s, inMain) {
+  const past = syPast(s), sev = past ? 0 : sySev(s);
+  const meta = [inMain ? SY_ZONE[syZoneOf(s)] : "", syShort(s)].filter(Boolean).join(" · ");
   const side = syQuiet(s) ? `<span class="sy-quiet">давно не отмечал</span>` : s.pattern === "recur" && !past && syDaysIn(s, 14) ? syTicks(s) : "";
   return `<div class="sy-row${past ? " past" : ""}" role="button" tabindex="0" data-sy="${esc(s.id)}">
     ${syDot(sev)}
     <span class="st-main">
-      <b class="st-title">${esc(s.name)}</b>
-      <span class="sy-when">${esc(SY_PATTERN[s.pattern] || "")}${syWhen(s) ? " · " + esc(syWhen(s)) : ""}</span>
-      ${lead ? `<span class="st-concl">${esc(lead)}</span>` : ""}
+      <b class="st-title">${esc(s.name)}${s.main && !inMain && !past ? `<span class="sy-star" aria-label="главное">★</span>` : ""}</b>
+      <span class="sy-when">${esc(meta)}</span>
     </span>
     <span class="sy-side">${side}${sev ? `<span class="sy-sev s${sev}">${esc(SY_SEV_NAME[sev])}</span>` : ""}</span>
     <svg class="chev" width="18" height="18" viewBox="0 0 20 20" aria-hidden="true"><path d="M7 4l6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>

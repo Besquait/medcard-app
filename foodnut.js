@@ -168,7 +168,7 @@ function fdNutMini(d) {
   const ok = keys.filter(k => pct(k) >= 100).length;
   return `<section class="card cl-side-card"><h4>Витамины и минералы</h4>
     <div class="cl-stat"><span>Главных в норме</span><b>${ok} из ${keys.length}</b></div>
-    <div class="fd-mini">${keys.map(k => `<span class="fd-mi ${pct(k) >= 100 ? "ok" : pct(k) >= 50 ? "mid" : "low"}" title="${esc(FD_NI[k][0])}: ${pct(k)}%"><i style="height:${Math.min(100, pct(k))}%"></i><small>${esc(FD_NI[k][0].replace(/^(Витамин |Омега-3 )/, "").split(" ")[0].slice(0, 6))}</small></span>`).join("")}</div>
+    <div class="fd-mini">${keys.map(k => `<span class="fd-mi ${pct(k) >= 100 ? "ok" : pct(k) >= 50 ? "mid" : "low"}" title="${esc(FD_NI[k][0])}: ${pct(k)}%"><i><b style="height:${Math.min(100, pct(k))}%"></b></i><small>${esc(FD_NI[k][0].replace(/^(Витамин |Омега-3 )/, "").split(" ")[0].slice(0, 6))}</small></span>`).join("")}</div>
     <button type="button" class="cl-link" data-fd-nutgo>Все нутриенты →</button></section>`;
 }
 // the full make-up of one eaten item

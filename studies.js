@@ -334,8 +334,8 @@ async function deleteStudy(id) {
 
 /* ---------- views ---------- */
 // views: labs (the default), studies, symptoms, therapy; the hash keeps the tab across reloads
-const VIEWS = { calendar: "#calendarView", labs: "#labsView", studies: "#studiesView", symptoms: "#symptomsView", therapy: "#therapyView", drugs: "#drugsView" };
-const TB_VIEW = { calendar: "calendar", list: "labs", studies: "studies", symptoms: "symptoms", therapy: "therapy", drugs: "drugs" };
+const VIEWS = { calendar: "#calendarView", food: "#foodView", labs: "#labsView", studies: "#studiesView", symptoms: "#symptomsView", therapy: "#therapyView", drugs: "#drugsView" };
+const TB_VIEW = { calendar: "calendar", food: "food", list: "labs", studies: "studies", symptoms: "symptoms", therapy: "therapy", drugs: "drugs" };
 function setView(v) {
   const prev = ui.view;
   ui.view = VIEWS[v] ? v : "calendar";
@@ -350,7 +350,8 @@ function setView(v) {
   if (ui.view === "therapy") renderTherapy();
   if (ui.view === "drugs") renderDrugs();
   if (ui.view === "calendar") renderCalendar();
-  $$("#mobSeg [data-view-go]").forEach(b => b.setAttribute("aria-pressed", b.dataset.viewGo === ui.view));
+  if (ui.view === "food") renderFood();
+  $$("#mobSeg [data-view-go], #mobSeg2 [data-view-go]").forEach(b => b.setAttribute("aria-pressed", b.dataset.viewGo === ui.view));
   if (prev !== ui.view) viewIn($(VIEWS[ui.view]));
   scrollTo({ top: 0 });
 }

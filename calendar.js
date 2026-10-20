@@ -315,6 +315,7 @@ function clDayCard(d, withSleep) {
     ${main.length || rest.length ? `<section class="card cl-box t-edge">${clHead("t-edge", CL_I.sy, main.length ? "Главные жалобы" : "Жалобы", "как было в худший момент", main.length ? `<span class="cl-cnt">${marked} из ${main.length}</span>` : "")}
       <div class="cl-sys">${main.map(syRow).join("")}</div>
       ${rest.length ? `<details class="dy-more cl-more2"${ui.dyMore || !main.length ? " open" : ""}><summary>${main.length ? "Остальные жалобы" : "Все жалобы"} · ${rest.length}${restMarked ? `, отмечено ${restMarked}` : ""}</summary><div class="cl-sys">${rest.map(syRow).join("")}</div></details>` : ""}</section>` : ""}
+    ${typeof fdDayCard === "function" ? fdDayCard(d) : ""}
     <section class="card cl-box t-low">${clHead("t-low", CL_I.fac, "Что было", "только то, что могло повлиять", fCount ? `<span class="cl-cnt">${fCount}</span>` : "")}
       ${CL_FGROUPS.map(([g, l]) => `<div class="cl-fg"><span class="cl-fgn">${g}</span><div class="tchips">${l.filter(k => name[k]).map(chip).join("")}
         ${g === "Еда" ? `<label class="cl-meal${gap != null && gap < 180 ? " late" : ""}"><span>Последняя еда</span><input class="input" type="time" data-cl-meal value="${esc(x.meal || "")}">${gap != null ? `<em>за ${clHours(gap)} до сна</em>` : ""}</label>` : ""}</div></div>`).join("")}
@@ -479,7 +480,7 @@ function initCalendar() {
     // the last meal: under 3 hours before bed ticks "late dinner" by itself
     if (e.target.matches("[data-cl-meal]")) {
       const d = clSel(), v = e.target.value;
-      touch(d, x => { if (v) x.meal = v; else delete x.meal; });
+      touch(d, x => { if (v) x.meal = v; else delete x.meal; delete x.mealFd; });
       const gap = clMealGap(d);
       if (gap != null) touch(d, x => { x.f = { ...(x.f || {}), late: gap < 180 }; });
       return;

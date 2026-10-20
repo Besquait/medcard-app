@@ -16,7 +16,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&display=swap">
-  <link rel="stylesheet" href="styles.css?v=69">
+  <link rel="stylesheet" href="styles.css?v=70">
 </head>
 <body>
   <div class="gate" id="gate" hidden>
@@ -37,6 +37,7 @@
       <a class="brand" href="#"><span class="logo" aria-hidden="true"></span>Медкарта</a>
       <nav class="tabs" aria-label="Разделы">
         <button class="tab" data-view="calendar">Календарь</button>
+        <button class="tab" data-view="food">Еда</button>
         <button class="tab" data-view="labs" aria-current="page">Анализы</button>
         <button class="tab" data-view="studies">Обследования</button>
         <button class="tab" data-view="symptoms">Симптомы</button>
@@ -58,7 +59,9 @@
     </header>
 
     <div class="seg mob-seg" id="mobSeg" role="tablist" aria-label="Результаты"><button type="button" data-view-go="labs">Анализы</button><button type="button" data-view-go="studies">Обследования</button></div>
+    <div class="seg mob-seg mob-seg2" id="mobSeg2" role="tablist" aria-label="Лечение"><button type="button" data-view-go="therapy">Лечение</button><button type="button" data-view-go="drugs">Препараты</button></div>
     <div id="calendarView" class="studies symptoms calendar" hidden></div>
+    <div id="foodView" class="studies symptoms calendar food" hidden></div>
     <div id="labsView">
     <section class="overview" id="overview" aria-label="Сводка"></section>
     <section class="due" id="due" hidden aria-label="Пора пересдать"></section>
@@ -121,7 +124,7 @@
     <button type="button" class="tb tb-add" data-tb="add" aria-label="Внести анализы"><svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg></button>
     <button type="button" class="tb" data-tb="symptoms"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7-4.4-7-10.2A4.3 4.3 0 0 1 12 8a4.3 4.3 0 0 1 7 2.8C19 16.6 12 21 12 21z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/></svg><span>Симптомы</span></button>
     <button type="button" class="tb" data-tb="therapy"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="8.5" width="17" height="7" rx="3.5" transform="rotate(-45 12 12)" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M9.5 9.5l5 5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg><span>Лечение</span></button>
-    <button type="button" class="tb" data-tb="drugs"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="3" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M12 8v8M8 12h8" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg><span>Препараты</span></button>
+    <button type="button" class="tb" data-tb="food"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3v8M5 3v5a2 2 0 0 0 4 0V3M7 11v10M17 21V3c-2 1.5-3 4-3 7v3h3" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Еда</span></button>
   </nav>
 
   <dialog id="entry" class="dialog entry-dlg" aria-labelledby="entryTitle">
@@ -183,25 +186,27 @@
   <div class="toast" id="toast" role="status" hidden></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="config.js?v=69"></script>
-  <script src="catalog.js?v=69"></script>
-  <script src="info.js?v=69"></script>
-  <script src="info-hl.js?v=69"></script>
-  <script src="treat.js?v=69"></script>
-  <script src="guides.js?v=69"></script>
-  <script src="panels.js?v=69"></script>
-  <script src="seed.js?v=69"></script>
-  <script src="cloud.js?v=69"></script>
-  <script src="ui.js?v=69"></script>
-  <script src="signif.js?v=69"></script>
-  <script src="extras.js?v=69"></script>
-  <script src="studies.js?v=69"></script>
-  <script src="symptoms.js?v=69"></script>
-  <script src="diary.js?v=69"></script>
-  <script src="calendar.js?v=69"></script>
-  <script src="drugs.js?v=69"></script>
-  <script src="therapy.js?v=69"></script>
-  <script src="drugview.js?v=69"></script>
-  <script src="app.js?v=69"></script>
+  <script src="config.js?v=70"></script>
+  <script src="catalog.js?v=70"></script>
+  <script src="info.js?v=70"></script>
+  <script src="info-hl.js?v=70"></script>
+  <script src="treat.js?v=70"></script>
+  <script src="guides.js?v=70"></script>
+  <script src="panels.js?v=70"></script>
+  <script src="seed.js?v=70"></script>
+  <script src="cloud.js?v=70"></script>
+  <script src="ui.js?v=70"></script>
+  <script src="signif.js?v=70"></script>
+  <script src="extras.js?v=70"></script>
+  <script src="studies.js?v=70"></script>
+  <script src="symptoms.js?v=70"></script>
+  <script src="diary.js?v=70"></script>
+  <script src="calendar.js?v=70"></script>
+  <script src="foods.js?v=70"></script>
+  <script src="food.js?v=70"></script>
+  <script src="drugs.js?v=70"></script>
+  <script src="therapy.js?v=70"></script>
+  <script src="drugview.js?v=70"></script>
+  <script src="app.js?v=70"></script>
 </body>
 </html>

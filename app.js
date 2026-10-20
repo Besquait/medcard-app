@@ -904,7 +904,7 @@ document.addEventListener("click", e => {
 });
 infoDlg.addEventListener("click", e => { if (e.target === infoDlg) infoDlg.close(); });
 
-function renderAll() { renderOverview(); renderDue(); renderGroups(); renderList(); renderTimeline(); renderStudies(); renderSymptoms(); renderTherapy(); renderDrugs(); renderCalendar(); }
+function renderAll() { renderOverview(); renderDue(); renderGroups(); renderList(); renderTimeline(); renderStudies(); renderSymptoms(); renderTherapy(); renderDrugs(); renderCalendar(); renderFood(); }
 
 /* ============ tooltip ============ */
 const tip = $("#tip");
@@ -1394,7 +1394,8 @@ initDiary();
 initTherapy();
 initDrugs();
 initCalendar();
-$("#mobSeg").addEventListener("click", e => { const b = e.target.closest("[data-view-go]"); if (b) setView(b.dataset.viewGo); });
+initFood();
+$$("#mobSeg, #mobSeg2").forEach(m => m.addEventListener("click", e => { const b = e.target.closest("[data-view-go]"); if (b) setView(b.dataset.viewGo); }));
 const shareToken = new URLSearchParams(location.search).get("share");
 if (shareToken && typeof cloudConfigured === "function" && cloudConfigured()) shareBoot(shareToken);
 else if (typeof cloudConfigured === "function" && cloudConfigured()) cloudBoot();
@@ -1406,8 +1407,8 @@ setTimeout(() => $("#list").classList.add("settled"), 900);
 $("#tabbar").addEventListener("click", e => {
   const b = e.target.closest("[data-tb]"); if (!b) return;
   const k = b.dataset.tb;
-  if (k === "add") { if (ui.view === "studies") openStudyForm(); else if (ui.view === "symptoms") openSymptomForm(); else if (ui.view === "therapy") openPlanForm(); else if (ui.view === "drugs") $("[data-dr-add]")?.click(); else openEntry(); return; }
-  if (k === "studies" || k === "symptoms" || k === "therapy" || k === "drugs" || k === "calendar") { setView(k); return; }
+  if (k === "add") { if (ui.view === "studies") openStudyForm(); else if (ui.view === "symptoms") openSymptomForm(); else if (ui.view === "therapy") openPlanForm(); else if (ui.view === "drugs") $("[data-dr-add]")?.click(); else if (ui.view === "food") $("#foodView [data-fd-q]")?.focus(); else openEntry(); return; }
+  if (k === "studies" || k === "symptoms" || k === "therapy" || k === "drugs" || k === "calendar" || k === "food") { setView(k); return; }
   if (k === "me") { e.stopPropagation(); $("#menuBtn").click(); return; }
   if (ui.view !== "labs") setView("labs");
   if (k === "sit") { $(".toolbar").scrollIntoView({ behavior: "smooth", block: "start" }); setTimeout(() => sitPop.hidden && openSitPop(), 250); return; }

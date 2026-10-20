@@ -27,7 +27,7 @@ const DY_MIN = 3, DY_FIRST = 7, DY_GOAL = 14, DY_GRID = 28;
 const DY_WEEKDAY = ["воскресенье", "понедельник", "вторник", "среда", "четверг", "пятница", "суббота"];
 
 const dyFactors = () => [...DY_FACTORS, ...(state.prefs?.dayFactors || []).map(f => [f.id, f.name, f.name.toLowerCase(), 1])];
-const dyHas = x => !!x && !!(x.mood || x.sleep || x.note || x.f || x.meds || x.prn || x.bed || x.wake || x.x || x.sq || x.lat || x.rest || x.wk != null || x.meal || (x.sy && Object.keys(x.sy).length));
+const dyHas = x => !!x && !!(x.mood || x.sleep || x.note || x.f || x.meds || x.prn || x.bed || x.wake || x.x || x.sq || x.lat || x.rest || x.wk != null || x.meal || x.food || (x.sy && Object.keys(x.sy).length));
 const dyCount = () => Object.values(state.days || {}).filter(dyHas).length;
 function dyDay(d) { state.days ||= {}; return (state.days[d] ||= {}); }
 // an emptied day does not count as recorded
@@ -191,7 +191,7 @@ function dyBind(page, day, render) {
     const sl = t.closest("[data-dy-sleep]");
     if (sl) { const x = dyDay(d), k = +sl.dataset.dySleep; if (x.sleep === k) delete x.sleep; else x.sleep = k; redraw(d); return; }
     const f = t.closest("[data-dy-f]");
-    if (f) { const x = dyDay(d), k = f.dataset.dyF; x.f = { ...(x.f || {}), [k]: !x.f?.[k] }; redraw(d); return; }
+    if (f) { const x = dyDay(d), k = f.dataset.dyF; x.f = { ...(x.f || {}), [k]: !x.f?.[k] }; (x.fm ||= {})[k] = 1; if (x.fa) delete x.fa[k]; redraw(d); return; }
     // "nothing of this": the day still counts as a day without every factor
     if (t.closest("[data-dy-none]")) { const x = dyDay(d), none = !!x.f && !Object.values(x.f).some(Boolean); if (none) delete x.f; else x.f = {}; redraw(d); return; }
     const sy = t.closest("[data-dy-sy]");

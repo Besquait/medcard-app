@@ -160,5 +160,7 @@ function initTherapy() {
     if (del) { const id = del.dataset.tpDel; if (ui.confirmTp !== id) { ui.confirmTp = id; del.textContent = "Точно удалить?"; return; } ui.confirmTp = null; delete state.plans[id]; save(); renderAll(); closeX(); toast("Схема удалена"); }
   });
   xd.addEventListener("submit", e => { if (e.target.matches("[data-tp-form]")) { e.preventDefault(); savePlan(); } });
+  // Enter in a one-line field must not save a half-filled scheme
+  xd.addEventListener("keydown", e => { if (e.key === "Enter" && e.target.matches("[data-tp-form] input")) e.preventDefault(); });
   xd.addEventListener("input", e => { if (xd.classList.contains("tp-dlg") && e.target.matches(".sy-grow")) syGrow(e.target); });
 }

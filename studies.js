@@ -184,13 +184,13 @@ function openStudy(id) {
       <div class="st-meta">${longDate(s.date)}${s.clinic ? " · " + esc(s.clinic) : ""}${s.doctor ? " · " + esc(s.doctor) : ""}</div></div>
       <button type="button" class="icon-btn" data-xclose aria-label="Закрыть">×</button></div>
     ${s.status || due ? `<div class="st-tags">${s.status ? `<span class="st-status ${s.status}"><i></i>${esc(STATUS_NAME[s.status])}</span>` : ""}${due ? `<span class="st-due${left < 0 ? " late" : ""}">Повторить ${left < 0 ? `— просрочено на ${spanText(left)}` : `до ${fmtDate(due)}`}</span>` : ""}</div>` : ""}
-    ${s.conclusion ? `<section class="st-sec"><h4>Заключение</h4><p class="st-text">${esc(s.conclusion)}</p></section>` : ""}
-    ${s.recs ? `<section class="st-sec"><h4>Рекомендации</h4><p class="st-text">${esc(s.recs)}</p></section>` : ""}
+    ${s.conclusion ? `<section class="st-sec"><h4>Заключение</h4>${richText(s.conclusion)}</section>` : ""}
+    ${s.recs ? `<section class="st-sec"><h4>Рекомендации</h4>${richText(s.recs)}</section>` : ""}
     ${files.length ? `<section class="st-sec"><h4>Файлы · ${files.length}</h4><div class="st-gallery">${files.map((f, i) => isImg(f)
       ? `<button type="button" class="st-gimg" data-thumb="${esc(f.path)}" data-file="${i}" title="${esc(f.name)}"></button>`
       : `<button type="button" class="st-gfile" data-file="${i}"><span class="st-ext">${esc((f.name.split(".").pop() || "файл").slice(0, 4).toUpperCase())}</span><span class="st-fname">${esc(f.name)}</span><small>${kb(f.size || 0)}</small></button>`).join("")}</div></section>` : ""}
     ${links ? `<section class="st-sec"><h4>Связанные анализы</h4><p class="muted st-hint">Значение, ближайшее по дате к обследованию. Нажми, чтобы открыть анализ.</p><div class="st-lrows">${links}</div></section>` : ""}
-    ${s.note ? `<section class="st-sec"><h4>Заметка</h4><p class="st-text">${esc(s.note)}</p></section>` : ""}
+    ${s.note ? `<section class="st-sec"><h4>Заметка</h4>${richText(s.note)}</section>` : ""}
     <div class="dlg-foot"><button type="button" class="btn ghost danger" data-st-del="${esc(id)}">${ui.confirmSt === id ? "Точно удалить вместе с файлами?" : "Удалить"}</button><span style="flex:1"></span><button type="button" class="btn primary" data-st-edit="${esc(id)}">Изменить</button></div>`, "st-dlg");
   ui.stOpen = id;
   hydrateThumbs($("#xBody"));

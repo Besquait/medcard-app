@@ -379,7 +379,7 @@ function openSymptom(id) {
   const addBtn = k => `<button type="button" class="btn sm ghost" data-sy-addopen="${k}" aria-expanded="${ui.syAddOpen === k}">+ Добавить</button>`;
   const body = {
     // what it is and the one thing done most often: today's mark or a new episode
-    over: () => `${s.note ? `<section class="st-sec"><h4>Как проявляется</h4><p class="st-text">${esc(s.note)}</p></section>` : ""}
+    over: () => `${s.note ? `<section class="st-sec"><h4>Как проявляется</h4>${richText(s.note)}</section>` : ""}
       ${s.pattern === "const" ? `<section class="st-sec"><h4>Как сегодня</h4>
         <div class="sy-sevs sy-now" role="group" aria-label="Как сегодня">${SY_SEV.map(([k, n]) => `<button type="button" class="sy-sevb s${k}" data-sy-today="${k}" aria-pressed="${todayE?.sev === k}">${n}</button>`).join("")}</div>
         <p class="muted sy-hint">${todayE ? "Сегодня отмечено. Нажми ту же кнопку ещё раз, чтобы снять." : "Одно нажатие — и день отмечен. По таким отметкам видно, лучше становится или хуже."}</p></section>`

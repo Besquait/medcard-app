@@ -134,3 +134,16 @@ function initUI() {
     if (v) { const [y, m] = v.split("-").map(Number); f._cal = { y, m: m - 1, view: "days" }; const txt = e.target.value; dRender(f); const inp = $(".cal-type", f); inp.value = txt; inp.focus(); $(`[data-dc-d="${v}"]`, f)?.classList.add("hint"); }
   });
 }
+
+// long medical text made readable: "Label: a; b; c" becomes a bold label with points,
+// "Name — how to take" a bold name with the rest, any other line stays a paragraph
+function richText(text) {
+  const lines = String(text || "").split("
+").map(l => l.trim()).filter(Boolean);
+  return `<div class="rt">${lines.map(l => {
+    const m = l.match(/^([^:;—]{2,48}):\s+(.+)$/) || l.match(/^([^:;]{2,60}?)\s+—\s+(.+)$/);
+    if (!m) return `<p>${esc(l)}</p>`;
+    const parts = m[2].split(/;\s+/).map(x => x.trim()).filter(Boolean);
+    return `<div class="rt-row"><b>${esc(m[1])}</b>${parts.length > 1 ? `<ul>${parts.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : `<span>${esc(m[2])}</span>`}</div>`;
+  }).join("")}</div>`;
+}

@@ -138,8 +138,7 @@ function initUI() {
 // long medical text made readable: "Label: a; b; c" becomes a bold label with points,
 // "Name — how to take" a bold name with the rest, any other line stays a paragraph
 function richText(text) {
-  const lines = String(text || "").split("
-").map(l => l.trim()).filter(Boolean);
+  const lines = String(text || "").split("\n").map(l => l.trim()).filter(Boolean);
   return `<div class="rt">${lines.map(l => {
     const m = l.match(/^([^:;—]{2,48}):\s+(.+)$/) || l.match(/^([^:;]{2,60}?)\s+—\s+(.+)$/);
     if (!m) return `<p>${esc(l)}</p>`;

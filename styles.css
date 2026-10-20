@@ -2018,5 +2018,6 @@ button.ov[disabled] { cursor: default; }
   .overview { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; overflow: visible; margin: 16px 0 0; padding: 0; }
   .ov { min-height: 132px; padding: 16px; }
   .ov-v { font-size: 25px; }
-  .ov-rv { font-size: 14.5px; }
+  .ov-row { grid-template-columns: 10px minmax(0, 1fr); row-gap: 4px; }
+  .ov-rv { grid-column: 2; font-size: 14.5px; white-space: normal; }
 }

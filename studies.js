@@ -331,8 +331,8 @@ async function deleteStudy(id) {
 
 /* ---------- views ---------- */
 // views: labs (the default), studies, symptoms, therapy; the hash keeps the tab across reloads
-const VIEWS = { labs: "#labsView", studies: "#studiesView", symptoms: "#symptomsView", therapy: "#therapyView" };
-const TB_VIEW = { list: "labs", studies: "studies", symptoms: "symptoms", therapy: "therapy" };
+const VIEWS = { labs: "#labsView", studies: "#studiesView", symptoms: "#symptomsView", therapy: "#therapyView", drugs: "#drugsView" };
+const TB_VIEW = { list: "labs", studies: "studies", symptoms: "symptoms", therapy: "therapy", drugs: "drugs" };
 function setView(v) {
   ui.view = VIEWS[v] ? v : "labs";
   Object.entries(VIEWS).forEach(([k, sel]) => { $(sel).hidden = ui.view !== k; });
@@ -343,6 +343,7 @@ function setView(v) {
   if (ui.view === "studies") renderStudies();
   if (ui.view === "symptoms") renderSymptoms();
   if (ui.view === "therapy") renderTherapy();
+  if (ui.view === "drugs") renderDrugs();
   scrollTo({ top: 0 });
 }
 

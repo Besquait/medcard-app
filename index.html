@@ -16,7 +16,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&display=swap">
-  <link rel="stylesheet" href="styles.css?v=60">
+  <link rel="stylesheet" href="styles.css?v=61">
 </head>
 <body>
   <div class="gate" id="gate" hidden>
@@ -40,6 +40,7 @@
         <button class="tab" data-view="studies">Обследования</button>
         <button class="tab" data-view="symptoms">Симптомы</button>
         <button class="tab" data-view="therapy">Лечение</button>
+        <button class="tab" data-view="drugs">Препараты</button>
       </nav>
       <div class="top-actions">
         <button class="btn ghost" id="menuBtn" aria-haspopup="true" aria-expanded="false">Данные</button>
@@ -105,6 +106,7 @@
     <div id="studiesView" class="studies" hidden></div>
     <div id="symptomsView" class="studies symptoms" hidden></div>
     <div id="therapyView" class="studies symptoms therapy" hidden></div>
+    <div id="drugsView" class="studies symptoms drugs" hidden></div>
 
     <footer class="foot" id="localNote">Данные хранятся только в этом браузере. Делай копию через «Данные → Сохранить копию в файл».</footer>
   </div>
@@ -115,6 +117,7 @@
     <button type="button" class="tb tb-add" data-tb="add" aria-label="Внести анализы"><svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg></button>
     <button type="button" class="tb" data-tb="symptoms"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7-4.4-7-10.2A4.3 4.3 0 0 1 12 8a4.3 4.3 0 0 1 7 2.8C19 16.6 12 21 12 21z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/></svg><span>Симптомы</span></button>
     <button type="button" class="tb" data-tb="therapy"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="8.5" width="17" height="7" rx="3.5" transform="rotate(-45 12 12)" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M9.5 9.5l5 5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg><span>Лечение</span></button>
+    <button type="button" class="tb" data-tb="drugs"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="3" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M12 8v8M8 12h8" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg><span>Препараты</span></button>
   </nav>
 
   <dialog id="entry" class="dialog entry-dlg" aria-labelledby="entryTitle">
@@ -176,23 +179,24 @@
   <div class="toast" id="toast" role="status" hidden></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="config.js?v=60"></script>
-  <script src="catalog.js?v=60"></script>
-  <script src="info.js?v=60"></script>
-  <script src="info-hl.js?v=60"></script>
-  <script src="treat.js?v=60"></script>
-  <script src="guides.js?v=60"></script>
-  <script src="panels.js?v=60"></script>
-  <script src="seed.js?v=60"></script>
-  <script src="cloud.js?v=60"></script>
-  <script src="ui.js?v=60"></script>
-  <script src="signif.js?v=60"></script>
-  <script src="extras.js?v=60"></script>
-  <script src="studies.js?v=60"></script>
-  <script src="symptoms.js?v=60"></script>
-  <script src="diary.js?v=60"></script>
-  <script src="drugs.js?v=60"></script>
-  <script src="therapy.js?v=60"></script>
-  <script src="app.js?v=60"></script>
+  <script src="config.js?v=61"></script>
+  <script src="catalog.js?v=61"></script>
+  <script src="info.js?v=61"></script>
+  <script src="info-hl.js?v=61"></script>
+  <script src="treat.js?v=61"></script>
+  <script src="guides.js?v=61"></script>
+  <script src="panels.js?v=61"></script>
+  <script src="seed.js?v=61"></script>
+  <script src="cloud.js?v=61"></script>
+  <script src="ui.js?v=61"></script>
+  <script src="signif.js?v=61"></script>
+  <script src="extras.js?v=61"></script>
+  <script src="studies.js?v=61"></script>
+  <script src="symptoms.js?v=61"></script>
+  <script src="diary.js?v=61"></script>
+  <script src="drugs.js?v=61"></script>
+  <script src="therapy.js?v=61"></script>
+  <script src="drugview.js?v=61"></script>
+  <script src="app.js?v=61"></script>
 </body>
 </html>

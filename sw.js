@@ -1,7 +1,7 @@
 // Offline app shell. Same-origin files: network first, cached copy when offline.
 // Supabase and other origins go straight to the network.
-const CACHE = "medcard-v60";
-const SHELL = ["./", "index.html", "styles.css", "config.js", "catalog.js", "info.js", "info-hl.js", "panels.js", "guides.js", "treat.js", "ui.js", "signif.js", "extras.js", "studies.js", "symptoms.js", "diary.js", "drugs.js", "therapy.js", "seed.js", "cloud.js", "app.js", "manifest.webmanifest", "icons/icon-192.png"];
+const CACHE = "medcard-v61";
+const SHELL = ["./", "index.html", "styles.css", "config.js", "catalog.js", "info.js", "info-hl.js", "panels.js", "guides.js", "treat.js", "ui.js", "signif.js", "extras.js", "studies.js", "symptoms.js", "diary.js", "drugs.js", "therapy.js", "drugview.js", "seed.js", "cloud.js", "app.js", "manifest.webmanifest", "icons/icon-192.png"];
 
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));

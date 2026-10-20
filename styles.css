@@ -1976,3 +1976,19 @@ td.out-high b { color: var(--high); } td.out-low b { color: var(--low); }
   #xBody { padding: 16px 18px 22px; gap: 18px; }
   .st-head { margin: 22px 0 16px; }
 }
+
+/* drug card: every line can be tapped and edited */
+.dr-ed { cursor: text; border-radius: 6px; transition: background .15s; }
+.dr-ed:hover, .dr-ed:focus-visible { background: color-mix(in srgb, var(--accent) 12%, transparent); outline: none; }
+.info-group .dr-ed { color: inherit; }
+.dr-form { display: flex; flex-direction: column; gap: 8px; margin: 4px 0; }
+.dr-form .input { font-size: 15.5px; line-height: 1.55; }
+h3 .dr-form .input { font-size: 19px; font-weight: 600; }
+.dr-add { display: block; margin-top: 4px; padding: 6px 2px; border: 0; background: none; font: 500 15px var(--font); color: var(--accent); cursor: pointer; }
+.dr-go { margin-left: 6px; color: var(--accent); text-decoration: none; }
+.dr-dlg .dlg-foot .tp-dnote { margin: 0; }
+/* phone: five tabs; the add button floats above the bar on the right */
+@media (max-width: 720px) {
+  .tabbar .tb-add { position: absolute; right: 16px; bottom: calc(100% + 14px); width: 56px; height: 56px; margin: 0; border-radius: 50%; }
+  .to-top { bottom: calc(160px + env(safe-area-inset-bottom)); }
+}

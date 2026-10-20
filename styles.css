@@ -1895,5 +1895,9 @@ td.out-high b { color: var(--high); } td.out-low b { color: var(--low); }
   .tp-tile { min-height: 96px; padding: 14px; }
   .tp-tile b { font-size: 15px; }
   .tp-frow { grid-template-columns: minmax(0, 1fr) 28px; }
+  .tp-view .dlg-foot { flex-wrap: wrap; }
+  .tp-view .tp-effs { flex: 1 1 100%; flex-wrap: nowrap; }
+  .tp-view .tp-effs .sy-eff { flex: 1; justify-content: center; }
+  .tp-view .dlg-foot .btn.primary { flex: 1; }
   .tp-frow [name=dhow] { grid-column: 1; grid-row: 2; }
 }

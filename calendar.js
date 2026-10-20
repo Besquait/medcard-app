@@ -75,6 +75,16 @@ function clSleepSet(x) {
   const m = clSleepMin(x);
   if (m) x.sleep = m <= 330 ? 5 : m < 390 ? 6 : m < 450 ? 7 : 8; else if (!x.bed && !x.wake) delete x.sleep;
 }
+// a drug with a set course: doses ticked from its start up to today against all doses of the course
+function clCourse(g, id) {
+  const slots = g.slots?.length ? g.slots : [];
+  if (g.prn || !g.start || !g.end || !slots.length) return null;
+  const n = slots.length * (daysBetween(g.start, g.end) + 1), stop = [g.end, todayISO()].sort()[0];
+  let k = 0;
+  for (let d = g.start; d <= stop; d = addDaysISO(d, 1)) { const m = state.days?.[d]?.meds; if (m) k += slots.filter(sl => m[`${id}:${sl}`]).length; }
+  return { k, n };
+}
+const clCourseTag = (g, id) => { const c = clCourse(g, id); return c ? `<span class="cl-course" title="Принято за курс: ${c.k} из ${c.n}">${c.k}/${c.n}</span>` : ""; };
 const clHours = m => `${Math.floor(m / 60)} ч${m % 60 ? ` ${m % 60} мин` : ""}`;
 const clSub = g => [g.dose, CL_FOOD[g.food] || "", g.how].filter(Boolean).join(" · ");
 const clNowSlot = () => { const h = new Date().getHours(); return h < 4 || h >= 21 ? "night" : h >= 17 ? "evening" : h >= 12 ? "day" : "morning"; };
@@ -210,11 +220,11 @@ function clMedsBlock(d) {
     const ahead = groups.filter(g => g.k === "any" || CL_ORDER.indexOf(g.k) >= CL_ORDER.indexOf(now));
     focus = ahead.find(g => g.k === now && leftOf(g).length) || ahead.find(g => g.k !== "any" && leftOf(g).length) || groups.find(g => g.k === now) || null;
   }
-  const tile = it => `<button type="button" class="cl-tile" data-cl-med="${esc(it.key)}" aria-pressed="false"><span class="cl-mn"><b>${esc(it.g.name)}</b>${clSub(it.g) ? `<small>${esc(clSub(it.g))}</small>` : ""}</span><i class="cl-tick" aria-hidden="true"></i></button>`;
+  const tile = it => `<button type="button" class="cl-tile" data-cl-med="${esc(it.key)}" aria-pressed="false"><span class="cl-mn"><b>${esc(it.g.name)}${clCourseTag(it.g, it.id)}</b>${clSub(it.g) ? `<small>${esc(clSub(it.g))}</small>` : ""}</span><i class="cl-tick" aria-hidden="true"></i></button>`;
   const body = g => {
     const left = leftOf(g), done = g.l.filter(it => m[it.key]);
     return `${left.length ? `<div class="cl-tiles">${left.map(tile).join("")}</div>` : ""}
-      <div class="cl-foot">${done.length ? `<div class="cl-taken"><span class="cl-chk">✓</span><span>${left.length ? "Принято:" : "Всё принято:"}</span>${done.map(it => `<button type="button" class="cl-tk" data-cl-med="${esc(it.key)}" title="Снять отметку">${esc(it.g.name)}</button>`).join("")}</div>` : "<span></span>"}
+      <div class="cl-foot">${done.length ? `<div class="cl-taken"><span class="cl-chk">✓</span><span>${left.length ? "Принято:" : "Всё принято:"}</span>${done.map(it => `<button type="button" class="cl-tk" data-cl-med="${esc(it.key)}" title="Снять отметку">${esc(it.g.name)}${clCourseTag(it.g, it.id)}</button>`).join("")}</div>` : "<span></span>"}
       ${left.length > 1 ? `<button type="button" class="btn primary cl-allbtn" data-cl-all="${g.k}">✓ Принял всё</button>` : ""}</div>`;
   };
   const rest = groups.filter(g => g !== focus);

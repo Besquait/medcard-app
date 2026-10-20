@@ -132,6 +132,9 @@ function closePops(except) {
 }
 
 function initUI() {
+  // a line under the stuck header once the page has scrolled
+  const top = $(".top");
+  if (top) addEventListener("scroll", () => top.classList.toggle("stuck", scrollY > 8), { passive: true });
   // a small bounce on the button just pressed, also when the page was redrawn under it
   document.addEventListener("click", e => {
     if (!motionOK()) return;

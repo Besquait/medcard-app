@@ -2446,34 +2446,35 @@ body[data-view="calendar"] .tabbar .tb-add { display: none; }
 
 /* nutrients like Cronometer: wide, everything at once */
 
-.fd-nut { margin-top: 28px; display: flex; flex-direction: column; gap: 22px; }
-.fd-rings { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 8px; padding: 18px 16px; border-radius: 22px; background: var(--card); box-shadow: var(--shadow); }
+.fd-nut { margin-top: 24px; display: flex; flex-direction: column; gap: 18px; }
+.fd-rings { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 6px; padding: 12px 14px; border-radius: 22px; background: var(--card); box-shadow: var(--shadow); }
 .fd-ring2 { --c: var(--high); display: flex; flex-direction: column; align-items: center; gap: 6px; border: 0; background: none; padding: 4px 0; font: inherit; color: var(--ink); cursor: pointer; border-radius: 12px; }
 .fd-ring2:hover { background: var(--soft); }
 .fd-ring2.mid { --c: var(--edge); } .fd-ring2.ok { --c: var(--ok); }
-.fd-ring2 > span { position: relative; width: 60px; height: 60px; }
+.fd-ring2 > span { position: relative; width: 52px; height: 52px; }
+.fd-ring2 svg { width: 52px; height: 52px; }
 .fd-ring2 svg { transform: rotate(-90deg); display: block; }
 .fd-ring2 circle { fill: none; stroke-width: 6; }
 .fd-ring2 .tr { stroke: var(--soft); }
 .fd-ring2 .fg { stroke: var(--c); stroke-linecap: round; transition: stroke-dasharray .6s cubic-bezier(.2, .8, .2, 1); }
-.fd-ring2 b { position: absolute; inset: 0; display: grid; place-items: center; font-size: 14px; font-weight: 700; }
-.fd-ring2 small { font-size: 13px; color: var(--muted); text-align: center; line-height: 1.2; }
-.fd-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; align-items: start; }
-.fd-col { display: flex; flex-direction: column; gap: 22px; }
-.fd-grp { border-radius: 18px; background: var(--card); box-shadow: var(--shadow); overflow: hidden; }
-.fd-gh { padding: 12px 20px; background: var(--soft); font-size: 15.5px; font-weight: 650; }
-.fd-r { --c: var(--faint); display: grid; grid-template-columns: minmax(0, 1fr) 110px minmax(80px, 200px) 50px; align-items: center; gap: 16px; width: 100%; min-height: 40px; padding: 7px 20px; border: 0; background: none; text-align: left; font: inherit; color: var(--ink); cursor: pointer; }
+.fd-ring2 b { position: absolute; inset: 0; display: grid; place-items: center; font-size: 12.5px; font-weight: 700; }
+.fd-ring2 small { font-size: 12.5px; color: var(--muted); text-align: center; line-height: 1.2; }
+.fd-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start; }
+.fd-col { display: flex; flex-direction: column; gap: 18px; }
+.fd-grp { border-radius: 16px; background: var(--card); box-shadow: var(--shadow); overflow: hidden; }
+.fd-gh { padding: 8px 18px; background: var(--soft); font-size: 14.5px; font-weight: 650; }
+.fd-r { --c: var(--faint); display: grid; grid-template-columns: minmax(0, 1fr) 100px minmax(80px, 220px) 46px; align-items: center; gap: 14px; width: 100%; min-height: 31px; padding: 4px 18px; border: 0; background: none; text-align: left; font: inherit; color: var(--ink); cursor: pointer; }
 .fd-r:nth-of-type(even) { background: color-mix(in srgb, var(--soft) 45%, transparent); }
 .fd-r:hover, .fd-r.open { background: color-mix(in srgb, var(--food) 9%, transparent); }
 .fd-r.low { --c: var(--high); } .fd-r.mid { --c: var(--edge); } .fd-r.ok { --c: var(--ok); } .fd-r.over { --c: var(--high); }
-.fd-rn { display: flex; align-items: center; gap: 8px; font-size: 15px; min-width: 0; }
+.fd-rn { display: flex; align-items: center; gap: 8px; font-size: 14px; min-width: 0; }
 .fd-r.lv1 .fd-rn { padding-left: 16px; } .fd-r.lv2 .fd-rn { padding-left: 32px; } .fd-r.lv3 .fd-rn { padding-left: 48px; color: var(--muted); }
-.fd-rv { text-align: right; font-size: 15px; font-variant-numeric: tabular-nums; }
-.fd-rb { height: 8px; border-radius: 4px; background: var(--soft); overflow: hidden; }
+.fd-rv { text-align: right; font-size: 14px; font-variant-numeric: tabular-nums; }
+.fd-rb { height: 6px; border-radius: 3px; background: var(--soft); overflow: hidden; }
 .fd-rb i { display: block; height: 100%; border-radius: 4px; background: var(--c); transition: width .6s cubic-bezier(.2, .8, .2, 1); }
 .fd-rb.none { background: repeating-linear-gradient(90deg, var(--line) 0 8px, transparent 8px 14px); height: 2px; }
 .fd-rb.none i { display: none; }
-.fd-rp { text-align: right; font-size: 14px; color: var(--c); font-variant-numeric: tabular-nums; }
+.fd-rp { text-align: right; font-size: 13px; color: var(--c); font-variant-numeric: tabular-nums; }
 .fd-ppi { font-style: normal; padding: 0 7px; border-radius: 999px; font-size: 11.5px; font-weight: 600; background: color-mix(in srgb, var(--low) 16%, transparent); color: var(--low); }
 .fd-nut .fd-nby { padding: 10px 20px 18px; }
 @media (max-width: 1040px) {
@@ -2553,6 +2554,15 @@ body[data-view]:not([data-view="labs"]) #addBtn { display: none; }
 /* the search results drop out of the card instead of being cut by its edge */
 .card:has(.fd-search) { overflow: visible; position: relative; z-index: 5; }
 .card:has(.fd-res:not([hidden])) { z-index: 40; }
-/* big screens: a 2K monitor gets everything a little larger, not a narrow strip in the middle */
-@media (min-width: 1900px) { body { zoom: 1.12; } }
-@media (min-width: 2400px) { body { zoom: 1.25; } }
+/* the menu stays at hand: the header sticks to the top while the page scrolls */
+@media (min-width: 721px) {
+  :root { --hdr: 68px; }
+  .top { position: sticky; top: 0; z-index: 60; margin: 0 -24px; padding: 12px 24px; min-height: var(--hdr); flex-wrap: nowrap;
+    background: color-mix(in srgb, var(--bg) 84%, transparent); -webkit-backdrop-filter: saturate(1.4) blur(14px); backdrop-filter: saturate(1.4) blur(14px);
+    border-bottom: 1px solid transparent; transition: border-color .2s, box-shadow .2s; }
+  .top.stuck { border-bottom-color: var(--line); box-shadow: 0 6px 20px rgba(0, 0, 0, .12); }
+  .toolbar { top: var(--hdr); }
+  .rail { top: calc(var(--hdr) + 16px); max-height: calc(100vh - var(--hdr) - 32px); }
+  .cl-side { top: calc(var(--hdr) + 16px); }
+  .cl-top { margin-top: 18px; }
+}

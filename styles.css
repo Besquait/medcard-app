@@ -2383,8 +2383,8 @@ body[data-view="calendar"] .tabbar .tb-add { display: none; }
 .fd-daynav { display: flex; align-items: center; gap: 12px; }
 .fd-daynav b { min-width: 110px; text-align: center; font-size: 18px; }
 .fd-kcal { display: flex; align-items: center; gap: 16px; margin-bottom: 6px; }
-.fd-kcal b { display: block; font-size: 28px; font-weight: 700; line-height: 1.1; }
-.fd-kcal span { color: var(--muted); font-size: 15px; }
+.fd-kcal > div > b { display: block; font-size: 28px; font-weight: 700; line-height: 1.1; }
+.fd-kcal > div > span { color: var(--muted); font-size: 15px; }
 .fd-ring .fg { stroke: var(--food); }
 .fd-ring.over .fg { stroke: var(--edge); }
 .fd-ring b { font-size: 15px; }

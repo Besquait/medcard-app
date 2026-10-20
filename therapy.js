@@ -50,8 +50,12 @@ function renderTherapy() {
   const box = $("#therapyView"); if (!box || box.hidden) return;
   const all = tpList().sort((a, b) => tpStart(b).localeCompare(tpStart(a)));
   const now = all.filter(tpActive), past = all.filter(p => !tpActive(p));
-  box.innerHTML = `<div class="st-head"><div><h2>Лечение</h2></div>
-      ${ui.readonly ? "" : `<button type="button" class="btn primary" data-tp-new>Добавить</button>`}</div>
+  const page = ui.tpPage === "drugs" ? "drugs" : "plans";
+  const head = `<div class="st-head"><div><h2>Лечение</h2></div>
+      ${ui.readonly || page === "drugs" ? "" : `<button type="button" class="btn primary" data-tp-new>Добавить</button>`}</div>
+    <div class="seg sy-ptabs" role="tablist" aria-label="Раздел">${[["plans", "Схемы"], ["drugs", "Препараты"]].map(([k, n]) => `<button type="button" role="tab" data-tp-page="${k}" aria-pressed="${page === k}">${n}</button>`).join("")}</div>`;
+  if (page === "drugs") { box.innerHTML = head + tpDrugsPage(); return; }
+  box.innerHTML = `${head}
     ${!all.length ? `<div class="st-empty"><h3>Схем лечения пока нет</h3><p>Записывай сюда, что назначил врач: препараты, советы по питанию и режиму — и какие жалобы это лечит.</p>${ui.readonly ? "" : `<button type="button" class="btn primary" data-tp-new>Добавить</button>`}</div>` : ""}
     ${now.length ? `<div class="tp-grid">${now.map(tpTile).join("")}</div>` : ""}
     ${past.length ? `<details class="sy-past"${ui.tpPastOpen ? " open" : ""}><summary class="st-year">Раньше · ${past.length}</summary><div class="tp-grid">${past.map(tpTile).join("")}</div></details>` : ""}`;
@@ -85,7 +89,7 @@ function openPlan(id) {
   const add = (k, label) => ro ? "" : `<button type="button" class="tp-add" data-tp-addopen="${k}">+ ${label}</button>`;
   const body = {
     drugs: () => `<div class="tp-list">${drugs.map((d, i) => ui.tpDrug === i ? drugEdit(d, i)
-        : `<button type="button" class="tp-drug" data-tp-dedit="${i}"${ro ? " disabled" : ""}><b>${esc(d.name)}</b>${d.how ? `<span>${esc(d.how)}</span>` : ""}</button>`).join("")}
+        : `<div class="tp-drugrow"><button type="button" class="tp-drug" data-tp-dedit="${i}"${ro ? " disabled" : ""}><b>${esc(d.name)}</b>${d.how ? `<span>${esc(d.how)}</span>` : ""}</button>${drugFor(d.name) ? `<button type="button" class="btn sm ghost tp-about" data-dr="${esc(drugFor(d.name).id)}">О препарате</button>` : ""}</div>`).join("")}
       ${ui.tpDrug === "new" ? drugEdit({}, "new") : add("drug", "Препарат")}</div>`,
     recs: () => `${TP_RECS.map(([k, n]) => { const l = recs.map((r, i) => ({ ...r, i })).filter(r => (r.cat || "other") === k); return l.length ? `<section class="tp-recg"><h4>${n}</h4><ul>${l.map(r => `<li><span>${esc(r.text)}</span>${ro ? "" : `<button type="button" class="icon-btn sm" data-tp-rdel="${r.i}" aria-label="Убрать совет">×</button>`}</li>`).join("")}</ul></section>` : ""; }).join("")}
       ${ui.tpAdd === "rec" ? `<form class="tp-ed" data-tp-radd><div class="seg tp-cats" role="group" aria-label="Раздел">${TP_RECS.slice(0, 3).map(([k, n], i) => `<button type="button" data-tp-cat="${k}" aria-pressed="${(ui.tpCat || "food") === k}">${n}</button>`).join("")}</div>
@@ -106,6 +110,42 @@ function openPlan(id) {
 }
 // redraw the open scheme after an edit, keeping the scroll
 function tpRedraw() { const d = $("#xDlg"), y = d.scrollTop; save(); renderTherapy(); openPlan(ui.tpOpen); d.scrollTop = y; }
+
+/* ---------- drugs ---------- */
+// my drugs (from schemes) first, then the rest of the reference; search hides rows in place
+function tpDrugsPage() {
+  const mine = new Map();
+  for (const p of tpList()) for (const d of p.drugs || []) {
+    const ref = drugFor(d.name), key = ref ? ref.id : "n:" + norm(d.name);
+    if (!mine.has(key)) mine.set(key, { ref, name: ref ? ref.name : d.name, plans: [] });
+    if (!mine.get(key).plans.includes(p.title)) mine.get(key).plans.push(p.title);
+  }
+  const others = Object.values(DRUG).filter(d => !mine.has(d.id));
+  const row = (ref, name, sub) => `<button type="button" class="tp-drow" data-dr="${ref ? esc(ref.id) : ""}" data-q="${esc(norm(name + " " + (ref?.group || "")))}"${ref ? "" : " disabled"}>
+      <span><b>${esc(name)}</b><small>${esc(sub)}</small></span>${ref ? `<svg class="chev" width="18" height="18" viewBox="0 0 20 20" aria-hidden="true"><path d="M7 4l6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>` : ""}</button>`;
+  return `<input class="input tp-dq" data-dr-q placeholder="Найти препарат" autocomplete="off" aria-label="Найти препарат">
+    ${mine.size ? `<h3 class="st-year">Мои · ${mine.size}</h3><div class="card st-list tp-dlist">${[...mine.values()].map(m => row(m.ref, m.name, [m.ref?.group, m.ref ? "" : "нет в справочнике", "в схеме: " + m.plans.join(", ")].filter(Boolean).join(" · "))).join("")}</div>` : ""}
+    ${others.length ? `<h3 class="st-year">Справочник · ${others.length}</h3><div class="card st-list tp-dlist">${others.map(d => row(d, d.name, d.group)).join("")}</div>` : ""}
+    <p class="muted tp-dnone" hidden>Ничего не нашлось</p>
+    <p class="muted tp-dnote">Кратко для пациента, по инструкциям и исследованиям. Дозу и курс решает врач.</p>`;
+}
+function openDrug(id) {
+  const d = DRUG[id]; if (!d) return;
+  ui.drOpen = id;
+  const tab = ["how", "care", "ev"].includes(ui.drTab) ? ui.drTab : "how";
+  const li = l => l?.length ? `<ul>${l.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : "";
+  const sec = (t, l) => l?.length ? `<section class="tp-recg"><h4>${t}</h4>${li(l)}</section>` : "";
+  const mine = tpList().flatMap(p => (p.drugs || []).filter(x => drugFor(x.name)?.id === id).map(x => `${p.title}: ${x.how || "как назначено"}`));
+  const body = {
+    how: () => `<p class="tp-what">${esc(d.what)}</p>${mine.length ? sec("У тебя", mine) : ""}${sec("Как принимать", d.how)}${sec("Как лучше", d.best)}`,
+    care: () => `${sec("Нельзя, если", d.contra)}${sec("Побочные", d.side)}${sec("С чем осторожно", d.mix)}`,
+    ev: () => `${sec("Что показывают исследования", d.evidence)}${d.src?.length ? `<section class="tp-recg"><h4>Источники</h4><ul>${d.src.map(([t, u]) => `<li><a href="${esc(u)}" target="_blank" rel="noopener">${esc(t)}</a></li>`).join("")}</ul></section>` : ""}`,
+  };
+  openX(`<div class="dlg-head"><div><div class="info-group">${esc(d.group)}</div><h3>${esc(d.name)}</h3></div><button type="button" class="icon-btn" data-xclose aria-label="Закрыть">×</button></div>
+    <div class="sy-tabs" role="tablist">${[["how", "Как принимать"], ["care", "Осторожно"], ["ev", "Исследования"]].map(([k, n]) => `<button type="button" role="tab" data-dr-tab="${k}" aria-selected="${tab === k}">${n}</button>`).join("")}</div>
+    <div class="tp-body">${body[tab]()}</div>
+    <p class="muted tp-dnote">Кратко, по инструкции и исследованиям. Дозу и курс решает врач.</p>`, "st-dlg tp-dlg dr-dlg");
+}
 
 /* ---------- complaints picker ---------- */
 function tpSyPicker(sel) {
@@ -173,8 +213,17 @@ function tpForSymptom(id) {
 /* ---------- wiring ---------- */
 function initTherapy() {
   const page = $("#therapyView"), xd = $("#xDlg");
+  page.addEventListener("input", e => {
+    if (!e.target.matches("[data-dr-q]")) return;
+    const q = norm(e.target.value); let n = 0;
+    $$(".tp-drow", page).forEach(r => { const on = !q || r.dataset.q.includes(q); r.hidden = !on; n += on; });
+    $$(".tp-dlist", page).forEach(l => { const any = $$(".tp-drow", l).some(r => !r.hidden); l.hidden = !any; l.previousElementSibling.hidden = !any; });
+    $(".tp-dnone", page).hidden = !!n;
+  });
   page.addEventListener("click", e => {
     const t = e.target;
+    const pg = t.closest("[data-tp-page]"); if (pg) { ui.tpPage = pg.dataset.tpPage; renderTherapy(); return; }
+    const dr = t.closest("[data-dr]"); if (dr && dr.dataset.dr) { ui.drTab = null; openDrug(dr.dataset.dr); return; }
     if (t.closest("[data-tp-new]")) { ui.confirmTp = null; openPlanForm(); return; }
     const tile = t.closest("[data-tp]"); if (tile) { ui.tpTab = null; openPlan(tile.dataset.tp); return; }
     if (t.closest(".sy-past > summary")) { ui.tpPastOpen = !t.closest("details").open; return; }
@@ -182,6 +231,8 @@ function initTherapy() {
   xd.addEventListener("click", e => {
     if (!xd.classList.contains("tp-dlg")) return;
     const t = e.target;
+    const drt = t.closest("[data-dr-tab]"); if (drt) { ui.drTab = drt.dataset.drTab; openDrug(ui.drOpen); return; }
+    const dra = t.closest("[data-dr]"); if (dra) { ui.drTab = null; openDrug(dra.dataset.dr); return; }
     const tb = t.closest("[data-tp-tab]"); if (tb) { ui.tpTab = tb.dataset.tpTab; ui.tpDrug = null; ui.tpAdd = null; openPlan(ui.tpOpen); return; }
     const p = state.plans?.[ui.tpOpen];
     if (p && xd.classList.contains("tp-view")) {

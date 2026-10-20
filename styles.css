@@ -1927,3 +1927,20 @@ td.out-high b { color: var(--high); } td.out-low b { color: var(--low); }
 .tp-prow:has(input:checked) span { font-weight: 600; }
 .tp-pnone { margin: 0; padding: 12px; font-size: 13.5px; }
 @media (max-width: 720px) { .tp-prow small { display: none; } .tp-prow { grid-template-columns: 20px minmax(0, 1fr); } }
+/* drugs: list with search, a card per drug */
+.tp-dq { margin: 0 0 14px; max-width: 420px; }
+.tp-dlist { margin-bottom: 18px; }
+.tp-drow { display: grid; grid-template-columns: minmax(0, 1fr) 18px; align-items: center; gap: 12px; width: 100%; padding: 12px 16px 12px 18px; border: 0; border-top: 1px solid var(--line); background: none; text-align: left; font: inherit; color: var(--ink); cursor: pointer; }
+.st-list > .tp-drow:first-child { border-top: 0; }
+.tp-drow:hover:not([disabled]) { background: color-mix(in srgb, var(--soft) 60%, transparent); }
+.tp-drow[disabled] { cursor: default; }
+.tp-drow > span { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.tp-drow b { font-size: 15px; font-weight: 600; }
+.tp-drow small { font-size: 12.5px; color: var(--muted); }
+.tp-dnote { font-size: 12.5px; margin: 6px 0 0; }
+.tp-what { margin: 0 0 12px; font-size: 15px; line-height: 1.55; }
+.tp-recg a { color: var(--accent); }
+.tp-drugrow { display: flex; align-items: center; gap: 8px; border-top: 1px solid var(--line); }
+.tp-list > .tp-drugrow:first-child { border-top: 0; }
+.tp-drugrow .tp-drug { border-top: 0; flex: 1; }
+.tp-about { flex: none; }

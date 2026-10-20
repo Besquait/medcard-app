@@ -6,6 +6,57 @@ const CAL_ICON = `<svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="t
 const CHEV = `<svg class="csel-chev" width="14" height="14" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 8l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 // longDate() comes from app.js
 
+/* ---------- motion ---------- */
+const motionOK = () => !matchMedia("(prefers-reduced-motion: reduce)").matches;
+// re-render without teleporting: the live nodes are patched to match the new markup, so unchanged parts stay
+// put, changed states run their CSS transitions, and only really new elements play their entrance animation.
+// Children of a list are matched by a key attribute when they have one, otherwise in order by tag.
+const MORPH_KEYS = ["id", "data-key", "data-cl-med", "data-cl-open", "data-st", "data-sy", "data-dr"];
+function mKey(n) {
+  if (n.nodeType !== 1) return null;
+  for (const k of MORPH_KEYS) { const v = n.getAttribute(k); if (v != null) return `${n.nodeName} ${k}=${v}`; }
+  return null;
+}
+function morph(el, html) {
+  const t = document.createElement("template"); t.innerHTML = html;
+  mChildren(el, t.content);
+}
+function mPatch(x, y) {
+  if (x.nodeType !== 1) { if (x.nodeValue !== y.nodeValue) x.nodeValue = y.nodeValue; return; }
+  for (const a of [...x.attributes]) if (!y.hasAttribute(a.name)) x.removeAttribute(a.name);
+  for (const a of [...y.attributes]) if (x.getAttribute(a.name) !== a.value) x.setAttribute(a.name, a.value);
+  // a field being typed in keeps what is typed
+  const tag = x.nodeName, live = x === document.activeElement;
+  if (tag === "TEXTAREA") { if (!live && x.value !== y.value) x.value = y.value; return; }
+  if (tag === "INPUT") { if (!live && x.value !== y.value) x.value = y.value; x.checked = y.checked; return; }
+  mChildren(x, y);
+  if (tag === "SELECT" && !live) x.value = y.value;
+}
+function mChildren(a, b) {
+  const old = [...a.childNodes], used = new Set(), keyed = new Map();
+  for (const n of old) { const k = mKey(n); if (k && !keyed.has(k)) keyed.set(k, n); }
+  let oi = 0;
+  const next = [];
+  for (const y of [...b.childNodes]) {
+    const k = mKey(y);
+    let x = null;
+    if (k) x = keyed.get(k) || null;
+    else {
+      while (oi < old.length && (used.has(old[oi]) || mKey(old[oi]))) oi++;
+      const c = old[oi]; if (c && c.nodeName === y.nodeName) { x = c; oi++; }
+    }
+    if (x && !used.has(x)) { used.add(x); mPatch(x, y); next.push(x); } else next.push(y);
+  }
+  for (const n of old) if (!used.has(n)) n.remove();
+  next.forEach((n, i) => { const at = a.childNodes[i]; if (at !== n) a.insertBefore(n, at || null); });
+}
+// a page that has just been opened rises in, card after card
+function viewIn(el) {
+  if (!el || !motionOK()) return;
+  el.classList.remove("view-in"); void el.offsetWidth; el.classList.add("view-in");
+  clearTimeout(el._vin); el._vin = setTimeout(() => el.classList.remove("view-in"), 900);
+}
+
 /* ---------- date field ---------- */
 // attrs: attributes for the hidden input (name=..., data-...); opt: { future, empty: text when blank, clear }
 function dfield(attrs, value, opt = {}) {
@@ -81,6 +132,18 @@ function closePops(except) {
 }
 
 function initUI() {
+  // a small bounce on the button just pressed, also when the page was redrawn under it
+  document.addEventListener("click", e => {
+    if (!motionOK()) return;
+    const b = e.target.closest?.("button"); if (!b || b.disabled) return;
+    const at = [...b.attributes].find(a => a.name.startsWith("data-") && a.value);
+    const sel = at ? `button[${at.name}="${CSS.escape(at.value)}"]` : null;
+    requestAnimationFrame(() => {
+      const el = b.isConnected ? b : sel && document.querySelector(sel); if (!el) return;
+      el.classList.remove("tap"); void el.offsetWidth; el.classList.add("tap");
+      setTimeout(() => el.classList.remove("tap"), 320);
+    });
+  }, true);
   document.addEventListener("click", e => {
     const t = e.target;
     const f = t.closest?.(".dfield");

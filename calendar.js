@@ -128,7 +128,7 @@ function renderCalendar() {
   const today = todayISO(), sel = clSel(), x = state.days?.[sel] || {};
   // in the morning an empty night comes first: it is the one thing to fill right after waking up
   const sleepFirst = sel === today && new Date().getHours() < 12 && !(x.bed && x.wake);
-  box.innerHTML = `${clTop(sel)}
+  morph(box, `${clTop(sel)}
     <div class="cl-layout">
       <div class="cl-main">
         <div class="cl-mob">${clStrip(sel, today, false)}</div>
@@ -144,12 +144,12 @@ function renderCalendar() {
         ${clWeekCard()}
         <button type="button" class="cl-remind" data-cl-remind>${CL_ICON.any}<span>Напоминать каждый вечер в 21:30</span></button>
       </aside>
-    </div>`;
+    </div>`);
   $$("#calendarView .sy-grow").forEach(syGrow);
 }
 function clRing(k, n) {
   const C = 188.5, p = n ? k / n : 0;
-  return `<span class="cl-ring${k === n ? " ok" : ""}"><svg width="72" height="72" viewBox="0 0 72 72" aria-hidden="true"><circle cx="36" cy="36" r="30" class="tr"/>${p ? `<circle cx="36" cy="36" r="30" class="fg" stroke-dasharray="${(C * p).toFixed(1)} ${C}"/>` : ""}</svg><b>${k}/${n}</b></span>`;
+  return `<span class="cl-ring${k === n ? " ok" : ""}"><svg width="72" height="72" viewBox="0 0 72 72" aria-hidden="true"><circle cx="36" cy="36" r="30" class="tr"/><circle cx="36" cy="36" r="30" class="fg" style="stroke-dasharray: ${(C * p).toFixed(1)} ${C}; opacity: ${p ? 1 : 0}"/></svg><b>${k}/${n}</b></span>`;
 }
 function clTop(sel) {
   const today = todayISO(), isT = sel === today, c = clDone(sel), name = clDayName(sel);
@@ -395,8 +395,13 @@ function initCalendar() {
     const mo = t.closest("[data-cl-mode]"); if (mo) { ui.clMonth = !+mo.dataset.clMode; renderCalendar(); return; }
     const op = t.closest("[data-cl-open]"); if (op) { ui.clOpen = { ...(ui.clOpen || {}), [op.dataset.clOpen]: !ui.clOpen?.[op.dataset.clOpen] }; renderCalendar(); return; }
     const md = t.closest("[data-cl-med]");
+    if (md && md.classList.contains("cl-tile") && motionOK() && !md.classList.contains("taking")) { md.classList.add("taking"); setTimeout(() => md.click(), 300); return; }
     if (md) { const k = md.dataset.clMed; touch(d, x => { x.meds = { ...(x.meds || {}) }; if (x.meds[k]) delete x.meds[k]; else x.meds[k] = true; if (!Object.keys(x.meds).length) delete x.meds; }); return; }
     const al = t.closest("[data-cl-all]");
+    if (al && motionOK() && !al.dataset.going) {
+      const tiles = $$(".cl-tile", al.closest(".cl-card, .cl-rowbody"));
+      if (tiles.length) { al.dataset.going = 1; tiles.forEach((x, i) => setTimeout(() => x.classList.add("taking"), i * 60)); setTimeout(() => al.click(), 300 + tiles.length * 60); return; }
+    }
     if (al) {
       // all of this time of day taken → untick them, otherwise tick every one
       const keys = clMeds(d).sched.filter(it => it.slot === al.dataset.clAll).map(it => it.key);

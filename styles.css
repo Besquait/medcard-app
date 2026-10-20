@@ -2251,3 +2251,63 @@ body[data-view="calendar"] .tabbar .tb-add { display: none; }
 .tp-when em { background: var(--soft); color: var(--muted); font-weight: 500; }
 .tp-chs { display: flex; flex-wrap: wrap; gap: 6px; }
 .tp-chs .tchip { cursor: pointer; }
+
+/* ---------- motion: nothing teleports ---------- */
+:root { interpolate-size: allow-keywords; }
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes riseIn { from { opacity: 0; transform: translateY(12px); } }
+  @keyframes fadeIn { from { opacity: 0; } }
+  @keyframes popIn { 0% { opacity: 0; transform: scale(.85); } 60% { opacity: 1; transform: scale(1.04); } 100% { transform: none; } }
+  @keyframes slideDown { from { opacity: 0; transform: translateY(-6px); } }
+  @keyframes tapPop { 0% { transform: scale(1); } 35% { transform: scale(.94); } 100% { transform: scale(1); } }
+  @keyframes tileOut { to { opacity: 0; transform: scale(.94); } }
+  @keyframes tickIn { from { transform: translateY(-1px) rotate(45deg) scale(0); } }
+  @keyframes toastIn { from { opacity: 0; transform: translate(-50%, 14px) scale(.96); } }
+  @keyframes dlgIn { from { opacity: 0; transform: translateY(14px) scale(.97); } }
+  @keyframes backIn { from { opacity: 0; } }
+
+  /* a page that has just been opened: blocks rise one after another */
+  .view-in > *, .view-in .cl-main > *, .view-in .cl-side > * { animation: riseIn .5s cubic-bezier(.2, .8, .2, 1) both; }
+  .view-in > :nth-child(2), .view-in .cl-main > :nth-child(2), .view-in .cl-side > :nth-child(2) { animation-delay: .04s; }
+  .view-in > :nth-child(3), .view-in .cl-main > :nth-child(3), .view-in .cl-side > :nth-child(3) { animation-delay: .08s; }
+  .view-in > :nth-child(4), .view-in .cl-main > :nth-child(4), .view-in .cl-side > :nth-child(4) { animation-delay: .12s; }
+  .view-in > :nth-child(5), .view-in .cl-main > :nth-child(5), .view-in .cl-side > :nth-child(5) { animation-delay: .16s; }
+  .view-in > :nth-child(n+6), .view-in .cl-main > :nth-child(n+6), .view-in .cl-side > :nth-child(n+6) { animation-delay: .2s; }
+
+  /* presses */
+  .btn, .tchip, .dy-b, .dy-mood, .cl-tile, .cl-day, .cl-tk, .seg button, .tab, .cl-idea, .ov, .icon-btn, .sy-sevb { transition: background-color .18s, border-color .18s, color .18s, box-shadow .2s, opacity .18s, transform .12s; }
+  .btn:active:not(:disabled), .tchip:active, .dy-b:active, .dy-mood:active, .cl-day:active:not([disabled]), .seg button:active, .cl-idea:active, .icon-btn:active { transform: scale(.96); }
+  .tap { animation: tapPop .3s ease; }
+  .tab[aria-current="page"], .seg button[aria-pressed="true"] { transition: background-color .25s, color .25s, box-shadow .25s; }
+
+  /* the calendar */
+  .cl-tile.taking { pointer-events: none; animation: tileOut .28s .1s ease forwards; }
+  .cl-tile.taking .cl-tick { background: var(--ok); border-color: var(--ok); transform: scale(1.08); transition: background-color .15s, border-color .15s, transform .15s; }
+  .cl-tick { position: relative; }
+  .cl-tile.taking .cl-tick::after { content: ""; position: absolute; left: 14px; top: 9px; width: 9px; height: 16px; border: solid var(--card); border-width: 0 3px 3px 0; transform: translateY(-1px) rotate(45deg); animation: tickIn .18s ease both; }
+  .cl-tk, .cl-okline, .cl-course { animation: popIn .38s cubic-bezier(.2, .9, .3, 1.2) both; }
+  .cl-rowbody, .cl-banner, .cl-expq { animation: slideDown .3s cubic-bezier(.2, .8, .2, 1) both; }
+  .cl-ring .fg { transition: stroke-dasharray .6s cubic-bezier(.2, .8, .2, 1), stroke .3s, opacity .3s; }
+  .cl-bar i, .g-bar i, .dy-lbar i { transition: width .6s cubic-bezier(.2, .8, .2, 1); }
+  .cl-row .chev, .chev { transition: transform .25s cubic-bezier(.2, .8, .2, 1); }
+  .cl-day.on { transition: background-color .2s, border-color .2s; }
+
+  /* folding blocks open smoothly */
+  details::details-content { block-size: 0; overflow-y: clip; transition: block-size .3s cubic-bezier(.2, .8, .2, 1), content-visibility .3s allow-discrete; }
+  details[open]::details-content { block-size: auto; }
+
+  /* toast */
+  .toast:not([hidden]) { animation: toastIn .32s cubic-bezier(.2, .9, .3, 1.15); }
+}
+@media (prefers-reduced-motion: no-preference) and (min-width: 721px) {
+  /* windows: rise in and fade out */
+  .dialog[open] { animation: dlgIn .26s cubic-bezier(.2, .8, .2, 1); }
+  .dialog[open]::backdrop { animation: backIn .26s ease; }
+  .dialog { transition: opacity .18s ease, transform .18s ease, overlay .18s allow-discrete, display .18s allow-discrete; }
+  .dialog:not([open]) { opacity: 0; transform: translateY(8px) scale(.98); }
+}
+@media (prefers-reduced-motion: no-preference) and (max-width: 720px) {
+  .dialog[open]::backdrop { animation: backIn .3s ease; }
+  .dialog { transition: transform .25s cubic-bezier(.4, 0, 1, 1), overlay .25s allow-discrete, display .25s allow-discrete; }
+  .dialog:not([open]) { transform: translateY(100%); }
+}

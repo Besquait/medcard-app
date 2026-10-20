@@ -123,12 +123,12 @@ function renderStudies() {
   const box = $("#studiesView"); if (!box || box.hidden) return;
   const all = studyList(), q = norm(ui.stQ || ""), f = ui.stType || "";
   if (!all.length) {
-    box.innerHTML = `<div class="st-head"><div><h2>Обследования</h2></div></div>
+    morph(box, `<div class="st-head"><div><h2>Обследования</h2></div></div>
       <div class="st-empty">
         <h3>Пока пусто</h3>
         <p>Здесь хранятся заключения УЗИ, КТ, МРТ, рентгена, ЭКГ, эндоскопий и выписки — вместе с файлами. Каждое обследование можно связать с анализами, чтобы видеть их рядом.</p>
         <button type="button" class="btn primary" data-st-new>Добавить обследование</button>
-      </div>`;
+      </div>`);
     return;
   }
   const list = all.filter(s => (!f || CATEGORY[s.type] === f) && (!q || norm([studyTitle(s), s.clinic, s.doctor, s.conclusion, s.recs].join(" ")).includes(q)));
@@ -139,7 +139,7 @@ function renderStudies() {
     .sort(([, a], [, b]) => (b[0].date || "").localeCompare(a[0].date || ""));
   const finds = all.filter(s => s.status === "find").length, watch = all.filter(s => s.status === "watch").length;
   const cats = [["", "Все"], ["img", "Снимки и УЗИ"], ["fn", "Функциональные"], ["endo", "Эндоскопия"], ["doc", "Документы"]].filter(([k]) => !k || all.some(s => CATEGORY[s.type] === k));
-  box.innerHTML = `
+  morph(box, `
     <div class="st-head">
       <div><h2>Обследования</h2>
         <p class="st-sub">${all.length} ${plural(all.length, "запись", "записи", "записей")}${finds ? ` · <span class="bad">${finds} с находками</span>` : ""}${watch ? ` · ${watch} под наблюдением` : ""}</p></div>
@@ -150,7 +150,7 @@ function renderStudies() {
         <input type="text" data-st-q value="${esc(ui.stQ || "")}" placeholder="Поиск по заключениям" autocomplete="off"></div>
       ${cats.length > 2 ? `<div class="seg">${cats.map(([k, n]) => `<button type="button" data-st-type="${k}" aria-pressed="${f === k}">${esc(n)}</button>`).join("")}</div>` : ""}
     </div>` : ""}
-    ${kinds.length ? kinds.map(([k, l]) => `<h3 class="st-year">${esc(ST[k]?.name || "Другое")}${l.length > 1 ? ` · ${l.length}` : ""}</h3><div class="card st-list">${l.map(studyRow).join("")}</div>`).join("") : `<div class="empty">Ничего не нашлось.</div>`}`;
+    ${kinds.length ? kinds.map(([k, l]) => `<h3 class="st-year">${esc(ST[k]?.name || "Другое")}${l.length > 1 ? ` · ${l.length}` : ""}</h3><div class="card st-list">${l.map(studyRow).join("")}</div>`).join("") : `<div class="empty">Ничего не нашлось.</div>`}`);
 }
 function studyRow(s) {
   const [, m, d] = (s.date || "").split("-");
@@ -337,6 +337,7 @@ async function deleteStudy(id) {
 const VIEWS = { calendar: "#calendarView", labs: "#labsView", studies: "#studiesView", symptoms: "#symptomsView", therapy: "#therapyView", drugs: "#drugsView" };
 const TB_VIEW = { calendar: "calendar", list: "labs", studies: "studies", symptoms: "symptoms", therapy: "therapy", drugs: "drugs" };
 function setView(v) {
+  const prev = ui.view;
   ui.view = VIEWS[v] ? v : "calendar";
   document.body.dataset.view = ui.view;
   Object.entries(VIEWS).forEach(([k, sel]) => { $(sel).hidden = ui.view !== k; });
@@ -350,6 +351,7 @@ function setView(v) {
   if (ui.view === "drugs") renderDrugs();
   if (ui.view === "calendar") renderCalendar();
   $$("#mobSeg [data-view-go]").forEach(b => b.setAttribute("aria-pressed", b.dataset.viewGo === ui.view));
+  if (prev !== ui.view) viewIn($(VIEWS[ui.view]));
   scrollTo({ top: 0 });
 }
 

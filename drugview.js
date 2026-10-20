@@ -36,13 +36,13 @@ function renderDrugs() {
   const others = [...Object.keys(DRUG), ...custom].filter(id => !mine.has(id));
   const row = (id, name, sub) => `<button type="button" class="tp-drow" data-dr="${id ? esc(id) : ""}" data-q="${esc(norm(name + " " + (id ? drugInfo(id).group : "")))}"${id ? "" : ` data-dr-new="${esc(name)}"`}>
       <span><b>${esc(name)}</b><small>${esc(sub)}</small></span><svg class="chev" width="18" height="18" viewBox="0 0 20 20" aria-hidden="true"><path d="M7 4l6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>`;
-  box.innerHTML = `<div class="st-head"><div><h2>Препараты</h2><p class="st-sub">Что принимаешь, как правильно и с чем осторожно. Любую строку можно нажать и исправить.</p></div>
+  morph(box, `<div class="st-head"><div><h2>Препараты</h2><p class="st-sub">Что принимаешь, как правильно и с чем осторожно. Любую строку можно нажать и исправить.</p></div>
       ${ui.readonly ? "" : `<button type="button" class="btn primary" data-dr-add>Свой препарат</button>`}</div>
     <input class="input tp-dq" data-dr-q placeholder="Найти препарат" autocomplete="off" aria-label="Найти препарат">
     ${mine.size ? `<h3 class="st-year">Мои · ${mine.size}</h3><div class="card st-list tp-dlist">${[...mine.values()].map(m => row(m.id, m.name, [m.id ? drugInfo(m.id).group : "нет в справочнике — нажми, чтобы создать", "в схеме: " + m.plans.join(", ")].filter(Boolean).join(" · "))).join("")}</div>` : ""}
     ${others.length ? `<h3 class="st-year">Справочник · ${others.length}</h3><div class="card st-list tp-dlist">${others.map(id => row(id, drugInfo(id).name, drugInfo(id).group)).join("")}</div>` : ""}
     <p class="muted tp-dnone" hidden>Ничего не нашлось</p>
-    <p class="muted tp-dnote">Кратко для пациента, по инструкциям и исследованиям. Дозу и курс решает врач.</p>`;
+    <p class="muted tp-dnote">Кратко для пациента, по инструкциям и исследованиям. Дозу и курс решает врач.</p>`);
 }
 
 /* ---------- one drug ---------- */

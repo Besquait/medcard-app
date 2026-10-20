@@ -538,8 +538,8 @@ function treatHtml(id, list) {
 function openX(html, cls = "") {
   const d = $("#xDlg");
   d.className = "dialog x-dlg " + cls;
-  $("#xBody").innerHTML = html;
-  if (!d.open) d.showModal();
+  // an open sheet is patched in place: switching a tab or saving a line does not flash the whole window
+  if (d.open) morph($("#xBody"), html); else { $("#xBody").innerHTML = html; d.showModal(); }
 }
 const closeX = () => { const d = $("#xDlg"); if (d.open) d.close(); };
 

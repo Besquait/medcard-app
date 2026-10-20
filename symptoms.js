@@ -179,13 +179,13 @@ function renderSymptoms() {
   const box = $("#symptomsView"); if (!box || box.hidden) return;
   const all = syList();
   if (!all.length) {
-    box.innerHTML = `<div class="st-head"><div><h2>Симптомы</h2></div></div>
+    morph(box, `<div class="st-head"><div><h2>Симптомы</h2></div></div>
       <div class="st-empty">
         <h3>Что беспокоит?</h3>
         <p>Записывай всё, что чувствуешь: головные боли, шум в ушах, боль в глазах, хруст в колене. Отмечай дни, когда было, и что пробовал — помогло или нет. Перед приёмом всё соберётся в сводку для врача.</p>
         <button type="button" class="btn primary" data-sy-new>Добавить симптом</button>
       </div>
-      ${syAnamCard()}`;
+      ${syAnamCard()}`);
     return;
   }
   const now = all.filter(s => !syPast(s)).sort(syOrder);
@@ -198,13 +198,13 @@ function renderSymptoms() {
   // the shared read-only view shows complaints only: the diary stays private
   const page = ui.readonly ? "list" : ui.syPage || "list";
   const tabs = ui.readonly ? "" : `<div class="seg sy-ptabs" role="tablist" aria-label="Раздел">${[["list", "Жалобы"], ["links", "Связи"]].map(([k, n]) => `<button type="button" role="tab" data-sy-page="${k}" aria-pressed="${page === k}">${n}</button>`).join("")}</div>`;
-  box.innerHTML = `
+  morph(box, `
     <div class="st-head">
       <div><h2>Симптомы</h2><p class="st-sub">${sub}</p></div>
       <div class="sy-hbtns"><button type="button" class="btn" data-sy-report>Сводка для врача</button><button type="button" class="btn primary" data-sy-new>Добавить</button></div>
     </div>
     ${tabs}
-    ${page === "links" ? dyLinksTab() : syListPage(now, main, past)}`;
+    ${page === "links" ? dyLinksTab() : syListPage(now, main, past)}`);
   $$("#symptomsView .sy-grow").forEach(syGrow);
 }
 // complaints: main ones first, then one card per organ, the history of illness and what has passed

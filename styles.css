@@ -38,7 +38,7 @@ button { cursor: pointer; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .num { font-variant-numeric: tabular-nums; }
 
-.page { max-width: 1120px; margin: 0 auto; padding: 0 24px 64px; }
+.page { max-width: 1200px; margin: 0 auto; padding: 0 24px 64px; }
 
 /* header */
 .top { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; padding: 28px 0 8px; }

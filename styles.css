@@ -2305,6 +2305,8 @@ body[data-view="calendar"] .tabbar .tb-add { display: none; }
   .dialog[open]::backdrop { animation: backIn .26s ease; }
   .dialog { transition: opacity .18s ease, transform .18s ease, overlay .18s allow-discrete, display .18s allow-discrete; }
   .dialog:not([open]) { opacity: 0; transform: translateY(8px) scale(.98); }
+  .dialog::backdrop { transition: opacity .18s ease, overlay .18s allow-discrete, display .18s allow-discrete; }
+  .dialog:not([open])::backdrop { opacity: 0; }
 }
 @media (prefers-reduced-motion: no-preference) and (max-width: 720px) {
   .dialog[open]::backdrop { animation: backIn .3s ease; }

@@ -2600,3 +2600,24 @@ body[data-view]:not([data-view="labs"]) #addBtn { display: none; }
   .fd-kcal b { font-size: 24px; }
   .fd-line { font-size: 14.5px; }
 }
+
+/* the top bar: full width, sections with icons in three groups (the day, records, treatment) */
+@media (min-width: 721px) {
+  .top { margin: 0 calc(50% - 50vw); padding: 10px calc(50vw - 50% + 24px); gap: 20px; min-height: 64px; }
+  .brand { font-size: 19px; gap: 9px; flex: none; }
+  .logo { width: 26px; height: 26px; border-radius: 8px; }
+  .tabs { background: none; padding: 0; gap: 6px; align-items: center; }
+  .tab-grp { display: flex; gap: 2px; padding: 4px; border-radius: 14px; background: var(--soft); }
+  .tab { display: inline-flex; align-items: center; gap: 8px; padding: 8px 13px; border-radius: 10px; font-size: 14.5px; font-weight: 550; color: var(--muted); white-space: nowrap; transition: background-color .18s, color .18s, box-shadow .18s; }
+  .tab svg { flex: none; opacity: .8; }
+  .tab:hover { color: var(--ink); background: color-mix(in srgb, var(--card) 60%, transparent); }
+  .tab[aria-current="page"] { background: var(--card); color: var(--ink); box-shadow: 0 1px 2px rgba(0, 0, 0, .18), inset 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent); }
+  .tab[aria-current="page"] svg { color: var(--accent); opacity: 1; }
+  .menu-btn { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 12px; font-size: 14.5px; color: var(--muted); background: var(--soft); }
+  .menu-btn:hover { color: var(--ink); }
+}
+/* narrower desktops: icons stay, the labels of the inactive sections hide */
+@media (min-width: 721px) and (max-width: 1280px) {
+  .tab:not([aria-current="page"]) span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .tab { padding: 8px 10px; }
+}

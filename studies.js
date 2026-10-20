@@ -330,9 +330,9 @@ async function deleteStudy(id) {
 }
 
 /* ---------- views ---------- */
-// views: labs (the default), studies, symptoms; the hash keeps the tab across reloads
-const VIEWS = { labs: "#labsView", studies: "#studiesView", symptoms: "#symptomsView" };
-const TB_VIEW = { list: "labs", studies: "studies", symptoms: "symptoms" };
+// views: labs (the default), studies, symptoms, therapy; the hash keeps the tab across reloads
+const VIEWS = { labs: "#labsView", studies: "#studiesView", symptoms: "#symptomsView", therapy: "#therapyView" };
+const TB_VIEW = { list: "labs", studies: "studies", symptoms: "symptoms", therapy: "therapy" };
 function setView(v) {
   ui.view = VIEWS[v] ? v : "labs";
   Object.entries(VIEWS).forEach(([k, sel]) => { $(sel).hidden = ui.view !== k; });
@@ -342,6 +342,7 @@ function setView(v) {
   if (location.hash !== hash) history.replaceState(null, "", hash || location.pathname + location.search);
   if (ui.view === "studies") renderStudies();
   if (ui.view === "symptoms") renderSymptoms();
+  if (ui.view === "therapy") renderTherapy();
   scrollTo({ top: 0 });
 }
 

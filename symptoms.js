@@ -391,7 +391,10 @@ function openSymptom(id) {
       ${log.length ? `<section class="st-sec"><h4>${s.pattern === "const" ? "Отметки" : "Когда было"} · ${log.length}</h4><div class="sy-log">${shown.map(e => `<div class="sy-lrow">${syDot(e.sev)}<span class="num">${fmtDate(e.d)}</span><span class="sy-lnote">${e.sev ? `<b class="sy-sev s${e.sev}">${esc(SY_SEV_NAME[e.sev])}</b>${entry(e) ? " · " : ""}` : ""}${esc(entry(e))}</span><button type="button" class="icon-btn sm" data-sy-ldel="${esc(e.d)}|${esc(e.t || "")}" aria-label="Удалить запись">×</button></div>`).join("")}</div>
         ${log.length > shown.length ? `<button type="button" class="btn sm ghost" data-sy-alllog>Показать все ${log.length}</button>` : ""}</section>`
         : `<p class="muted sy-hint">${s.pattern === "const" ? "Отметок пока нет. Отмечай на вкладке «Обзор», как сегодня, — здесь появится картина по дням." : "Приступов пока не отмечено."}</p>`}`,
-    care: () => `<section class="st-sec"><div class="sy-sech"><h4>Что пробовал${tried.length ? ` · ${tried.length}` : ""}</h4>${addBtn("tried")}</div>
+    care: () => `${tpForSymptom(id).length ? `<section class="st-sec"><h4>Схемы лечения</h4><div class="sy-mks-list">${tpForSymptom(id).map(p => `<div class="sy-mkr"><button type="button" class="sy-mk" data-sy-plan="${esc(p.id)}">
+        <span class="sy-mkn">${esc(p.title)}</span><span class="sy-mkv">${tpActive(p) ? "идёт" : "закончено"}</span>
+        <span class="sy-mks">${esc([(p.drugs || []).map(d => d.name).join(", "), p.eff ? TP_EFF_NAME[p.eff].toLowerCase() : ""].filter(Boolean).join(" · "))}</span></button></div>`).join("")}</div></section>` : ""}
+    <section class="st-sec"><div class="sy-sech"><h4>Что пробовал${tried.length ? ` · ${tried.length}` : ""}</h4>${addBtn("tried")}</div>
       ${tried.length ? `<div class="sy-tried">${tried.map((x, i) => `<div class="sy-trow"><span class="sy-tname"><b>${esc(x.name)}</b>${x.note ? `<small>${esc(x.note)}</small>` : ""}</span>
         <div class="sy-effs" role="group" aria-label="Как подействовало: ${esc(x.name)}">${SY_EFF.map(([k, n]) => `<button type="button" class="sy-eff e-${k}" data-sy-eff="${i}|${k}" aria-pressed="${x.eff === k}">${n}</button>`).join("")}</div>
         <button type="button" class="icon-btn sm" data-sy-tdel="${i}" aria-label="Убрать: ${esc(x.name)}">×</button></div>`).join("")}</div>`
@@ -548,6 +551,8 @@ function initSymptoms() {
     const mi = t.closest("[data-sy-mkinfo]"); if (mi) { openInfo(mi.dataset.syMkinfo); return; }
     const md = t.closest("[data-sy-mkdel]"); if (md) { const s = cur(); s.labs = (s.labs || []).filter(x => x !== md.dataset.syMkdel); reopen(); return; }
     const sd = t.closest("[data-sy-study]"); if (sd) { openStudy(sd.dataset.syStudy); return; }
+    const sp = t.closest("[data-sy-plan]");
+    if (sp) { closeX(); setView("therapy"); $(`#tp-${CSS.escape(sp.dataset.syPlan)}`)?.scrollIntoView({ behavior: "smooth", block: "start" }); return; }
     if (t.closest("[data-sy-main]")) { const s = cur(); s.main = !s.main; reopen(); toast(s.main ? "Добавлено в главное" : "Убрано из главного"); return; }
     const tdy = t.closest("[data-sy-today]");
     if (tdy) {

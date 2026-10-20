@@ -411,6 +411,7 @@ function reportHtml(opt = {}) {
     </header>
     ${sec("История болезни", anamnesisReport())}
     ${sec("Жалобы", symptomsReport(from))}
+    ${sec("Лечение", therapyReport(from))}
     ${sec("Вне нормы сейчас", bad.length ? `<table class="rep-t"><thead><tr><th>Показатель</th><th>Значение</th><th>Норма</th><th>Дата</th><th>Раньше</th></tr></thead><tbody>${bad.map(m => { const l = bm[m], x = latest(m), pv = l.length > 1 ? l[l.length - 2] : null; return `<tr><td><b>${esc(info(m).ru)}</b>${harmHit(x) ? ` <span class="rep-harm">порог действия</span>` : ""}</td><td class="num ${status(x)}">${val(x)}</td><td class="num">${norm(x)}</td><td class="num">${fmtDate(x.date)}</td><td class="num">${pv ? `${fmt(pv.v)} (${fmtDate(pv.date)})` : "—"}</td></tr>`; }).join("")}</tbody></table>` : `<p>Все последние значения в норме.</p>`)}
     ${sec("Давление", bpTxt() ? `<p>${esc(bpTxt())}</p>` : "")}
     ${sec(`Динамика ключевых показателей${years ? ` за ${years} ${plural(years, "год", "года", "лет")}` : ""}`, trendIds.length ? `<table class="rep-t"><thead><tr><th>Показатель</th><th>Значения по датам</th><th>Тренд</th></tr></thead><tbody>${trendIds.map(m => { const l = bm[m].filter(r => r.date >= from).slice(-5); return `<tr><td>${esc(info(m).ru)} <small>${esc(l[l.length - 1].unit || "")}</small></td><td class="num">${l.map(r => `<span class="rep-v ${status(r) || ""}">${fmt(r.v)}</span> <small>${fmtDate(r.date).slice(3)}</small>`).join(" → ")}</td><td>${spark(l)}</td></tr>`; }).join("")}</tbody></table>` : "")}

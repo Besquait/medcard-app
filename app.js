@@ -146,13 +146,13 @@ function pos(r) {
 
 /* ============ storage ============ */
 const KEY = "medcard.v1";
-const state = { markers: {}, results: {}, events: {}, prefs: {}, studies: {}, symptoms: {}, days: {} };
+const state = { markers: {}, results: {}, events: {}, prefs: {}, studies: {}, symptoms: {}, days: {}, plans: {} };
 function load() {
   let raw = null;
   try { raw = localStorage.getItem(KEY); } catch (e) { /* storage blocked */ }
   if (raw) {
     try {
-      const j = JSON.parse(raw); state.markers = j.markers || {}; state.results = j.results || {}; state.events = j.events || {}; state.prefs = j.prefs || {}; state.studies = j.studies || {}; state.symptoms = j.symptoms || {}; state.days = j.days || {};
+      const j = JSON.parse(raw); state.markers = j.markers || {}; state.results = j.results || {}; state.events = j.events || {}; state.prefs = j.prefs || {}; state.studies = j.studies || {}; state.symptoms = j.symptoms || {}; state.days = j.days || {}; state.plans = j.plans || {};
       // bring in seed rows added after this browser was first filled (matched by analysis + date)
       if ((j.seedVersion || 1) < (window.SEED_VERSION || 1)) {
         // seed rows (ids starting with "s") are replaced wholesale; rows entered on the site are kept
@@ -899,7 +899,7 @@ document.addEventListener("click", e => {
 });
 infoDlg.addEventListener("click", e => { if (e.target === infoDlg) infoDlg.close(); });
 
-function renderAll() { renderOverview(); renderDue(); renderGroups(); renderList(); renderTimeline(); renderStudies(); renderSymptoms(); }
+function renderAll() { renderOverview(); renderDue(); renderGroups(); renderList(); renderTimeline(); renderStudies(); renderSymptoms(); renderTherapy(); }
 
 /* ============ tooltip ============ */
 const tip = $("#tip");
@@ -1048,7 +1048,7 @@ $("#importInput").addEventListener("change", async e => {
   try {
     const j = JSON.parse(await f.text());
     if (!j || typeof j.results !== "object") throw new Error("bad");
-    state.markers = j.markers || {}; state.results = j.results; state.events = j.events || {}; state.prefs = j.prefs || {}; state.studies = j.studies || {}; state.symptoms = j.symptoms || {}; state.days = j.days || {}; save(); renderAll();
+    state.markers = j.markers || {}; state.results = j.results; state.events = j.events || {}; state.prefs = j.prefs || {}; state.studies = j.studies || {}; state.symptoms = j.symptoms || {}; state.days = j.days || {}; state.plans = j.plans || {}; save(); renderAll();
     toast(`Загружено: ${Object.keys(state.results).length} замеров`);
   } catch (err) { toast("Это не файл Медкарты — ничего не изменено"); }
   e.target.value = ""; menu.hidden = true;
@@ -1386,6 +1386,7 @@ initExtras();
 initStudies();
 initSymptoms();
 initDiary();
+initTherapy();
 const shareToken = new URLSearchParams(location.search).get("share");
 if (shareToken && typeof cloudConfigured === "function" && cloudConfigured()) shareBoot(shareToken);
 else if (typeof cloudConfigured === "function" && cloudConfigured()) cloudBoot();
@@ -1397,8 +1398,8 @@ setTimeout(() => $("#list").classList.add("settled"), 900);
 $("#tabbar").addEventListener("click", e => {
   const b = e.target.closest("[data-tb]"); if (!b) return;
   const k = b.dataset.tb;
-  if (k === "add") { if (ui.view === "studies") openStudyForm(); else if (ui.view === "symptoms") openSymptomForm(); else openEntry(); return; }
-  if (k === "studies" || k === "symptoms") { setView(k); return; }
+  if (k === "add") { if (ui.view === "studies") openStudyForm(); else if (ui.view === "symptoms") openSymptomForm(); else if (ui.view === "therapy") openPlanForm(); else openEntry(); return; }
+  if (k === "studies" || k === "symptoms" || k === "therapy") { setView(k); return; }
   if (k === "me") { e.stopPropagation(); $("#menuBtn").click(); return; }
   if (ui.view !== "labs") setView("labs");
   if (k === "sit") { $(".toolbar").scrollIntoView({ behavior: "smooth", block: "start" }); setTimeout(() => sitPop.hidden && openSitPop(), 250); return; }

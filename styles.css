@@ -2490,3 +2490,6 @@ body[data-view="calendar"] .tabbar .tb-add { display: none; }
 }
 /* the header button for lab results only where the results are */
 body[data-view]:not([data-view="labs"]) #addBtn { display: none; }
+/* the search results drop out of the card instead of being cut by its edge */
+.card:has(.fd-search) { overflow: visible; position: relative; z-index: 5; }
+.card:has(.fd-res:not([hidden])) { z-index: 40; }

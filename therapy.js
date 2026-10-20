@@ -77,15 +77,19 @@ function openPlan(id) {
   const cmp = Object.fromEntries(tpCompare({ ...p, id }).map(c => [c.s.id, c]));
   const tabs = [["drugs", "Препараты", drugs.length], ["recs", "Рекомендации", recs.length], ["sy", "Лечит", sy.length]];
   const tab = tabs.some(([k]) => k === ui.tpTab) ? ui.tpTab : "drugs";
+  // when to take: times of day (or "as needed"), before or after food, the dose and a free note
   const drugEdit = (d, i) => `<form class="tp-ed" data-tp-dsave="${i}">
-      <input class="input" name="name" value="${esc(d.name || "")}" placeholder="Препарат и доза, например Омез 40" autocomplete="off">
-      <input class="input" name="how" value="${esc(d.how || "")}" placeholder="Как принимать" autocomplete="off">
+      <input class="input" name="name" value="${esc(d.name || "")}" placeholder="Препарат, например Омез 40" autocomplete="off">
+      <input class="input" name="dose" value="${esc(d.dose || "")}" placeholder="Доза: 1 капсула, 10 мл" autocomplete="off">
+      <div class="tp-chs" role="group" aria-label="Когда">${[...CL_SLOTS.slice(0, 4), ["prn", "По необходимости"]].map(([k, n]) => `<button type="button" class="tchip" data-tp-slot="${k}" aria-pressed="${k === "prn" ? !!d.prn : (d.slots || []).includes(k)}">${n}</button>`).join("")}</div>
+      <div class="tp-chs" role="group" aria-label="Еда">${[["before", "До еды"], ["with", "Во время еды"], ["after", "После еды"], ["any", "Не важно"]].map(([k, n]) => `<button type="button" class="tchip" data-tp-food="${k}" aria-pressed="${(d.food || "any") === k}">${n}</button>`).join("")}</div>
+      <input class="input" name="how" value="${esc(d.how || "")}" placeholder="Уточнение: за 30 минут до еды, отдельно от других" autocomplete="off">
       <div class="tp-edb">${i !== "new" ? `<button type="button" class="btn sm ghost danger" data-tp-ddel="${i}">Удалить</button>` : ""}<span style="flex:1"></span>
         <button type="button" class="btn sm ghost" data-tp-cancel>Отмена</button><button type="submit" class="btn sm primary">Сохранить</button></div></form>`;
   const add = (k, label) => ro ? "" : `<button type="button" class="tp-add" data-tp-addopen="${k}">+ ${label}</button>`;
   const body = {
     drugs: () => `<div class="tp-list">${drugs.map((d, i) => ui.tpDrug === i ? drugEdit(d, i)
-        : `<div class="tp-drugrow"><button type="button" class="tp-drug" data-tp-dedit="${i}"${ro ? " disabled" : ""}><b>${esc(d.name)}</b>${d.how ? `<span>${esc(d.how)}</span>` : ""}</button>${drugMatch(d.name) ? `<button type="button" class="btn sm ghost tp-about" data-dr="${esc(drugMatch(d.name))}">О препарате</button>` : ""}</div>`).join("")}
+        : `<div class="tp-drugrow"><button type="button" class="tp-drug" data-tp-dedit="${i}"${ro ? " disabled" : ""}><b>${esc(d.name)}</b>${tpWhen(d)}${[d.dose, d.how].filter(Boolean).length ? `<span>${esc([d.dose, d.how].filter(Boolean).join(" · "))}</span>` : ""}</button>${drugMatch(d.name) ? `<button type="button" class="btn sm ghost tp-about" data-dr="${esc(drugMatch(d.name))}">О препарате</button>` : ""}</div>`).join("")}
       ${ui.tpDrug === "new" ? drugEdit({}, "new") : add("drug", "Препарат")}</div>`,
     recs: () => `${TP_RECS.map(([k, n]) => { const l = recs.map((r, i) => ({ ...r, i })).filter(r => (r.cat || "other") === k); return l.length ? `<section class="tp-recg"><h4>${n}</h4><ul>${l.map(r => ui.tpRec === r.i ? `<li class="tp-recedit"><form class="dr-form" data-tp-rsave="${r.i}"><textarea class="input sy-grow" name="t" rows="2">${esc(r.text)}</textarea><div class="tp-edb"><button type="button" class="btn sm ghost danger" data-tp-rdel="${r.i}">Удалить</button><span style="flex:1"></span><button type="button" class="btn sm ghost" data-tp-cancel>Отмена</button><button type="submit" class="btn sm primary">Сохранить</button></div></form></li>`
           : `<li><span class="${ro ? "" : "dr-ed"}" data-tp-red="${r.i}">${esc(r.text)}</span>${ro ? "" : `<button type="button" class="icon-btn sm" data-tp-rdel="${r.i}" aria-label="Убрать совет">×</button>`}</li>`).join("")}</ul></section>` : ""; }).join("")}
@@ -104,6 +108,12 @@ function openPlan(id) {
     <div class="dlg-foot"><div class="tp-effs" role="group" aria-label="Как помогает">${TP_EFF.map(([k, n]) => `<button type="button" class="sy-eff e-${k}" data-tp-eff="${esc(id)}|${k}" aria-pressed="${p.eff === k}"${ro ? " disabled" : ""}>${n}</button>`).join("")}</div>
       <span style="flex:1"></span>${ro ? "" : `<button type="button" class="btn ghost" data-tp-edit="${esc(id)}">Название и прочее</button>`}</div>`, "st-dlg tp-dlg tp-view");
   $("#xDlg .tp-ed input")?.focus();
+}
+// time-of-day chips for a drug: "Утро · Вечер · до еды" or "По необходимости"
+function tpWhen(d) {
+  const slots = d.prn ? ["По необходимости"] : (d.slots || []).map(k => CL_SLOTS.find(([x]) => x === k)?.[1]).filter(Boolean);
+  const food = CL_FOOD[d.food] || "";
+  return slots.length || food ? `<span class="tp-when">${slots.map(n => `<i>${esc(n)}</i>`).join("")}${food ? `<em>${esc(food)}</em>` : ""}</span>` : "";
 }
 // redraw the open scheme after an edit, keeping the scroll
 function tpRedraw() { const d = $("#xDlg"), y = d.scrollTop; save(); renderTherapy(); openPlan(ui.tpOpen); d.scrollTop = y; }
@@ -191,6 +201,15 @@ function initTherapy() {
       const ao = t.closest("[data-tp-addopen]");
       if (ao) { const k = ao.dataset.tpAddopen; if (k === "drug") { ui.tpDrug = "new"; ui.tpAdd = null; } else { ui.tpAdd = k; ui.tpDrug = null; } openPlan(ui.tpOpen); return; }
       if (t.closest("[data-tp-cancel]")) { ui.tpDrug = null; ui.tpAdd = null; ui.tpRec = null; openPlan(ui.tpOpen); return; }
+      const sl = t.closest("[data-tp-slot]");
+      if (sl) {
+        const f = sl.closest("form"), on = sl.getAttribute("aria-pressed") !== "true";
+        sl.setAttribute("aria-pressed", on);
+        if (sl.dataset.tpSlot === "prn" && on) $$("[data-tp-slot]:not([data-tp-slot=prn])", f).forEach(b => b.setAttribute("aria-pressed", false));
+        if (sl.dataset.tpSlot !== "prn" && on) $("[data-tp-slot=prn]", f).setAttribute("aria-pressed", false);
+        return;
+      }
+      const fo = t.closest("[data-tp-food]"); if (fo) { $$("[data-tp-food]", fo.parentElement).forEach(b => b.setAttribute("aria-pressed", b === fo)); return; }
       const re = t.closest("[data-tp-red]"); if (re && !ui.readonly) { ui.tpRec = +re.dataset.tpRed; ui.tpAdd = null; ui.tpDrug = null; openPlan(ui.tpOpen); $("#xDlg [data-tp-rsave] textarea")?.focus(); return; }
       const dd = t.closest("[data-tp-ddel]"); if (dd) { p.drugs.splice(+dd.dataset.tpDdel, 1); ui.tpDrug = null; tpRedraw(); return; }
       const rd = t.closest("[data-tp-rdel]"); if (rd) { p.recs.splice(+rd.dataset.tpRdel, 1); ui.tpRec = null; tpRedraw(); return; }
@@ -213,10 +232,12 @@ function initTherapy() {
     const p = state.plans?.[ui.tpOpen]; if (!p) return;
     if (f.matches("[data-tp-dsave]")) {
       e.preventDefault();
-      const name = f.elements.name.value.trim(), how = f.elements.how.value.trim(), i = f.dataset.tpDsave;
+      const name = f.elements.name.value.trim(), how = f.elements.how.value.trim(), dose = f.elements.dose.value.trim(), i = f.dataset.tpDsave;
       if (!name) { f.elements.name.focus(); return; }
+      const on = k => $(`[data-tp-slot="${k}"]`, f)?.getAttribute("aria-pressed") === "true";
+      const sched = { dose, how, prn: on("prn"), slots: on("prn") ? [] : CL_SLOTS.slice(0, 4).map(([k]) => k).filter(on), food: $("[data-tp-food][aria-pressed=true]", f)?.dataset.tpFood || "any" };
       p.drugs ||= [];
-      if (i === "new") p.drugs.push({ name, how, start: todayISO(), end: "" }); else Object.assign(p.drugs[+i], { name, how });
+      if (i === "new") p.drugs.push({ id: newId("g"), name, ...sched, start: todayISO(), end: "" }); else Object.assign(p.drugs[+i], { name, ...sched }, p.drugs[+i].id ? {} : { id: newId("g") });
       ui.tpDrug = null; tpRedraw(); return;
     }
     if (f.matches("[data-tp-rsave]")) {

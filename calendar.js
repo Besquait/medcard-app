@@ -94,9 +94,9 @@ function clMedsCard(d) {
   if (!sched.length && !prn.length) return `<section class="card cl-card"><h4>Лекарства</h4><p class="muted">На этот день нет препаратов из схем. Добавь схему в «Лечение» — и здесь появится, что принять.</p></section>`;
   const row = it => `<button type="button" class="cl-med${m[it.key] ? " on" : ""}" data-cl-med="${esc(it.key)}" aria-pressed="${!!m[it.key]}"><i class="cl-box" aria-hidden="true"></i>
       <span class="cl-mn"><b>${esc(it.g.name)}</b>${clSub(it.g) ? `<small>${esc(clSub(it.g))}</small>` : ""}</span></button>`;
-  const groups = CL_SLOTS.map(([k, n]) => [n, sched.filter(it => it.slot === k)]).filter(([, l]) => l.length);
+  const groups = CL_SLOTS.map(([k, n]) => [n, sched.filter(it => it.slot === k), k]).filter(([, l]) => l.length);
   return `<section class="card cl-card"><div class="cl-h"><h4>Лекарства</h4>${c.n ? `<span class="cl-count${c.k === c.n ? " ok" : ""}">${c.k} из ${c.n}</span>` : ""}</div>
-    ${groups.map(([n, l]) => `<div class="cl-slot"><span class="cl-slotn">${n}</span>${l.map(row).join("")}</div>`).join("")}
+    ${groups.map(([n, l, k]) => { const all = l.every(it => m[it.key]); return `<div class="cl-slot"><div class="cl-slh"><span class="cl-slotn">${n}</span>${l.length > 1 ? `<button type="button" class="cl-all${all ? " on" : ""}" data-cl-all="${k}">${all ? "Всё принято ✓" : "Принял всё"}</button>` : ""}</div>${l.map(row).join("")}</div>`; }).join("")}
     ${prn.length ? `<div class="cl-slot"><span class="cl-slotn">По необходимости</span>${prn.map(it => { const k = x.prn?.[it.id] || 0; return `<div class="cl-prn"><span class="cl-mn"><b>${esc(it.g.name)}</b>${clSub(it.g) ? `<small>${esc(clSub(it.g))}</small>` : ""}</span>
       ${k ? `<button type="button" class="icon-btn sm" data-cl-prn="${esc(it.id)}|-1" aria-label="Убрать приём">−</button><span class="cl-n">${k}</span>` : ""}<button type="button" class="btn sm" data-cl-prn="${esc(it.id)}|1">${k ? "Ещё" : "Принял"}</button></div>`; }).join("")}</div>` : ""}
   </section>`;
@@ -133,6 +133,16 @@ function initCalendar() {
     if (t.closest("[data-cl-mode]")) { ui.clMonth = !ui.clMonth; renderCalendar(); return; }
     const md = t.closest("[data-cl-med]");
     if (md) { const x = dyDay(d), k = md.dataset.clMed; x.meds = { ...(x.meds || {}) }; if (x.meds[k]) delete x.meds[k]; else x.meds[k] = true; if (!Object.keys(x.meds).length) delete x.meds; dyTidy(d); save(); renderCalendar(); return; }
+    const al = t.closest("[data-cl-all]");
+    if (al) {
+      // all of this time of day taken → untick them, otherwise tick every one
+      const x = dyDay(d), keys = clMeds(d).sched.filter(it => it.slot === al.dataset.clAll).map(it => it.key);
+      x.meds = { ...(x.meds || {}) };
+      const all = keys.every(k => x.meds[k]);
+      keys.forEach(k => { if (all) delete x.meds[k]; else x.meds[k] = true; });
+      if (!Object.keys(x.meds).length) delete x.meds;
+      dyTidy(d); save(); renderCalendar(); return;
+    }
     const pr = t.closest("[data-cl-prn]");
     if (pr) { const [id, k] = pr.dataset.clPrn.split("|"), x = dyDay(d); x.prn = { ...(x.prn || {}) }; x.prn[id] = Math.max(0, (x.prn[id] || 0) + +k); if (!x.prn[id]) delete x.prn[id]; if (!Object.keys(x.prn).length) delete x.prn; dyTidy(d); save(); renderCalendar(); }
   });

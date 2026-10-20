@@ -331,19 +331,22 @@ async function deleteStudy(id) {
 
 /* ---------- views ---------- */
 // views: labs (the default), studies, symptoms, therapy; the hash keeps the tab across reloads
-const VIEWS = { labs: "#labsView", studies: "#studiesView", symptoms: "#symptomsView", therapy: "#therapyView", drugs: "#drugsView" };
-const TB_VIEW = { list: "labs", studies: "studies", symptoms: "symptoms", therapy: "therapy", drugs: "drugs" };
+const VIEWS = { calendar: "#calendarView", labs: "#labsView", studies: "#studiesView", symptoms: "#symptomsView", therapy: "#therapyView", drugs: "#drugsView" };
+const TB_VIEW = { calendar: "calendar", list: "labs", studies: "studies", symptoms: "symptoms", therapy: "therapy", drugs: "drugs" };
 function setView(v) {
-  ui.view = VIEWS[v] ? v : "labs";
+  ui.view = VIEWS[v] ? v : "calendar";
+  document.body.dataset.view = ui.view;
   Object.entries(VIEWS).forEach(([k, sel]) => { $(sel).hidden = ui.view !== k; });
   $$(".top .tabs [data-view]").forEach(b => { if (b.dataset.view === ui.view) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); });
   $$("#tabbar [data-tb]").forEach(b => { if (TB_VIEW[b.dataset.tb]) b.setAttribute("aria-current", String(TB_VIEW[b.dataset.tb] === ui.view)); });
-  const hash = ui.view === "labs" ? "" : "#" + ui.view;
+  const hash = ui.view === "calendar" ? "" : "#" + ui.view;
   if (location.hash !== hash) history.replaceState(null, "", hash || location.pathname + location.search);
   if (ui.view === "studies") renderStudies();
   if (ui.view === "symptoms") renderSymptoms();
   if (ui.view === "therapy") renderTherapy();
   if (ui.view === "drugs") renderDrugs();
+  if (ui.view === "calendar") renderCalendar();
+  $$("#mobSeg [data-view-go]").forEach(b => b.setAttribute("aria-pressed", b.dataset.viewGo === ui.view));
   scrollTo({ top: 0 });
 }
 

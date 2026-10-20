@@ -904,7 +904,7 @@ document.addEventListener("click", e => {
 });
 infoDlg.addEventListener("click", e => { if (e.target === infoDlg) infoDlg.close(); });
 
-function renderAll() { renderOverview(); renderDue(); renderGroups(); renderList(); renderTimeline(); renderStudies(); renderSymptoms(); renderTherapy(); renderDrugs(); }
+function renderAll() { renderOverview(); renderDue(); renderGroups(); renderList(); renderTimeline(); renderStudies(); renderSymptoms(); renderTherapy(); renderDrugs(); renderCalendar(); }
 
 /* ============ tooltip ============ */
 const tip = $("#tip");
@@ -1393,6 +1393,8 @@ initSymptoms();
 initDiary();
 initTherapy();
 initDrugs();
+initCalendar();
+$("#mobSeg").addEventListener("click", e => { const b = e.target.closest("[data-view-go]"); if (b) setView(b.dataset.viewGo); });
 const shareToken = new URLSearchParams(location.search).get("share");
 if (shareToken && typeof cloudConfigured === "function" && cloudConfigured()) shareBoot(shareToken);
 else if (typeof cloudConfigured === "function" && cloudConfigured()) cloudBoot();
@@ -1405,7 +1407,7 @@ $("#tabbar").addEventListener("click", e => {
   const b = e.target.closest("[data-tb]"); if (!b) return;
   const k = b.dataset.tb;
   if (k === "add") { if (ui.view === "studies") openStudyForm(); else if (ui.view === "symptoms") openSymptomForm(); else if (ui.view === "therapy") openPlanForm(); else if (ui.view === "drugs") $("[data-dr-add]")?.click(); else openEntry(); return; }
-  if (k === "studies" || k === "symptoms" || k === "therapy" || k === "drugs") { setView(k); return; }
+  if (k === "studies" || k === "symptoms" || k === "therapy" || k === "drugs" || k === "calendar") { setView(k); return; }
   if (k === "me") { e.stopPropagation(); $("#menuBtn").click(); return; }
   if (ui.view !== "labs") setView("labs");
   if (k === "sit") { $(".toolbar").scrollIntoView({ behavior: "smooth", block: "start" }); setTimeout(() => sitPop.hidden && openSitPop(), 250); return; }

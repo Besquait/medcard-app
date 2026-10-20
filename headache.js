@@ -39,37 +39,46 @@ function hxDur(e) {
 }
 const hxOpen = () => hxEps().find(e => !e.hx.end && e.d >= addDaysISO(todayISO(), -2));
 
-// the head drawing: front and back, each zone a tappable shape; heat maps reuse it with counts
+// the head drawing, front and back. The front is a mirror: the left of the picture is your left.
+// Zones are soft shapes over a calm silhouette; heat maps reuse it with counts.
+const HX_HEAD = "M110 20C158 20 184 60 184 108c0 50-24 92-74 104C60 200 36 158 36 108 36 60 62 20 110 20z";
 function hxHead(sel, heat) {
   const max = heat ? Math.max(1, ...Object.values(heat)) : 1;
   const z = (id, shape) => {
     const on = sel?.includes(id), h = heat ? (heat[id] || 0) / max : 0;
     return `<g class="hx-z${on ? " on" : ""}" data-hx-z="${id}"${heat ? ` style="--h:${h.toFixed(2)}"` : ""}><title>${HX_ZONES[id]}${heat ? ` · ${heat[id] || 0}` : ""}</title>${shape}</g>`;
   };
+  const base = (back) => `
+      <path class="hx-neck" d="M84 196c2 18 0 34-8 48h68c-8-14-10-30-8-48z"/>
+      <ellipse class="hx-ear" cx="35" cy="118" rx="9" ry="19"/><ellipse class="hx-ear" cx="185" cy="118" rx="9" ry="19"/>
+      <path class="hx-skin" d="${HX_HEAD}"/>
+      ${back ? `<path class="hx-hair" d="M40 100C40 54 70 24 110 24s70 30 70 76c-10-22-36-34-70-34S50 78 40 100z"/>` : ""}`;
+  // eyebrows, eyes, nose, mouth: just enough to tell the front from the back
+  const face = `<g class="hx-face" aria-hidden="true">
+      <path d="M70 92q14-7 28 0M122 92q14-7 28 0"/>
+      <path d="M72 108q12-8 24 0q-12 7-24 0zM124 108q12-8 24 0q-12 7-24 0z"/>
+      <path d="M110 112v24q-6 4-10 2M100 160q10 6 20 0"/></g>`;
+  const marks = `<text class="hx-mark" x="16" y="122">Л</text><text class="hx-mark" x="196" y="122">П</text>`;
   return `<div class="hx-heads${heat ? " heat" : ""}">
-    <figure><svg viewBox="0 0 200 240" aria-label="Голова спереди">
-      <defs><clipPath id="hxF${heat ? "h" : ""}"><ellipse cx="100" cy="110" rx="72" ry="92"/></clipPath></defs>
-      <ellipse cx="100" cy="110" rx="72" ry="92" class="hx-skin"/>
-      <g clip-path="url(#hxF${heat ? "h" : ""})">
-        ${z("crown", '<rect x="20" y="10" width="160" height="40"/>')}
-        ${z("forehead", '<rect x="44" y="52" width="112" height="36" rx="10"/>')}
-        ${z("templeR", '<rect x="20" y="74" width="40" height="56" rx="12"/>')}
-        ${z("templeL", '<rect x="140" y="74" width="40" height="56" rx="12"/>')}
-        ${z("eyeR", '<ellipse cx="76" cy="108" rx="15" ry="11"/>')}
-        ${z("eyeL", '<ellipse cx="124" cy="108" rx="15" ry="11"/>')}
-        ${z("sinus", '<ellipse cx="100" cy="136" rx="30" ry="14"/>')}
-        ${z("jawR", '<ellipse cx="56" cy="170" rx="22" ry="26"/>')}
-        ${z("jawL", '<ellipse cx="144" cy="170" rx="22" ry="26"/>')}
-      </g>
+    <figure><svg viewBox="0 0 220 250" aria-label="Голова спереди, как в зеркале">
+      ${base(false)}
+      ${z("crown", '<path d="M62 44C78 28 94 22 110 22s32 6 48 22c-14 6-30 9-48 9s-34-3-48-9z"/>')}
+      ${z("forehead", '<path d="M56 60c16 8 34 12 54 12s38-4 54-12c4 8 6 16 6 24-18 5-38 7-60 7s-42-2-60-7c0-8 2-16 6-24z"/>')}
+      ${z("templeL", '<path d="M42 90c6-4 14-4 20 0 2 14 2 28-2 40-6 2-12 0-18-4-3-12-3-24 0-36z"/>')}
+      ${z("templeR", '<path d="M178 90c-6-4-14-4-20 0-2 14-2 28 2 40 6 2 12 0 18-4 3-12 3-24 0-36z"/>')}
+      ${z("eyeL", '<ellipse cx="84" cy="108" rx="17" ry="11"/>')}
+      ${z("eyeR", '<ellipse cx="136" cy="108" rx="17" ry="11"/>')}
+      ${z("sinus", '<path d="M100 104h20l4 26c10 0 18 2 24 6-8 8-24 12-38 12s-30-4-38-12c6-4 14-6 24-6z"/>')}
+      ${z("jawL", '<path d="M44 140c6 0 12 4 14 10l6 28c-6 4-12 4-16 0-4-12-6-24-4-38z"/>')}
+      ${z("jawR", '<path d="M176 140c-6 0-12 4-14 10l-6 28c6 4 12 4 16 0 4-12 6-24 4-38z"/>')}
+      ${face}${marks}
     </svg><figcaption>спереди</figcaption></figure>
-    <figure><svg viewBox="0 0 200 240" aria-label="Голова сзади">
-      <defs><clipPath id="hxB${heat ? "h" : ""}"><ellipse cx="100" cy="110" rx="72" ry="92"/></clipPath></defs>
-      <ellipse cx="100" cy="110" rx="72" ry="92" class="hx-skin"/>
-      <g clip-path="url(#hxB${heat ? "h" : ""})">
-        ${z("crown", '<rect x="20" y="10" width="160" height="40"/>')}
-        ${z("occiput", '<ellipse cx="100" cy="140" rx="62" ry="46"/>')}
-      </g>
-      ${z("neck", '<rect x="70" y="200" width="60" height="38" rx="10"/>')}
+    <figure><svg viewBox="0 0 220 250" aria-label="Голова сзади">
+      ${base(true)}
+      ${z("crown", '<path d="M62 44C78 28 94 22 110 22s32 6 48 22c-14 6-30 9-48 9s-34-3-48-9z"/>')}
+      ${z("occiput", '<path d="M52 118c16 10 36 14 58 14s42-4 58-14c0 34-14 64-42 80-10 4-22 4-32 0-28-16-42-46-42-80z"/>')}
+      ${z("neck", '<path d="M86 210h48c0 12 2 22 6 32H80c4-10 6-20 6-32z"/>')}
+      <text class="hx-mark" x="16" y="122">Л</text><text class="hx-mark" x="196" y="122">П</text>
     </svg><figcaption>сзади</figcaption></figure>
   </div>`;
 }

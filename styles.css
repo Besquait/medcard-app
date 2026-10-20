@@ -2643,13 +2643,8 @@ body[data-view]:not([data-view="labs"]) #addBtn { display: none; }
 .hx-dlg .tchip { padding: 7px 12px; font-size: 14.5px; border-radius: 11px; }
 .hx-heads { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .hx-heads figure { margin: 0; text-align: center; }
-.hx-heads svg { width: 100%; max-width: 190px; height: auto; display: block; margin: 0 auto; }
+.hx-heads svg { width: 100%; max-width: 210px; height: auto; display: block; margin: 0 auto; }
 .hx-heads figcaption { font-size: 12.5px; color: var(--faint); }
-.hx-skin { fill: var(--soft); stroke: var(--line); stroke-width: 2; }
-.hx-z > :not(title) { fill: color-mix(in srgb, var(--faint) 14%, transparent); stroke: color-mix(in srgb, var(--faint) 35%, transparent); stroke-width: 1.5; cursor: pointer; transition: fill .15s; }
-.hx-z:hover > :not(title) { fill: color-mix(in srgb, var(--high) 25%, transparent); }
-.hx-z.on > :not(title) { fill: color-mix(in srgb, var(--high) 70%, transparent); stroke: var(--high); }
-.hx-heads.heat .hx-z > :not(title) { fill: color-mix(in srgb, var(--high) calc(var(--h) * 85%), transparent); cursor: default; }
 .hx-locs { margin: 6px 0 0; font-size: 14px; color: var(--muted); text-align: center; min-height: 20px; }
 .hx-meds { display: flex; flex-direction: column; gap: 8px; }
 .hx-med { display: grid; grid-template-columns: minmax(0, 1fr) 110px minmax(0, 330px) 32px; gap: 10px; align-items: center; }
@@ -2693,3 +2688,13 @@ body[data-view]:not([data-view="labs"]) #addBtn { display: none; }
   .hx-vas { grid-template-columns: repeat(5, minmax(0, 1fr)); }
   .hx-still { min-width: 0; width: 100%; }
 }
+/* the head drawing */
+.hx-skin { fill: color-mix(in srgb, var(--soft) 70%, var(--card)); stroke: color-mix(in srgb, var(--faint) 45%, transparent); stroke-width: 1.6; }
+.hx-ear, .hx-neck { fill: color-mix(in srgb, var(--soft) 55%, var(--card)); stroke: color-mix(in srgb, var(--faint) 40%, transparent); stroke-width: 1.4; }
+.hx-hair { fill: color-mix(in srgb, var(--faint) 12%, transparent); pointer-events: none; }
+.hx-face { fill: none; stroke: color-mix(in srgb, var(--faint) 55%, transparent); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
+.hx-mark { font: 600 13px var(--font); fill: var(--faint); text-anchor: middle; pointer-events: none; }
+.hx-z > :not(title) { fill: transparent; stroke: color-mix(in srgb, var(--faint) 30%, transparent); stroke-width: 1.2; stroke-dasharray: 3 4; cursor: pointer; transition: fill .18s, stroke .18s; }
+.hx-z:hover > :not(title) { fill: color-mix(in srgb, var(--high) 18%, transparent); stroke: color-mix(in srgb, var(--high) 60%, transparent); stroke-dasharray: none; }
+.hx-z.on > :not(title) { fill: color-mix(in srgb, var(--high) 62%, transparent); stroke: var(--high); stroke-dasharray: none; filter: drop-shadow(0 0 6px color-mix(in srgb, var(--high) 55%, transparent)); }
+.hx-heads.heat .hx-z > :not(title) { fill: color-mix(in srgb, var(--high) calc(var(--h) * 80%), transparent); stroke: none; cursor: default; }

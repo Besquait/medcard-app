@@ -133,6 +133,7 @@ function renderCalendar() {
     <div class="cl-layout">
       <div class="cl-main">
         <div class="cl-mob">${clStrip(sel, today, false)}</div>
+        ${sel === today && hxOpen() ? hxBanner(hxOpen()) : ""}
         ${clBanner(sel)}
         ${sleepFirst ? clSleepCard(sel, true) : ""}
         ${clMedsBlock(sel)}
@@ -167,7 +168,7 @@ function clTop(sel) {
   }
   return `<div class="cl-top"><div><p class="cl-date">${esc(date)}</p><h2 class="cl-big">${esc(name)}</h2>
       ${isT ? "" : `<button type="button" class="cl-back" data-cl-day="${today}">← к сегодняшнему дню</button>`}</div>
-    <div class="cl-topr">${now}${isT ? `<button type="button" class="btn cl-badbtn" data-cl-bad>Сейчас плохо</button>` : ""}</div></div>`;
+    <div class="cl-topr">${now}${isT ? `<button type="button" class="btn cl-badbtn" data-hx-new>Болит голова</button><button type="button" class="btn cl-badbtn" data-cl-bad>Сейчас плохо</button>` : ""}</div></div>`;
 }
 // yesterday is still remembered well; older days are better left empty than filled from memory
 function clBanner(sel) {

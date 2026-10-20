@@ -1395,6 +1395,7 @@ initTherapy();
 initDrugs();
 initCalendar();
 initFood();
+initHeadache();
 $$("#mobSeg, #mobSeg2").forEach(m => m.addEventListener("click", e => { const b = e.target.closest("[data-view-go]"); if (b) setView(b.dataset.viewGo); }));
 const shareToken = new URLSearchParams(location.search).get("share");
 if (shareToken && typeof cloudConfigured === "function" && cloudConfigured()) shareBoot(shareToken);

@@ -11,10 +11,11 @@ const DY_MOOD_NAME = Object.fromEntries(DY_MOOD);
 const DY_SLEEP = [[5, "5 ч и меньше"], [6, "6 ч"], [7, "7 ч"], [8, "8 ч и больше"]];
 // [id, chip, phrase in findings, may act on the next day]
 const DY_FACTORS = [
-  ["acid", "Кислое", "кислая еда", 1],
+  ["acid", "Кислое, острое", "кислое или острое", 1],
   ["late", "Поздний ужин", "поздний ужин", 1],
+  ["lay", "Лёг после еды", "лёг вскоре после еды", 1],
   ["big", "Много поел", "переедание", 1],
-  ["fatty", "Жирное, острое", "жирное или острое", 1],
+  ["fatty", "Жирное, жареное", "жирное или жареное", 1],
   ["coffee", "Кофе", "кофе", 1],
   ["stress", "Стресс", "стресс или тревога", 1],
   ["screen", "Много за компьютером", "много времени за компьютером", 0],
@@ -23,11 +24,11 @@ const DY_FACTORS = [
   ["sick", "Болел", "простуда или болезнь", 1],
 ];
 // days needed in each group before a comparison is shown; days before the links tab starts talking
-const DY_MIN = 3, DY_FIRST = 7, DY_GOAL = 14, DY_GRID = 28;
+const DY_MIN = 8, DY_FIRST = 7, DY_GOAL = 14, DY_GRID = 28;
 const DY_WEEKDAY = ["воскресенье", "понедельник", "вторник", "среда", "четверг", "пятница", "суббота"];
 
 const dyFactors = () => [...DY_FACTORS, ...(state.prefs?.dayFactors || []).map(f => [f.id, f.name, f.name.toLowerCase(), 1])];
-const dyHas = x => !!x && !!(x.mood || x.sleep || x.note || x.f || x.meds || x.prn || x.bed || x.wake || x.x || x.sq || x.lat || x.rest || x.wk != null || x.meal || x.food || (x.sy && Object.keys(x.sy).length));
+const dyHas = x => !!x && !!(x.mood || x.sleep || x.note || x.f || x.meds || x.prn || x.bed || x.wake || x.x || x.sq || x.lat || x.rest || x.wk != null || x.meal || x.food || x.amh != null || x.am || (x.sy && Object.keys(x.sy).length));
 const dyCount = () => Object.values(state.days || {}).filter(dyHas).length;
 function dyDay(d) { state.days ||= {}; return (state.days[d] ||= {}); }
 // an emptied day does not count as recorded
@@ -110,15 +111,16 @@ function dyRecent() {
 // Welch's t of 2.5 and more (hundreds of pairs are compared, so the bar is above the usual 2); per pair the surer of "same day" and "next day" is kept.
 function dyLinks() {
   const days = state.days || {}, dates = Object.keys(days).filter(d => dyHas(days[d])).sort();
-  const outs = [{ name: "Самочувствие", mood: true, scale: 4, get: d => days[d]?.mood || null }];
+  const outs = [{ name: "Самочувствие", mood: true, scale: 4, get: d => days[d]?.mood || null }, { name: "Голова утром", id: "amh", scale: 3, get: d => days[d]?.amh ?? null }];
   syList().filter(s => !syPast(s)).forEach(s => { const by = syDays(s); outs.push({ name: s.name, id: s.id, scale: 3, get: d => dyVal(s, d, by) }); });
-  const facs = [["sleep", "", "сон 6 часов и меньше", 0], ["sq", "", "плохой сон", 0], ["wk", "", "просыпался ночью 2 раза и больше", 0], ["nreflux", "", "ночью будила изжога", 0], ...dyFactors()];
+  const facs = [["sleep", "", "сон 6 часов и меньше", 0], ["sq", "", "плохой сон", 0], ["wk", "", "просыпался ночью 2 раза и больше", 0], ["nreflux", "", "ночью будила изжога", 0], ["jaw", "", "утром сжата челюсть", 0], ...dyFactors()];
   const fv = (d, id) => {
     const x = days[d]; if (!x) return null;
     if (id === "sleep") return x.sleep ? x.sleep <= 6 : null;
     if (id === "sq") return x.sq ? x.sq <= 2 : null;
     if (id === "wk") return x.wk != null ? x.wk >= 2 : null;
     if (id === "nreflux") return x.wk != null ? !!x.why?.reflux : null;
+    if (id === "jaw") return x.am ? !!x.am.jaw : null;
     return x.f ? !!x.f[id] : null;
   };
   const avg = a => a.reduce((s, v) => s + v, 0) / a.length;
@@ -176,7 +178,7 @@ function dyLinksTab() {
   return `<section class="card dy-links"><h3>Что связано с самочувствием</h3>
       <p>По ${n} ${plural(n, "записанному дню", "записанным дням", "записанным дням")}${n < DY_GOAL ? " — пока предварительно" : ""}: в какие дни становится лучше или хуже.</p>
       ${list.length ? list.map(item).join("") : `<p>Явных связей пока не видно. Продолжай записывать — чем больше дней, тем точнее.</p>`}
-      <p class="dy-caveat">Это совпадения в твоих записях, а не доказанная причина. Покажи их врачу — вместе с ним проще понять, что за ними стоит.</p>
+      <p class="dy-caveat">Это совпадения в твоих записях — гипотезы, а не доказанная причина: сравнений много, пара случайных совпадений бывает всегда. Проверить гипотезу можно в «Проверке» в календаре. Покажи их врачу — вместе с ним проще понять, что за ними стоит.</p>
     </section>${grid}`;
 }
 

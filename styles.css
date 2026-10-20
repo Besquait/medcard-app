@@ -2302,6 +2302,8 @@ body[data-view="calendar"] .tabbar .tb-add { display: none; }
 .cl-syn { display: flex; align-items: center; gap: 12px; font-size: 17px; font-weight: 500; line-height: 1.35; }
 .cl-sdot { width: 10px; height: 10px; flex: none; border-radius: 50%; background: var(--line); transition: background-color .2s; }
 .cl-sdot.s0 { background: var(--ok); } .cl-sdot.s1 { background: color-mix(in srgb, var(--ok) 45%, var(--edge)); } .cl-sdot.s2 { background: var(--edge); } .cl-sdot.s3 { background: var(--high); }
+.cl-scale { margin: -6px 0 0; font-size: 14.5px; line-height: 1.55; color: var(--muted); }
+.cl-scale b { color: var(--ink); font-weight: 600; }
 .cl-more2 summary { font-size: 15.5px; padding: 6px 0; }
 .cl-more2 .cl-sys { margin-top: 8px; }
 

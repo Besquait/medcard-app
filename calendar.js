@@ -252,9 +252,11 @@ const CL_LAT = [[1, "до 15 мин", "g0"], [2, "15–30 мин", "g1"], [3, "3
 const CL_WK = [[0, "ни разу", "g0"], [1, "1 раз", "g1"], [2, "2 раза", "g2"], [3, "3 и больше", "g3"]];
 const CL_SQ = [[1, "Очень плохо"], [2, "Плохо"], [3, "Средне"], [4, "Хорошо"], [5, "Отлично"]];
 const CL_REST = [[1, "Разбитый", "g3"], [2, "Так себе", "g2"], [3, "Отдохнувший", "g0"]];
+// on waking: together with a morning headache these are worth showing a doctor (sleep breathing, bruxism, reflux)
+const CL_AM = [["dry", "Сухость во рту"], ["bitter", "Горечь, кислый вкус"], ["jaw", "Челюсть сжата, устала"]];
 const CL_WHY = [["reflux", "Изжога, кислота"], ["cough", "Кашель, слизь"], ["dry", "Сухость во рту"], ["toilet", "Туалет"], ["ears", "Шум в ушах"], ["other", "Без причины"]];
 // day factors in groups, so the chips do not pile up
-const CL_FGROUPS = [["Еда", ["acid", "late", "big", "fatty", "coffee", "flax"]], ["Режим", ["stress", "screen", "move", "sick"]]];
+const CL_FGROUPS = [["Еда", ["fatty", "acid", "big", "late", "lay", "coffee", "flax"]], ["Режим", ["stress", "screen", "move", "sick"]]];
 const clSeg = (attr, list, val, cls = "") => `<div class="seg2 ${cls}" role="group">${list.map(([k, n, c]) => `<button type="button" class="${c || ""}" ${attr}="${k}" aria-pressed="${val === k}">${n}</button>`).join("")}</div>`;
 const clHead = (tone, icon, title, sub, right) => `<div class="cl-bh"><span class="cl-bi ${tone}">${icon}</span><div class="cl-bt"><h4>${title}</h4>${sub ? `<small>${sub}</small>` : ""}</div>${right ? `<div class="cl-br">${right}</div>` : ""}</div>`;
 const CL_I = {
@@ -292,6 +294,8 @@ function clSleepCard(d, first) {
     ${x.wk > 0 ? row("Что будило", `<div class="tchips cl-why">${CL_WHY.map(([k, n]) => `<button type="button" class="tchip" data-cl-why="${k}" aria-pressed="${!!x.why?.[k]}">${n}</button>`).join("")}</div>`, "можно несколько") : ""}
     ${row("Как спалось", clSeg("data-cl-sq", CL_SQ.map(([k, n]) => [k, n, "m" + k]), x.sq, "dots"))}
     ${row("Утром", clSeg("data-cl-rest", CL_REST, x.rest))}
+    ${row("Голова утром", clSeg("data-cl-amh", [[0, "Нет", "s0"], ...SY_SEV.map(([k, n]) => [k, n, "s" + k])], x.amh))}
+    ${row("При пробуждении", `<div class="tchips cl-why">${CL_AM.map(([k, n]) => `<button type="button" class="tchip" data-cl-am="${k}" aria-pressed="${!!x.am?.[k]}">${n}</button>`).join("")}</div>`, "если было")}
   </section>`;
 }
 function clDayCard(d, withSleep) {
@@ -313,6 +317,7 @@ function clDayCard(d, withSleep) {
     <section class="card cl-box t-ok">${clHead("t-ok", CL_I.mood, "Самочувствие", "в целом за день", x.mood ? `<span class="cl-pillv m${x.mood}">${esc(DY_MOOD_NAME[x.mood])}</span>` : "")}
       ${clSeg("data-dy-mood", DY_MOOD.map(([k, n]) => [k, n, "m" + k]), x.mood, "dots big")}</section>
     ${main.length || rest.length ? `<section class="card cl-box t-edge">${clHead("t-edge", CL_I.sy, main.length ? "Главные жалобы" : "Жалобы", "как было в худший момент", main.length ? `<span class="cl-cnt">${marked} из ${main.length}</span>` : "")}
+      <p class="cl-scale"><b>Слабо</b> — заметно, но не мешает · <b>Заметно</b> — мешает делам или сну · <b>Сильно</b> — пришлось что-то делать или принять средство</p>
       <div class="cl-sys">${main.map(syRow).join("")}</div>
       ${rest.length ? `<details class="dy-more cl-more2"${ui.dyMore || !main.length ? " open" : ""}><summary>${main.length ? "Остальные жалобы" : "Все жалобы"} · ${rest.length}${restMarked ? `, отмечено ${restMarked}` : ""}</summary><div class="cl-sys">${rest.map(syRow).join("")}</div></details>` : ""}</section>` : ""}
     ${typeof fdDayCard === "function" ? fdDayCard(d) : ""}
@@ -461,12 +466,14 @@ function initCalendar() {
     if (pr) { const [id, k] = pr.dataset.clPrn.split("|"); touch(d, x => { x.prn = { ...(x.prn || {}) }; x.prn[id] = Math.max(0, (x.prn[id] || 0) + +k); if (!x.prn[id]) delete x.prn[id]; if (!Object.keys(x.prn).length) delete x.prn; }); return; }
     const xx = t.closest("[data-cl-x]");
     if (xx) { const [id, k] = xx.dataset.clX.split("|"); touch(d, x => { x.x = { ...(x.x || {}) }; if (x.x[id] === +k) delete x.x[id]; else x.x[id] = +k; if (!Object.keys(x.x).length) delete x.x; }); return; }
-    const nk = t.closest("[data-cl-lat],[data-cl-wk],[data-cl-sq],[data-cl-rest]");
+    const nk = t.closest("[data-cl-lat],[data-cl-wk],[data-cl-sq],[data-cl-rest],[data-cl-amh]");
     if (nk) {
-      const f = ["lat", "wk", "sq", "rest"].find(k => nk.hasAttribute("data-cl-" + k)), v = +nk.getAttribute("data-cl-" + f);
+      const f = ["lat", "wk", "sq", "rest", "amh"].find(k => nk.hasAttribute("data-cl-" + k)), v = +nk.getAttribute("data-cl-" + f);
       touch(d, x => { if (x[f] === v) delete x[f]; else x[f] = v; if (!(x.wk > 0)) delete x.why; });
       return;
     }
+    const am = t.closest("[data-cl-am]");
+    if (am) { const k = am.dataset.clAm; touch(d, x => { x.am = { ...(x.am || {}) }; if (x.am[k]) delete x.am[k]; else x.am[k] = true; if (!Object.keys(x.am).length) delete x.am; }); return; }
     const wy = t.closest("[data-cl-why]");
     if (wy) { const k = wy.dataset.clWhy; touch(d, x => { x.why = { ...(x.why || {}) }; if (x.why[k]) delete x.why[k]; else x.why[k] = true; if (!Object.keys(x.why).length) delete x.why; }); return; }
     if (t.closest("[data-cl-same]")) { const y = state.days?.[addDaysISO(d, -1)]; if (y) touch(d, x => { x.bed = y.bed; x.wake = y.wake; clSleepSet(x); }); return; }

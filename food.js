@@ -125,7 +125,7 @@ function fdSync(d) {
   if (ts.length) { x.meal = ts[ts.length - 1]; x.mealFd = 1; } else if (x.mealFd) { delete x.meal; delete x.mealFd; }
   const has = t => food.some(e => (e.tags || "").split(" ").includes(t));
   const auto = {
-    fatty: has("fat") || has("spicy"), acid: has("acid"), coffee: has("coffee"),
+    fatty: has("fat"), acid: has("acid") || has("spicy"), coffee: has("coffee"),
     flax: food.some(e => (e.tags || "").includes("flax") && (e.t || "") < "12:00"),
     big: FD_MEALS.some(([k]) => fdSum(food.filter(e => e.m === k))[0] >= FD_BIG),
   };

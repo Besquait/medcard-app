@@ -2488,3 +2488,5 @@ body[data-view="calendar"] .tabbar .tb-add { display: none; }
   .dialog { transition: transform .25s cubic-bezier(.4, 0, 1, 1), overlay .25s allow-discrete, display .25s allow-discrete; }
   .dialog:not([open]) { transform: translateY(100%); }
 }
+/* the header button for lab results only where the results are */
+body[data-view]:not([data-view="labs"]) #addBtn { display: none; }

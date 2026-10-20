@@ -27,7 +27,7 @@ const DY_MIN = 3, DY_FIRST = 7, DY_GOAL = 14, DY_GRID = 28;
 const DY_WEEKDAY = ["воскресенье", "понедельник", "вторник", "среда", "четверг", "пятница", "суббота"];
 
 const dyFactors = () => [...DY_FACTORS, ...(state.prefs?.dayFactors || []).map(f => [f.id, f.name, f.name.toLowerCase(), 1])];
-const dyHas = x => !!x && !!(x.mood || x.sleep || x.note || x.f || x.meds || x.prn || x.bed || x.wake || (x.sy && Object.keys(x.sy).length));
+const dyHas = x => !!x && !!(x.mood || x.sleep || x.note || x.f || x.meds || x.prn || x.bed || x.wake || x.x || (x.sy && Object.keys(x.sy).length));
 const dyCount = () => Object.values(state.days || {}).filter(dyHas).length;
 function dyDay(d) { state.days ||= {}; return (state.days[d] ||= {}); }
 // an emptied day does not count as recorded

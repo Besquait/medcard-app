@@ -552,7 +552,7 @@ function initSymptoms() {
     const md = t.closest("[data-sy-mkdel]"); if (md) { const s = cur(); s.labs = (s.labs || []).filter(x => x !== md.dataset.syMkdel); reopen(); return; }
     const sd = t.closest("[data-sy-study]"); if (sd) { openStudy(sd.dataset.syStudy); return; }
     const sp = t.closest("[data-sy-plan]");
-    if (sp) { closeX(); setView("therapy"); $(`#tp-${CSS.escape(sp.dataset.syPlan)}`)?.scrollIntoView({ behavior: "smooth", block: "start" }); return; }
+    if (sp) { ui.tpTab = null; openPlan(sp.dataset.syPlan); return; }
     if (t.closest("[data-sy-main]")) { const s = cur(); s.main = !s.main; reopen(); toast(s.main ? "Добавлено в главное" : "Убрано из главного"); return; }
     const tdy = t.closest("[data-sy-today]");
     if (tdy) {

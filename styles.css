@@ -1862,39 +1862,38 @@ td.out-high b { color: var(--high); } td.out-low b { color: var(--low); }
   .dy-links { padding: 16px; }
 }
 
-/* treatment: one card per scheme */
-.tp-card { display: flex; flex-direction: column; gap: 14px; padding: 18px 20px; margin-bottom: 16px; }
-.tp-card.past { opacity: .85; }
-.tp-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
-.tp-head h3 { margin: 0; font-size: 17px; font-weight: 600; }
-.tp-meta { margin-top: 3px; font-size: 13px; color: var(--muted); }
-.tp-sec h4 { margin: 0 0 6px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
-.tp-drug { display: grid; grid-template-columns: minmax(130px, 220px) minmax(0, 1fr); gap: 2px 14px; padding: 8px 0; border-top: 1px solid var(--line); }
-.tp-sec > .tp-drug:nth-of-type(1) { border-top: 0; }
-.tp-drug b { font-size: 15px; font-weight: 600; }
-.tp-drug span { font-size: 14px; }
-.tp-drug small { grid-column: 2; font-size: 12.5px; color: var(--muted); }
-.tp-rec { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 12px; padding: 6px 0; }
-.tp-rec > span { font-size: 13px; font-weight: 600; color: var(--muted); padding-top: 1px; }
-.tp-rec ul { margin: 0; padding-left: 18px; font-size: 14px; line-height: 1.5; }
-.tp-cmp { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; padding: 6px 0; }
-.tp-cmp span { font-weight: 650; }
-.tp-cmp.better span { color: var(--ok); } .tp-cmp.worse span { color: var(--high); }
-.tp-cmp small { grid-column: 1 / -1; font-size: 12.5px; color: var(--muted); }
-.tp-note { margin: 0; font-size: 13.5px; line-height: 1.5; color: var(--muted); white-space: pre-wrap; }
-.tp-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; border-top: 1px solid var(--line); padding-top: 12px; }
+/* treatment: small tiles; a tile opens the scheme in a window with tabs */
+.tp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; margin-bottom: 18px; }
+.tp-tile { display: flex; flex-direction: column; gap: 6px; min-height: 110px; padding: 16px 18px; border: 0; text-align: left; font: inherit; color: var(--ink); cursor: pointer; transition: transform .15s, box-shadow .15s; }
+.tp-tile:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(0,0,0,.18); }
+.tp-tile b { font-size: 16px; font-weight: 600; line-height: 1.3; }
+.tp-tdrugs { font-size: 13.5px; color: var(--muted); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.tp-tfoot { margin-top: auto; display: flex; justify-content: space-between; gap: 8px; font-size: 12.5px; color: var(--faint); }
+.tp-teff { font-weight: 600; } .tp-teff.e-yes { color: var(--ok); } .tp-teff.e-part { color: var(--edge); } .tp-teff.e-no { color: var(--high); }
+.tp-tile.past { opacity: .7; }
+.tp-body { min-height: 140px; }
+.tp-list { display: flex; flex-direction: column; }
+.tp-drug { display: flex; flex-direction: column; gap: 3px; padding: 12px 0; border-top: 1px solid var(--line); }
+.tp-list > .tp-drug:first-child { border-top: 0; }
+.tp-drug b { font-size: 15.5px; font-weight: 600; }
+.tp-drug span { font-size: 14.5px; color: var(--muted); }
+.tp-recg h4 { margin: 4px 0 6px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.tp-recg ul { margin: 0 0 12px; padding-left: 18px; font-size: 14.5px; line-height: 1.55; }
+.tp-syr { display: flex; justify-content: space-between; align-items: center; gap: 12px; width: 100%; padding: 12px 2px; border: 0; border-top: 1px solid var(--line); background: none; text-align: left; font: inherit; font-size: 15px; color: var(--ink); cursor: pointer; }
+.tp-list > .tp-syr:first-child { border-top: 0; }
+.tp-syr:hover span { color: var(--accent); }
+.tp-syr small { font-weight: 650; color: var(--muted); } .tp-syr small.better { color: var(--ok); } .tp-syr small.worse { color: var(--high); }
 .tp-effs { display: flex; gap: 6px; flex-wrap: wrap; }
 /* treatment form */
 .tp-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .tp-drugs-f { display: flex; flex-direction: column; gap: 8px; margin-bottom: 6px; }
-.tp-frow { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.6fr) 72px 28px; gap: 6px; align-items: center; }
+.tp-frow { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) 28px; gap: 6px; align-items: center; }
 .tp-frow .icon-btn { width: 28px; height: 28px; }
 .tp-syf .tchip { cursor: pointer; }
 @media (max-width: 720px) {
-  .tp-card { padding: 16px; }
-  .tp-drug, .tp-rec { grid-template-columns: minmax(0, 1fr); gap: 2px; }
-  .tp-drug small { grid-column: 1; }
-  .tp-row2 { grid-template-columns: 1fr; }
-  .tp-frow { grid-template-columns: minmax(0, 1fr) 64px 28px; }
-  .tp-frow [name=dhow] { grid-column: 1 / -1; grid-row: 2; }
+  .tp-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .tp-tile { min-height: 96px; padding: 14px; }
+  .tp-tile b { font-size: 15px; }
+  .tp-frow { grid-template-columns: minmax(0, 1fr) 28px; }
+  .tp-frow [name=dhow] { grid-column: 1; grid-row: 2; }
 }

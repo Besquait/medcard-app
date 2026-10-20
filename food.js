@@ -12,7 +12,7 @@ const FD_MEAL_T = { b: "08:00", l: "13:00", d: "19:00", s: "16:00" };
 const FD_TAG = { fat: "жирное", acid: "кислое", spicy: "острое", coffee: "кофеин", choc: "шоколад", mint: "мята", fizzy: "газ", alc: "алкоголь" };
 // one meal this big presses on the stomach: "Много поел"
 const FD_BIG = 900;
-const FD_GOAL = { k: 2000, p: 90, f: 70, c: 250, fib: 30, w: 1500 };
+const FD_GOAL = { k: 2000, p: 90, f: 70, c: 250, fib: 30, w: 1500, kg: 70 };
 const FD_ICON = {
   food: clSvg('<path d="M7 3v8M5 3v5a2 2 0 0 0 4 0V3M7 11v10M17 21V3c-2 1.5-3 4-3 7v3h3"/>'),
   b: CL_ICON.morning, l: CL_ICON.day, d: CL_ICON.evening, s: clSvg('<path d="M12 7c-3-3-8-1-8 4s4 9 8 9 8-4 8-9-5-7-8-4z"/><path d="M12 7c0-2 1-3.5 3-4"/>'),
@@ -38,7 +38,7 @@ const fdGoal = () => ({ ...FD_GOAL, ...(state.prefs?.foodGoal || {}) });
 
 /* ---------- search ---------- */
 function fdCatalog() {
-  const my = (state.prefs?.myFoods || []).map(f => ({ src: "my:" + f.id, n: f.n, per: f.per, pg: f.pg || 100, pl: f.pl || "порция", tags: f.tags || "", my: true, s: fdNorm(f.n) }));
+  const my = (state.prefs?.myFoods || []).map(f => ({ src: "my:" + f.id, n: f.n, per: f.per, pg: f.pg || 100, pl: f.pl || "порция", tags: f.tags || "", nut: f.nut, my: true, s: fdNorm(f.n) }));
   return [...my, ...FD_DB.map(r => ({ src: r[0], n: r[1], per: [r[3], r[4], r[5], r[6], r[7]], pg: r[8], pl: r[9], tags: r[10], s: fdNorm(`${r[1]} ${r[2]}`) }))];
 }
 // "гречка 200", "кофе 300 мл", "яйцо 2", "2 банана"
@@ -97,8 +97,11 @@ async function fdNet(inp) {
       const n = p.nutriments || {}, k = n["energy-kcal_100g"] ?? (n.energy_100g ? n.energy_100g / 4.184 : null);
       const name = (p.product_name_ru || p.product_name_uk || p.product_name || "").trim();
       if (!name || k == null) return null;
-      const fat = +n.fat_100g || 0;
-      return { src: "off:" + p.code, n: `${name}${p.brands ? ` (${p.brands.split(",")[0].trim()})` : ""}`, per: [+k || 0, +n.proteins_100g || 0, fat, +n.carbohydrates_100g || 0, +n.fiber_100g || 0].map(v => Math.round(v * 10) / 10), pg: +p.serving_quantity || 100, pl: "порция", tags: fat >= 15 ? "fat" : "", off: true };
+      const fat = +n.fat_100g || 0, nut = {};
+      for (const [k, key, mul] of [["saturated-fat", "sat", 1], ["trans-fat", "trans", 1], ["sugars", "sugar", 1], ["cholesterol", "chol", 1e3], ["sodium", "na", 1e3], ["calcium", "ca", 1e3], ["iron", "fe", 1e3], ["magnesium", "mg", 1e3], ["potassium", "k", 1e3], ["zinc", "zn", 1e3], ["phosphorus", "p", 1e3], ["vitamin-c", "vC", 1e3], ["vitamin-d", "vD", 1e6], ["vitamin-a", "vA", 1e6], ["vitamin-b12", "b12", 1e6], ["vitamin-b6", "b6", 1e3], ["vitamin-b1", "b1", 1e3], ["vitamin-b2", "b2", 1e3], ["vitamin-e", "vE", 1e3], ["folates", "b9", 1e6], ["caffeine", "caff", 1e3], ["alcohol", "alc", 0.789]]) {
+        const v = n[`${k}_100g`]; if (v !== undefined && v !== "" && !isNaN(+v)) nut[key] = Math.round(+v * mul * 1000) / 1000;
+      }
+      return { src: "off:" + p.code, n: `${name}${p.brands ? ` (${p.brands.split(",")[0].trim()})` : ""}`, per: [+k || 0, +n.proteins_100g || 0, fat, +n.carbohydrates_100g || 0, +n.fiber_100g || 0].map(v => Math.round(v * 10) / 10), pg: +p.serving_quantity || 100, pl: "порция", tags: fat >= 15 ? "fat" : "", off: true, nut };
     }).filter(Boolean).slice(0, 8);
     ui.fdHits = list.map(f => ({ f, g: fdGrams(f, amt, unit) })); ui.fdIdx = 0;
     box.innerHTML = `${list.length ? fdHitsHtml(ui.fdHits) : `<p class="fd-none">В базе магазинных продуктов тоже не нашлось.</p>`}<div class="fd-rfoot"><button type="button" class="cl-link" data-fd-own>+ Свой продукт</button></div>`;
@@ -112,9 +115,9 @@ async function fdNet(inp) {
 const fdTimeFor = (d, m) => (state.days?.[d]?.food || []).find(e => e.m === m)?.t || (d === todayISO() && m === fdNowMeal() ? clHM() : FD_MEAL_T[m]);
 function fdAdd(d, f, g, m = fdMealCur()) {
   const x = dyDay(d);
-  x.food = [...(x.food || []), { id: newId("e"), n: f.n, g: Math.round(g), per: f.per.map(v => Math.round(v * 10) / 10), tags: f.tags || "", pl: f.pl || "", pg: f.pg || 100, m, t: fdTimeFor(d, m) }];
+  x.food = [...(x.food || []), { id: newId("e"), n: f.n, g: Math.round(g), per: f.per.map(v => Math.round(v * 10) / 10), tags: f.tags || "", pl: f.pl || "", pg: f.pg || 100, m, t: fdTimeFor(d, m), ...(f.src ? { src: f.src } : {}), ...(f.nut ? { nut: f.nut } : {}) }];
   if (f.off && !(state.prefs?.myFoods || []).some(y => y.n === f.n)) {
-    state.prefs ||= {}; state.prefs.myFoods = [...(state.prefs.myFoods || []), { id: newId("m"), n: f.n, per: f.per, pg: f.pg, pl: f.pl, tags: f.tags }];
+    state.prefs ||= {}; state.prefs.myFoods = [...(state.prefs.myFoods || []), { id: newId("m"), n: f.n, per: f.per, pg: f.pg, pl: f.pl, tags: f.tags, ...(f.nut ? { nut: f.nut } : {}) }];
   }
   fdSync(d);
 }
@@ -167,7 +170,7 @@ function fdItem(e) {
       <span class="cl-muted cl-small">Б ${fdK(e.per[1] * e.g / 100)} · Ж ${fdK(e.per[2] * e.g / 100)} · У ${fdK(e.per[3] * e.g / 100)}</span>
       <span class="fd-sp"></span>
       <select class="input fd-move" data-fd-move="${esc(e.id)}" aria-label="Приём пищи">${FD_MEALS.map(([k, n]) => `<option value="${k}"${e.m === k ? " selected" : ""}>${n}</option>`).join("")}</select>
-      <button type="button" class="btn sm ghost" data-fd-del="${esc(e.id)}">Удалить</button></div>` : ""}
+      <button type="button" class="btn sm" data-fd-comp="${esc(e.id)}">Состав</button><button type="button" class="btn sm ghost" data-fd-del="${esc(e.id)}">Удалить</button></div>` : ""}
   </div>`;
 }
 function fdMealCard(k, n, list) {
@@ -231,6 +234,7 @@ function renderFood() {
       <div class="cl-main">
         <section class="card cl-box t-food fd-addcard">${fdAddBox(d)}</section>
         ${FD_MEALS.map(([k, n]) => { const l = food.filter(e => e.m === k); return l.length ? fdMealCard(k, n, l) : ""; }).join("")}
+        ${typeof fdNutCard === "function" ? fdNutCard(d) : ""}
         ${food.length ? "" : `<div class="fd-empty"><b>Пока ничего не записано</b><p>Пиши как говоришь: «гречка 200», «яйцо 2», «кофе». Enter — добавить. Часто съедаемое потом появится кнопками, а повторяющийся завтрак можно сохранить набором.</p></div>`}
       </div>
       <aside class="cl-side">${fdTotals(d)}${fdStomach(d)}${fdWeek(d)}${fdSetsCard()}</aside>
@@ -264,7 +268,8 @@ function openFoodGoal() {
   openX(`<div class="dlg-head"><h3>Цели на день</h3><button type="button" class="icon-btn" data-xclose aria-label="Закрыть">×</button></div>
     <form class="fd-form" data-fd-goalf>
       <p class="cl-muted">Ориентиры для полосок. Точные цифры под тебя лучше обсудить с врачом или диетологом.</p>
-      <div class="fd-nums">${num("k", "Калории")}${num("p", "Белки, г")}${num("f", "Жиры, г")}${num("c", "Углеводы, г")}${num("fib", "Клетчатка, г")}${num("w", "Вода, мл")}</div>
+      <div class="fd-nums">${num("k", "Калории")}${num("p", "Белки, г")}${num("f", "Жиры, г")}${num("c", "Углеводы, г")}${num("fib", "Клетчатка, г")}${num("w", "Вода, мл")}${num("kg", "Мой вес, кг")}</div>
+      <p class="cl-muted cl-small">Вес нужен для норм белка и аминокислот (0,8 г белка на кг — минимум для взрослого).</p>
       <div class="dlg-foot"><span style="flex:1"></span><button type="submit" class="btn primary">Сохранить</button></div>
     </form>`, "st-dlg tp-dlg cl-dlg fd-dlg");
 }
@@ -329,7 +334,13 @@ function initFood() {
     }
     const sd = t.closest("[data-fd-setdel]");
     if (sd && confirm("Удалить этот набор?")) { state.prefs.foodSets = (state.prefs.foodSets || []).filter(s => s.id !== sd.dataset.fdSetdel); save(); renderFood(); renderCalendar(); return; }
-    if (t.closest("[data-fd-goal]")) openFoodGoal();
+    if (t.closest("[data-fd-goal]")) { openFoodGoal(); return; }
+    const rg = t.closest("[data-fd-range]"); if (rg) { ui.fdRange = +rg.dataset.fdRange; renderFood(); return; }
+    const nt = t.closest("[data-fd-ntab]"); if (nt) { ui.fdNutTab = nt.dataset.fdNtab; ui.fdNut = null; renderFood(); return; }
+    const nu = t.closest("[data-fd-nut]"); if (nu) { ui.fdNut = ui.fdNut === nu.dataset.fdNut ? null : nu.dataset.fdNut; renderFood(); return; }
+    const tp = t.closest("[data-fd-tip]");
+    if (tp) { const r = FD_BY[tp.dataset.fdTip]; if (r) { const f = fdCatalog().find(x => x.src === r[0]); fdAdd(d, f, f.pg); toast(`Добавлено: ${f.n}`); } return; }
+    const cp = t.closest("[data-fd-comp]"); if (cp) { openFoodComp(d, cp.dataset.fdComp); return; }
   });
   document.addEventListener("change", e => {
     const t = e.target; if (!t.closest?.("#foodView")) return;

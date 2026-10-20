@@ -2427,6 +2427,46 @@ body[data-view="calendar"] .tabbar .tb-add { display: none; }
   .fd-time { width: 96px; }
 }
 
+/* nutrients in depth */
+.fd-nut { gap: 14px; }
+.fd-range { min-width: 190px; }
+.fd-range button[aria-pressed="true"] { --c: var(--food); }
+.fd-lowline { margin: 0; padding: 12px 16px; border-radius: 14px; background: color-mix(in srgb, var(--edge) 10%, transparent); font-size: 15.5px; line-height: 1.55; }
+.fd-ntabs { display: flex; gap: 4px; padding: 4px; border-radius: 14px; background: var(--soft); overflow-x: auto; scrollbar-width: none; }
+.fd-ntabs button { flex: 1 0 auto; padding: 9px 14px; border: 0; border-radius: 11px; background: none; font: 500 15px var(--font); color: var(--muted); cursor: pointer; white-space: nowrap; }
+.fd-ntabs button[aria-selected="true"] { background: var(--card); color: var(--ink); font-weight: 650; box-shadow: var(--shadow); }
+.fd-nlist { display: flex; flex-direction: column; }
+.fd-nwrap + .fd-nwrap { border-top: 1px solid var(--line); }
+.fd-nrow { --c: var(--faint); display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) 140px 52px; align-items: center; gap: 16px; width: 100%; padding: 12px 4px; border: 0; background: none; text-align: left; font: inherit; color: var(--ink); cursor: pointer; border-radius: 10px; }
+.fd-nrow:hover { background: var(--soft); }
+.fd-nrow.low { --c: var(--high); } .fd-nrow.mid { --c: var(--edge); } .fd-nrow.ok { --c: var(--ok); } .fd-nrow.over { --c: var(--high); }
+.fd-nn { display: flex; flex-direction: column; font-size: 16.5px; font-weight: 500; line-height: 1.35; }
+.fd-nn small { font-size: 13px; font-weight: 400; color: var(--muted); }
+.fd-ppi { align-self: flex-start; margin-top: 2px; font-style: normal; padding: 0 7px; border-radius: 999px; font-size: 12px; font-weight: 600; background: color-mix(in srgb, var(--low) 16%, transparent); color: var(--low); }
+.fd-nv { font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
+.fd-nv small { font-weight: 400; color: var(--muted); }
+.fd-nv em { font-style: normal; color: var(--edge); margin-right: 3px; }
+.fd-nb { height: 8px; border-radius: 4px; background: var(--soft); overflow: hidden; }
+.fd-nb i { display: block; height: 100%; border-radius: 4px; background: var(--c); transition: width .6s cubic-bezier(.2, .8, .2, 1); }
+.fd-np { text-align: right; font-size: 15px; color: var(--c); font-variant-numeric: tabular-nums; }
+.fd-nby { display: flex; flex-direction: column; gap: 14px; padding: 4px 4px 18px; animation: slideDown .25s ease both; }
+.fd-nbl { display: flex; flex-direction: column; gap: 6px; }
+.fd-nbi { position: relative; display: flex; justify-content: space-between; gap: 12px; padding: 7px 12px; border-radius: 10px; overflow: hidden; font-size: 15.5px; }
+.fd-nbi i { position: absolute; left: 0; top: 0; bottom: 0; background: color-mix(in srgb, var(--food) 14%, transparent); z-index: 0; }
+.fd-nbi span, .fd-nbi b { position: relative; z-index: 1; }
+.fd-nbi b { font-variant-numeric: tabular-nums; }
+.fd-nby .tchip { display: inline-flex; gap: 8px; }
+.fd-nby .tchip small { color: var(--faint); }
+.fd-comp { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 0 28px; }
+.fd-comp .cl-stat b small { font-weight: 500; }
+@media (max-width: 720px) {
+  .fd-nrow { grid-template-columns: minmax(0, 1fr) auto; gap: 6px 12px; }
+  .fd-nb { grid-column: 1 / -1; grid-row: 2; }
+  .fd-np { display: none; }
+  .fd-nut .cl-bh { flex-wrap: wrap; }
+  .fd-range { min-width: 0; width: 100%; }
+}
+
 /* ---------- motion: nothing teleports ---------- */
 :root { interpolate-size: allow-keywords; }
 @media (prefers-reduced-motion: no-preference) {

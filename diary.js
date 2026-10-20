@@ -174,18 +174,11 @@ function dyLinksTab() {
 }
 
 /* ---------- wiring ---------- */
-function initDiary() {
-  const page = $("#symptomsView");
-  const day = () => ui.dayDate && ui.dayDate <= todayISO() ? ui.dayDate : todayISO();
-  const redraw = d => { if (d) dyTidy(d); save(); renderSymptoms(); };
+// day marks on any page that shows a day form: the page, which day it edits, how to redraw it
+function dyBind(page, day, render) {
+  const redraw = d => { if (d) dyTidy(d); save(); render(); };
   page.addEventListener("click", e => {
-    const t = e.target;
-    const pg = t.closest("[data-sy-page]"); if (pg) { ui.syPage = pg.dataset.syPage; renderSymptoms(); return; }
-    const go = t.closest("[data-dy-go]");
-    if (go) { const d = addDaysISO(day(), +go.dataset.dyGo); if (d <= todayISO()) { ui.dayDate = d; renderSymptoms(); } return; }
-    const dd = t.closest("[data-dy-day]");
-    if (dd) { ui.dayDate = dd.dataset.dyDay; ui.syPage = "diary"; renderSymptoms(); $(".dy-nav")?.scrollIntoView({ behavior: "smooth", block: "start" }); return; }
-    const d = day();
+    const t = e.target, d = day();
     const mo = t.closest("[data-dy-mood]");
     if (mo) { const x = dyDay(d), k = +mo.dataset.dyMood; if (x.mood === k) delete x.mood; else x.mood = k; redraw(d); return; }
     const sl = t.closest("[data-dy-sleep]");
@@ -199,7 +192,7 @@ function initDiary() {
       const [id, k] = sy.dataset.dySy.split("|"), s = syList().find(x => x.id === id); if (!s) return;
       dyMark(id, d, dyVal(s, d) === +k ? null : +k); redraw(d); return;
     }
-    if (t.closest("[data-dy-fadd]")) { const fm = $("[data-dy-faddf]"); fm.hidden = !fm.hidden; if (!fm.hidden) $("input", fm).focus(); return; }
+    if (t.closest("[data-dy-fadd]")) { const fm = $("[data-dy-faddf]", page); fm.hidden = !fm.hidden; if (!fm.hidden) $("input", fm).focus(); return; }
     if (t.closest(".dy-more > summary")) { ui.dyMore = !t.closest("details").open; return; }
   });
   page.addEventListener("submit", e => {
@@ -216,4 +209,17 @@ function initDiary() {
     if (v.trim()) dyDay(d).note = v; else if (state.days?.[d]) { delete state.days[d].note; dyTidy(d); }
     syGrow(e.target); save();
   });
+}
+function initDiary() {
+  const page = $("#symptomsView");
+  const day = () => ui.dayDate && ui.dayDate <= todayISO() ? ui.dayDate : todayISO();
+  page.addEventListener("click", e => {
+    const t = e.target;
+    const pg = t.closest("[data-sy-page]"); if (pg) { ui.syPage = pg.dataset.syPage; renderSymptoms(); return; }
+    const go = t.closest("[data-dy-go]");
+    if (go) { const d = addDaysISO(day(), +go.dataset.dyGo); if (d <= todayISO()) { ui.dayDate = d; renderSymptoms(); } return; }
+    const dd = t.closest("[data-dy-day]");
+    if (dd) { ui.clDay = dd.dataset.dyDay; setView("calendar"); }
+  });
+  dyBind(page, day, renderSymptoms);
 }

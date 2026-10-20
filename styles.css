@@ -1271,6 +1271,7 @@ button, a, input, select { touch-action: manipulation; }
 .st-date { display: flex; flex-direction: column; align-items: center; line-height: 1.1; }
 .st-date b { font-size: 21.5px; font-weight: 600; }
 .st-date span { font-size: 13.5px; color: var(--muted); }
+.st-date small { font-size: 12.5px; color: var(--faint); margin-top: 2px; }
 .st-main { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .st-kind { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: var(--muted); font-weight: 500; }
 .st-ic { display: inline-flex; color: var(--faint); }

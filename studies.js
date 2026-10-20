@@ -132,8 +132,11 @@ function renderStudies() {
     return;
   }
   const list = all.filter(s => (!f || CATEGORY[s.type] === f) && (!q || norm([studyTitle(s), s.clinic, s.doctor, s.conclusion, s.recs].join(" ")).includes(q)));
-  const years = {};
-  list.forEach(s => (years[(s.date || "").slice(0, 4) || "Без даты"] ||= []).push(s));
+  // grouped by kind (all gastroscopies together), the kind with the latest study first; newest first inside
+  const groups = {};
+  list.forEach(s => (groups[s.type || "other"] ||= []).push(s));
+  const kinds = Object.entries(groups).map(([k, l]) => [k, [...l].sort((a, b) => (b.date || "").localeCompare(a.date || ""))])
+    .sort(([, a], [, b]) => (b[0].date || "").localeCompare(a[0].date || ""));
   const finds = all.filter(s => s.status === "find").length, watch = all.filter(s => s.status === "watch").length;
   const cats = [["", "Все"], ["img", "Снимки и УЗИ"], ["fn", "Функциональные"], ["endo", "Эндоскопия"], ["doc", "Документы"]].filter(([k]) => !k || all.some(s => CATEGORY[s.type] === k));
   box.innerHTML = `
@@ -147,13 +150,13 @@ function renderStudies() {
         <input type="text" data-st-q value="${esc(ui.stQ || "")}" placeholder="Поиск по заключениям" autocomplete="off"></div>
       ${cats.length > 2 ? `<div class="seg">${cats.map(([k, n]) => `<button type="button" data-st-type="${k}" aria-pressed="${f === k}">${esc(n)}</button>`).join("")}</div>` : ""}
     </div>` : ""}
-    ${Object.keys(years).length ? Object.entries(years).map(([y, l]) => `<h3 class="st-year">${esc(y)}</h3><div class="card st-list">${l.map(studyRow).join("")}</div>`).join("") : `<div class="empty">Ничего не нашлось.</div>`}`;
+    ${kinds.length ? kinds.map(([k, l]) => `<h3 class="st-year">${esc(ST[k]?.name || "Другое")}${l.length > 1 ? ` · ${l.length}` : ""}</h3><div class="card st-list">${l.map(studyRow).join("")}</div>`).join("") : `<div class="empty">Ничего не нашлось.</div>`}`;
 }
 function studyRow(s) {
   const [, m, d] = (s.date || "").split("-");
   const files = (s.files || []).length, links = (s.links || []).length;
   return `<button type="button" class="st-row" data-st="${esc(s.id)}">
-    <span class="st-date num"><b>${d ? +d : "—"}</b><span>${m ? MON3[+m - 1] : ""}</span></span>
+    <span class="st-date num"><b>${d ? +d : "—"}</b><span>${m ? MON3[+m - 1] : ""}</span>${s.date ? `<small>${s.date.slice(0, 4)}</small>` : ""}</span>
     <span class="st-main">
       <span class="st-kind">${icon(s.type)}${s.area ? esc(ST[s.type]?.name || "Обследование") : ""}${s.area && s.clinic ? " · " : ""}${s.clinic ? esc(s.clinic) : ""}</span>
       <b class="st-title">${esc(s.area || ST[s.type]?.name || "")}</b>

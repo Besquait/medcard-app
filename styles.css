@@ -1873,12 +1873,27 @@ td.out-high b { color: var(--high); } td.out-low b { color: var(--low); }
 .tp-tile.past { opacity: .7; }
 .tp-body { min-height: 140px; }
 .tp-list { display: flex; flex-direction: column; }
-.tp-drug { display: flex; flex-direction: column; gap: 3px; padding: 12px 0; border-top: 1px solid var(--line); }
+.tp-drug { display: flex; flex-direction: column; gap: 3px; width: 100%; padding: 12px 2px; border: 0; border-top: 1px solid var(--line); background: none; text-align: left; font: inherit; color: var(--ink); cursor: pointer; }
+.tp-drug:hover:not([disabled]) b { color: var(--accent); }
+.tp-drug[disabled] { cursor: default; }
 .tp-list > .tp-drug:first-child { border-top: 0; }
 .tp-drug b { font-size: 15.5px; font-weight: 600; }
 .tp-drug span { font-size: 14.5px; color: var(--muted); }
 .tp-recg h4 { margin: 4px 0 6px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
-.tp-recg ul { margin: 0 0 12px; padding-left: 18px; font-size: 14.5px; line-height: 1.55; }
+.tp-recg ul { margin: 0 0 12px; padding: 0; list-style: none; font-size: 14.5px; line-height: 1.5; }
+.tp-recg li { display: flex; align-items: flex-start; gap: 8px; padding: 4px 0; }
+.tp-recg li::before { content: "•"; color: var(--muted); }
+.tp-recg li span { flex: 1; }
+.tp-recg li .icon-btn, .tp-syrow .icon-btn { width: 26px; height: 26px; flex: none; background: none; opacity: .55; }
+.tp-recg li:hover .icon-btn, .tp-syrow:hover .icon-btn { opacity: 1; }
+.tp-syrow { display: flex; align-items: center; gap: 6px; border-top: 1px solid var(--line); }
+.tp-list > .tp-syrow:first-child { border-top: 0; }
+.tp-syrow .tp-syr { border-top: 0; }
+.tp-add { display: block; width: 100%; margin-top: 6px; padding: 11px 2px; border: 0; border-top: 1px dashed var(--line); background: none; text-align: left; font: 500 14.5px var(--font); color: var(--accent); cursor: pointer; }
+.tp-ed { display: flex; flex-direction: column; gap: 8px; padding: 12px; margin: 6px 0; border-radius: 12px; background: var(--soft); }
+.tp-edb { display: flex; align-items: center; gap: 6px; }
+.tp-cats { width: fit-content; }
+.tp-cats button { cursor: pointer; }
 .tp-syr { display: flex; justify-content: space-between; align-items: center; gap: 12px; width: 100%; padding: 12px 2px; border: 0; border-top: 1px solid var(--line); background: none; text-align: left; font: inherit; font-size: 15px; color: var(--ink); cursor: pointer; }
 .tp-list > .tp-syr:first-child { border-top: 0; }
 .tp-syr:hover span { color: var(--accent); }

@@ -66,26 +66,46 @@ function tpTile(p) {
     <span class="tp-tfoot">${n ? `<span>лечит ${n} ${plural(n, "жалобу", "жалобы", "жалоб")}</span>` : "<span></span>"}${p.eff ? `<span class="tp-teff e-${p.eff}">${esc(TP_EFF_NAME[p.eff])}</span>` : ""}</span>
   </button>`;
 }
-// one scheme in a window: tabs instead of everything at once
+// one scheme in a window: tabs instead of everything at once, and everything is edited right there:
+// a tap on a drug opens it for editing, "+" rows add drugs, advice and complaints, × removes them
 function openPlan(id) {
   const p = state.plans?.[id]; if (!p) return;
+  if (ui.tpOpen !== id) { ui.tpDrug = null; ui.tpAdd = null; }
   ui.tpOpen = id;
-  const drugs = p.drugs || [], recs = p.recs || [];
+  const ro = !!ui.readonly, drugs = p.drugs || [], recs = p.recs || [];
   const sy = (p.sy || []).map(x => syList().find(s => s.id === x)).filter(Boolean);
   const cmp = Object.fromEntries(tpCompare({ ...p, id }).map(c => [c.s.id, c]));
-  const tabs = [["drugs", "Препараты", drugs.length], ["recs", "Рекомендации", recs.length], ["sy", "Лечит", sy.length]].filter(([, , n]) => n);
-  const tab = tabs.some(([k]) => k === ui.tpTab) ? ui.tpTab : tabs[0]?.[0];
+  const tabs = [["drugs", "Препараты", drugs.length], ["recs", "Рекомендации", recs.length], ["sy", "Лечит", sy.length]];
+  const tab = tabs.some(([k]) => k === ui.tpTab) ? ui.tpTab : "drugs";
+  const drugEdit = (d, i) => `<form class="tp-ed" data-tp-dsave="${i}">
+      <input class="input" name="name" value="${esc(d.name || "")}" placeholder="Препарат и доза, например Омез 40" autocomplete="off">
+      <input class="input" name="how" value="${esc(d.how || "")}" placeholder="Как принимать" autocomplete="off">
+      <div class="tp-edb">${i !== "new" ? `<button type="button" class="btn sm ghost danger" data-tp-ddel="${i}">Удалить</button>` : ""}<span style="flex:1"></span>
+        <button type="button" class="btn sm ghost" data-tp-cancel>Отмена</button><button type="submit" class="btn sm primary">Сохранить</button></div></form>`;
+  const add = (k, label) => ro ? "" : `<button type="button" class="tp-add" data-tp-addopen="${k}">+ ${label}</button>`;
   const body = {
-    drugs: () => `<div class="tp-list">${drugs.map(d => `<div class="tp-drug"><b>${esc(d.name)}</b>${d.how ? `<span>${esc(d.how)}</span>` : ""}</div>`).join("")}</div>`,
-    recs: () => TP_RECS.map(([k, n]) => { const l = recs.filter(r => (r.cat || "other") === k); return l.length ? `<section class="tp-recg"><h4>${n}</h4><ul>${l.map(r => `<li>${esc(r.text)}</li>`).join("")}</ul></section>` : ""; }).join(""),
-    sy: () => `<div class="tp-list">${sy.map(s => { const c = cmp[s.id]; return `<button type="button" class="tp-syr" data-sy-open="${esc(s.id)}"><span>${esc(s.name)}</span>${c ? `<small class="${c.b < c.a ? "better" : c.b > c.a ? "worse" : ""}">${dyNum(c.a)} → ${dyNum(c.b)}</small>` : ""}</button>`; }).join("")}</div>`,
+    drugs: () => `<div class="tp-list">${drugs.map((d, i) => ui.tpDrug === i ? drugEdit(d, i)
+        : `<button type="button" class="tp-drug" data-tp-dedit="${i}"${ro ? " disabled" : ""}><b>${esc(d.name)}</b>${d.how ? `<span>${esc(d.how)}</span>` : ""}</button>`).join("")}
+      ${ui.tpDrug === "new" ? drugEdit({}, "new") : add("drug", "Препарат")}</div>`,
+    recs: () => `${TP_RECS.map(([k, n]) => { const l = recs.map((r, i) => ({ ...r, i })).filter(r => (r.cat || "other") === k); return l.length ? `<section class="tp-recg"><h4>${n}</h4><ul>${l.map(r => `<li><span>${esc(r.text)}</span>${ro ? "" : `<button type="button" class="icon-btn sm" data-tp-rdel="${r.i}" aria-label="Убрать совет">×</button>`}</li>`).join("")}</ul></section>` : ""; }).join("")}
+      ${ui.tpAdd === "rec" ? `<form class="tp-ed" data-tp-radd><div class="seg tp-cats" role="group" aria-label="Раздел">${TP_RECS.slice(0, 3).map(([k, n], i) => `<button type="button" data-tp-cat="${k}" aria-pressed="${(ui.tpCat || "food") === k}">${n}</button>`).join("")}</div>
+          <input class="input" name="text" placeholder="Совет, например: не есть за 3 часа до сна" autocomplete="off">
+          <div class="tp-edb"><span style="flex:1"></span><button type="button" class="btn sm ghost" data-tp-cancel>Отмена</button><button type="submit" class="btn sm primary">Добавить</button></div></form>`
+        : add("rec", "Совет")}`,
+    sy: () => `<div class="tp-list">${sy.map(s => { const c = cmp[s.id]; return `<div class="tp-syrow"><button type="button" class="tp-syr" data-sy-open="${esc(s.id)}"><span>${esc(s.name)}</span>${c ? `<small class="${c.b < c.a ? "better" : c.b > c.a ? "worse" : ""}">${dyNum(c.a)} → ${dyNum(c.b)}</small>` : ""}</button>${ro ? "" : `<button type="button" class="icon-btn sm" data-tp-sydel="${esc(s.id)}" aria-label="Убрать: ${esc(s.name)}">×</button>`}</div>`; }).join("")}</div>
+      ${ui.tpAdd === "sy" ? `<div class="tp-ed"><div class="tchips">${syList().filter(s => !syPast(s) && !(p.sy || []).includes(s.id)).sort(syOrder).map(s => `<button type="button" class="tchip" data-tp-syadd="${esc(s.id)}">${esc(s.name)}</button>`).join("")}</div>
+          <div class="tp-edb"><span style="flex:1"></span><button type="button" class="btn sm ghost" data-tp-cancel>Готово</button></div></div>`
+        : add("sy", "Жалоба")}`,
   };
   openX(`<div class="dlg-head"><h3>${esc(p.title || "Схема лечения")}</h3><button type="button" class="icon-btn" data-xclose aria-label="Закрыть">×</button></div>
-    ${tabs.length > 1 ? `<div class="sy-tabs" role="tablist">${tabs.map(([k, n, c]) => `<button type="button" role="tab" data-tp-tab="${k}" aria-selected="${tab === k}">${n}<span class="num">${c}</span></button>`).join("")}</div>` : ""}
-    <div class="tp-body">${tab ? body[tab]() : `<p class="muted">Пока пусто — нажми «Изменить».</p>`}</div>
-    <div class="dlg-foot"><div class="tp-effs" role="group" aria-label="Как помогает">${TP_EFF.map(([k, n]) => `<button type="button" class="sy-eff e-${k}" data-tp-eff="${esc(id)}|${k}" aria-pressed="${p.eff === k}"${ui.readonly ? " disabled" : ""}>${n}</button>`).join("")}</div>
-      <span style="flex:1"></span>${ui.readonly ? "" : `<button type="button" class="btn primary" data-tp-edit="${esc(id)}">Изменить</button>`}</div>`, "st-dlg tp-dlg tp-view");
+    <div class="sy-tabs" role="tablist">${tabs.map(([k, n, c]) => `<button type="button" role="tab" data-tp-tab="${k}" aria-selected="${tab === k}">${n}${c ? `<span class="num">${c}</span>` : ""}</button>`).join("")}</div>
+    <div class="tp-body">${body[tab]()}</div>
+    <div class="dlg-foot"><div class="tp-effs" role="group" aria-label="Как помогает">${TP_EFF.map(([k, n]) => `<button type="button" class="sy-eff e-${k}" data-tp-eff="${esc(id)}|${k}" aria-pressed="${p.eff === k}"${ro ? " disabled" : ""}>${n}</button>`).join("")}</div>
+      <span style="flex:1"></span>${ro ? "" : `<button type="button" class="btn ghost" data-tp-edit="${esc(id)}">Название и прочее</button>`}</div>`, "st-dlg tp-dlg tp-view");
+  $("#xDlg .tp-ed input")?.focus();
 }
+// redraw the open scheme after an edit, keeping the scroll
+function tpRedraw() { const d = $("#xDlg"), y = d.scrollTop; save(); renderTherapy(); openPlan(ui.tpOpen); d.scrollTop = y; }
 
 /* ---------- form ---------- */
 const tpDrugRow = (d = {}) => `<div class="tp-frow" data-tp-drug data-start="${esc(d.start || "")}" data-end="${esc(d.end || "")}">
@@ -154,7 +174,19 @@ function initTherapy() {
   xd.addEventListener("click", e => {
     if (!xd.classList.contains("tp-dlg")) return;
     const t = e.target;
-    const tb = t.closest("[data-tp-tab]"); if (tb) { ui.tpTab = tb.dataset.tpTab; openPlan(ui.tpOpen); return; }
+    const tb = t.closest("[data-tp-tab]"); if (tb) { ui.tpTab = tb.dataset.tpTab; ui.tpDrug = null; ui.tpAdd = null; openPlan(ui.tpOpen); return; }
+    const p = state.plans?.[ui.tpOpen];
+    if (p && xd.classList.contains("tp-view")) {
+      const de = t.closest("[data-tp-dedit]"); if (de) { ui.tpDrug = +de.dataset.tpDedit; ui.tpAdd = null; openPlan(ui.tpOpen); return; }
+      const ao = t.closest("[data-tp-addopen]");
+      if (ao) { const k = ao.dataset.tpAddopen; if (k === "drug") { ui.tpDrug = "new"; ui.tpAdd = null; } else { ui.tpAdd = k; ui.tpDrug = null; } openPlan(ui.tpOpen); return; }
+      if (t.closest("[data-tp-cancel]")) { ui.tpDrug = null; ui.tpAdd = null; openPlan(ui.tpOpen); return; }
+      const dd = t.closest("[data-tp-ddel]"); if (dd) { p.drugs.splice(+dd.dataset.tpDdel, 1); ui.tpDrug = null; tpRedraw(); return; }
+      const rd = t.closest("[data-tp-rdel]"); if (rd) { p.recs.splice(+rd.dataset.tpRdel, 1); tpRedraw(); return; }
+      const ct = t.closest("[data-tp-cat]"); if (ct) { ui.tpCat = ct.dataset.tpCat; $$("[data-tp-cat]").forEach(b => b.setAttribute("aria-pressed", b === ct)); $("#xDlg .tp-ed input")?.focus(); return; }
+      const sd = t.closest("[data-tp-sydel]"); if (sd) { p.sy = (p.sy || []).filter(x => x !== sd.dataset.tpSydel); tpRedraw(); return; }
+      const sa = t.closest("[data-tp-syadd]"); if (sa) { p.sy = [...(p.sy || []), sa.dataset.tpSyadd]; tpRedraw(); return; }
+    }
     const ed = t.closest("[data-tp-edit]"); if (ed) { ui.confirmTp = null; openPlanForm(ed.dataset.tpEdit); return; }
     const ef = t.closest("[data-tp-eff]");
     if (ef) { const [id, k] = ef.dataset.tpEff.split("|"), p = state.plans[id]; p.eff = p.eff === k ? "" : k; save(); renderTherapy(); openPlan(id); return; }
@@ -165,7 +197,25 @@ function initTherapy() {
     const del = t.closest("[data-tp-del]");
     if (del) { const id = del.dataset.tpDel; if (ui.confirmTp !== id) { ui.confirmTp = id; del.textContent = "Точно удалить?"; return; } ui.confirmTp = null; delete state.plans[id]; save(); renderAll(); closeX(); toast("Схема удалена"); }
   });
-  xd.addEventListener("submit", e => { if (e.target.matches("[data-tp-form]")) { e.preventDefault(); savePlan(); } });
+  xd.addEventListener("submit", e => {
+    const f = e.target;
+    if (f.matches("[data-tp-form]")) { e.preventDefault(); savePlan(); return; }
+    const p = state.plans?.[ui.tpOpen]; if (!p) return;
+    if (f.matches("[data-tp-dsave]")) {
+      e.preventDefault();
+      const name = f.elements.name.value.trim(), how = f.elements.how.value.trim(), i = f.dataset.tpDsave;
+      if (!name) { f.elements.name.focus(); return; }
+      p.drugs ||= [];
+      if (i === "new") p.drugs.push({ name, how, start: todayISO(), end: "" }); else Object.assign(p.drugs[+i], { name, how });
+      ui.tpDrug = null; tpRedraw(); return;
+    }
+    if (f.matches("[data-tp-radd]")) {
+      e.preventDefault();
+      const text = f.elements.text.value.trim(); if (!text) return;
+      p.recs = [...(p.recs || []), { cat: ui.tpCat || "food", text }];
+      tpRedraw(); $("#xDlg [data-tp-radd] input")?.focus(); return;
+    }
+  });
   // Enter in a one-line field must not save a half-filled scheme
   xd.addEventListener("keydown", e => { if (e.key === "Enter" && e.target.matches("[data-tp-form] input")) e.preventDefault(); });
   xd.addEventListener("input", e => { if (xd.classList.contains("tp-dlg") && e.target.matches(".sy-grow")) syGrow(e.target); });

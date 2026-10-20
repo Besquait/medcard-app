@@ -853,7 +853,6 @@ body.gated .page { display: none; }
   .sec { scroll-margin-top: 24px; }
 }
 /* enough room: the rail moves into the left margin and the list keeps the full column width */
-@media (min-width: 1600px) { .list-wrap { margin-left: -232px; } }
 
 /* ---------- situation picker ---------- */
 .sitpick { position: relative; flex: none; }

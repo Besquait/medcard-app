@@ -1916,3 +1916,14 @@ td.out-high b { color: var(--high); } td.out-low b { color: var(--low); }
   .tp-view .dlg-foot .btn.primary { flex: 1; }
   .tp-frow [name=dhow] { grid-column: 1; grid-row: 2; }
 }
+/* complaints picker: search on top, a scrolling checklist below, chosen ones first */
+.tp-pick { display: flex; flex-direction: column; gap: 6px; }
+.tp-plist { max-height: 260px; overflow-y: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--card); }
+.tp-prow { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 9px 12px; border-top: 1px solid var(--line); cursor: pointer; font-size: 14.5px; }
+.tp-plist > .tp-prow:first-child { border-top: 0; }
+.tp-prow:hover { background: var(--soft); }
+.tp-prow input { width: 18px; height: 18px; margin: 0; accent-color: var(--accent); }
+.tp-prow small { font-size: 12px; color: var(--faint); white-space: nowrap; }
+.tp-prow:has(input:checked) span { font-weight: 600; }
+.tp-pnone { margin: 0; padding: 12px; font-size: 13.5px; }
+@media (max-width: 720px) { .tp-prow small { display: none; } .tp-prow { grid-template-columns: 20px minmax(0, 1fr); } }

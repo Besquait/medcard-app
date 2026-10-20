@@ -92,10 +92,10 @@ function openPlan(id) {
           <input class="input" name="text" placeholder="Совет, например: не есть за 3 часа до сна" autocomplete="off">
           <div class="tp-edb"><span style="flex:1"></span><button type="button" class="btn sm ghost" data-tp-cancel>Отмена</button><button type="submit" class="btn sm primary">Добавить</button></div></form>`
         : add("rec", "Совет")}`,
-    sy: () => `<div class="tp-list">${sy.map(s => { const c = cmp[s.id]; return `<div class="tp-syrow"><button type="button" class="tp-syr" data-sy-open="${esc(s.id)}"><span>${esc(s.name)}</span>${c ? `<small class="${c.b < c.a ? "better" : c.b > c.a ? "worse" : ""}">${dyNum(c.a)} → ${dyNum(c.b)}</small>` : ""}</button>${ro ? "" : `<button type="button" class="icon-btn sm" data-tp-sydel="${esc(s.id)}" aria-label="Убрать: ${esc(s.name)}">×</button>`}</div>`; }).join("")}</div>
-      ${ui.tpAdd === "sy" ? `<div class="tp-ed"><div class="tchips">${syList().filter(s => !syPast(s) && !(p.sy || []).includes(s.id)).sort(syOrder).map(s => `<button type="button" class="tchip" data-tp-syadd="${esc(s.id)}">${esc(s.name)}</button>`).join("")}</div>
-          <div class="tp-edb"><span style="flex:1"></span><button type="button" class="btn sm ghost" data-tp-cancel>Готово</button></div></div>`
-        : add("sy", "Жалоба")}`,
+    sy: () => `<div class="tp-list"${ui.tpAdd === "sy" ? " hidden" : ""}>${sy.map(s => { const c = cmp[s.id]; return `<div class="tp-syrow"><button type="button" class="tp-syr" data-sy-open="${esc(s.id)}"><span>${esc(s.name)}</span>${c ? `<small class="${c.b < c.a ? "better" : c.b > c.a ? "worse" : ""}">${dyNum(c.a)} → ${dyNum(c.b)}</small>` : ""}</button>${ro ? "" : `<button type="button" class="icon-btn sm" data-tp-sydel="${esc(s.id)}" aria-label="Убрать: ${esc(s.name)}">×</button>`}</div>`; }).join("")}</div>
+      ${ui.tpAdd === "sy" ? `<div class="tp-ed">${tpSyPicker(p.sy || [])}
+          <div class="tp-edb"><span style="flex:1"></span><button type="button" class="btn sm ghost" data-tp-cancel>Отмена</button><button type="button" class="btn sm primary" data-tp-sydone>Готово</button></div></div>`
+        : add("sy", "Выбрать жалобы")}`,
   };
   openX(`<div class="dlg-head"><h3>${esc(p.title || "Схема лечения")}</h3><button type="button" class="icon-btn" data-xclose aria-label="Закрыть">×</button></div>
     <div class="sy-tabs" role="tablist">${tabs.map(([k, n, c]) => `<button type="button" role="tab" data-tp-tab="${k}" aria-selected="${tab === k}">${n}${c ? `<span class="num">${c}</span>` : ""}</button>`).join("")}</div>
@@ -107,6 +107,15 @@ function openPlan(id) {
 // redraw the open scheme after an edit, keeping the scroll
 function tpRedraw() { const d = $("#xDlg"), y = d.scrollTop; save(); renderTherapy(); openPlan(ui.tpOpen); d.scrollTop = y; }
 
+/* ---------- complaints picker ---------- */
+function tpSyPicker(sel) {
+  const l = syList().filter(s => !syPast(s) || sel.includes(s.id)).sort((a, b) => sel.includes(b.id) - sel.includes(a.id) || syOrder(a, b));
+  return `<div class="tp-pick"><input class="input" data-tp-pq placeholder="Найти жалобу" autocomplete="off" aria-label="Найти жалобу">
+    <div class="tp-plist">${l.map(s => `<label class="tp-prow" data-q="${esc(norm(s.name + " " + SY_ZONE[syZoneOf(s)]))}"><input type="checkbox" data-tp-sy="${esc(s.id)}"${sel.includes(s.id) ? " checked" : ""}>
+      <span>${esc(s.name)}</span><small>${esc(SY_ZONE[syZoneOf(s)])}</small></label>`).join("")}
+      <p class="muted tp-pnone" hidden>Ничего не нашлось</p></div></div>`;
+}
+
 /* ---------- form ---------- */
 const tpDrugRow = (d = {}) => `<div class="tp-frow" data-tp-drug data-start="${esc(d.start || "")}" data-end="${esc(d.end || "")}">
     <input class="input" name="dname" placeholder="Препарат и доза, например Омез 40" value="${esc(d.name || "")}" autocomplete="off">
@@ -115,7 +124,6 @@ const tpDrugRow = (d = {}) => `<div class="tp-frow" data-tp-drug data-start="${e
 function openPlanForm(id) {
   const p = id ? state.plans[id] : { drugs: [{}], recs: [], sy: [] };
   ui.tpEdit = { id };
-  const cur = syList().filter(s => !syPast(s) || (p.sy || []).includes(s.id)).sort(syOrder);
   const recText = k => (p.recs || []).filter(r => (r.cat || "other") === k).map(r => r.text).join("\n");
   openX(`<div class="dlg-head"><h3>${id ? "Изменить схему" : "Новая схема лечения"}</h3><button type="button" class="icon-btn" data-xclose aria-label="Закрыть">×</button></div>
     <form class="st-form tp-form" data-tp-form novalidate>
@@ -123,7 +131,7 @@ function openPlanForm(id) {
       <div class="fld"><span>Препараты</span><div class="tp-drugs-f" data-tp-drugs>${(p.drugs?.length ? p.drugs : [{}]).map(tpDrugRow).join("")}</div>
         <button type="button" class="btn sm ghost" data-tp-dradd>+ Препарат</button></div>
       ${TP_RECS.slice(0, 3).map(([k, n]) => `<label class="fld"><span>${n} — каждый совет с новой строки</span><textarea class="input sy-grow" name="rec_${k}" rows="2">${esc(recText(k))}</textarea></label>`).join("")}
-      <div class="fld"><span>Что лечит</span><div class="tchips tp-syf">${cur.map(s => `<button type="button" class="tchip" data-tp-sy="${esc(s.id)}" aria-pressed="${(p.sy || []).includes(s.id)}">${esc(s.name)}</button>`).join("")}</div></div>
+      <div class="fld"><span>Что лечит</span>${tpSyPicker(p.sy || [])}</div>
       ${id ? `<label class="sy-mainf"><input type="checkbox" name="done"${p.done ? " checked" : ""}><span><b>Закончил</b><small>Схема уйдёт в «Раньше»</small></span></label>` : ""}
       <div class="dlg-foot">${id ? `<button type="button" class="btn ghost danger" data-tp-del="${esc(id)}">${ui.confirmTp === id ? "Точно удалить?" : "Удалить"}</button>` : ""}<span style="flex:1"></span><button type="button" class="btn ghost" data-xclose>Отмена</button><button type="submit" class="btn primary">Сохранить</button></div>
     </form>`, "st-dlg tp-dlg");
@@ -139,7 +147,7 @@ function savePlan() {
   // the "other" advice is not in the form any more: keep what was there
   const recs = [...TP_RECS.slice(0, 3).flatMap(([k]) => String(v["rec_" + k] || "").split("\n").map(t => t.trim()).filter(Boolean).map(text => ({ cat: k, text }))),
     ...(prev.recs || []).filter(r => r.cat === "other")];
-  const sy = $$("[data-tp-sy][aria-pressed=true]", f).map(b => b.dataset.tpSy);
+  const sy = $$("[data-tp-sy]:checked", f).map(b => b.dataset.tpSy);
   const title = (v.title || "").trim() || drugs.map(d => d.name).slice(0, 3).join(", ") || "Схема лечения";
   const id = ed.id || newId("tp");
   state.plans ||= {};
@@ -185,7 +193,7 @@ function initTherapy() {
       const rd = t.closest("[data-tp-rdel]"); if (rd) { p.recs.splice(+rd.dataset.tpRdel, 1); tpRedraw(); return; }
       const ct = t.closest("[data-tp-cat]"); if (ct) { ui.tpCat = ct.dataset.tpCat; $$("[data-tp-cat]").forEach(b => b.setAttribute("aria-pressed", b === ct)); $("#xDlg .tp-ed input")?.focus(); return; }
       const sd = t.closest("[data-tp-sydel]"); if (sd) { p.sy = (p.sy || []).filter(x => x !== sd.dataset.tpSydel); tpRedraw(); return; }
-      const sa = t.closest("[data-tp-syadd]"); if (sa) { p.sy = [...(p.sy || []), sa.dataset.tpSyadd]; tpRedraw(); return; }
+      if (t.closest("[data-tp-sydone]")) { p.sy = $$("#xDlg [data-tp-sy]:checked").map(b => b.dataset.tpSy); ui.tpAdd = null; tpRedraw(); return; }
     }
     const ed = t.closest("[data-tp-edit]"); if (ed) { ui.confirmTp = null; openPlanForm(ed.dataset.tpEdit); return; }
     const ef = t.closest("[data-tp-eff]");
@@ -193,7 +201,6 @@ function initTherapy() {
     const so = t.closest("[data-sy-open]"); if (so) { ui.syTab = "over"; ui.syAddOpen = null; openSymptom(so.dataset.syOpen); return; }
     if (t.closest("[data-tp-dradd]")) { $("[data-tp-drugs]").insertAdjacentHTML("beforeend", tpDrugRow()); $("[data-tp-drug]:last-child [name=dname]").focus(); return; }
     const rm = t.closest("[data-tp-drm]"); if (rm) { rm.closest("[data-tp-drug]").remove(); return; }
-    const sy = t.closest("[data-tp-sy]"); if (sy) { sy.setAttribute("aria-pressed", sy.getAttribute("aria-pressed") !== "true"); return; }
     const del = t.closest("[data-tp-del]");
     if (del) { const id = del.dataset.tpDel; if (ui.confirmTp !== id) { ui.confirmTp = id; del.textContent = "Точно удалить?"; return; } ui.confirmTp = null; delete state.plans[id]; save(); renderAll(); closeX(); toast("Схема удалена"); }
   });
@@ -218,5 +225,14 @@ function initTherapy() {
   });
   // Enter in a one-line field must not save a half-filled scheme
   xd.addEventListener("keydown", e => { if (e.key === "Enter" && e.target.matches("[data-tp-form] input")) e.preventDefault(); });
-  xd.addEventListener("input", e => { if (xd.classList.contains("tp-dlg") && e.target.matches(".sy-grow")) syGrow(e.target); });
+  xd.addEventListener("input", e => {
+    if (!xd.classList.contains("tp-dlg")) return;
+    if (e.target.matches(".sy-grow")) syGrow(e.target);
+    if (e.target.matches("[data-tp-pq]")) {
+      const q = norm(e.target.value), box = e.target.closest(".tp-pick");
+      let n = 0;
+      $$(".tp-prow", box).forEach(r => { const on = !q || r.dataset.q.includes(q); r.hidden = !on; n += on; });
+      $(".tp-pnone", box).hidden = !!n;
+    }
+  });
 }

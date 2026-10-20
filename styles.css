@@ -2637,13 +2637,13 @@ body[data-view]:not([data-view="labs"]) #addBtn { display: none; }
 .hx-vas button:hover { border-color: var(--c); color: var(--ink); }
 .hx-vas button[aria-pressed="true"] { background: var(--c); border-color: var(--c); color: #fff; }
 .hx-vas .v1 { --p: 0; } .hx-vas .v2 { --p: 11; } .hx-vas .v3 { --p: 22; } .hx-vas .v4 { --p: 33; } .hx-vas .v5 { --p: 44; } .hx-vas .v6 { --p: 55; } .hx-vas .v7 { --p: 66; } .hx-vas .v8 { --p: 77; } .hx-vas .v9 { --p: 88; } .hx-vas .v10 { --p: 100; }
-.hx-grid { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 24px; align-items: start; }
+.hx-grid { display: grid; grid-template-columns: 460px minmax(0, 1fr); gap: 24px; align-items: start; }
 .hx-side { display: flex; flex-direction: column; gap: 14px; }
 .hx-side .tchips, .hx-meds .tchips { display: flex; flex-wrap: wrap; gap: 6px; }
 .hx-dlg .tchip { padding: 7px 12px; font-size: 14.5px; border-radius: 11px; }
 .hx-heads { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .hx-heads figure { margin: 0; text-align: center; }
-.hx-heads svg { width: 100%; max-width: 210px; height: auto; display: block; margin: 0 auto; }
+.hx-heads svg { width: 100%; max-width: 230px; height: auto; display: block; margin: 0 auto; }
 .hx-heads figcaption { font-size: 12.5px; color: var(--faint); }
 .hx-locs { margin: 6px 0 0; font-size: 14px; color: var(--muted); text-align: center; min-height: 20px; }
 .hx-meds { display: flex; flex-direction: column; gap: 8px; }

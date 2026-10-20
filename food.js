@@ -232,10 +232,10 @@ function renderFood() {
       <div class="cl-main">
         <section class="card cl-box t-food fd-addcard">${fdAddBox(d)}</section>
         ${FD_MEALS.map(([k, n]) => { const l = food.filter(e => e.m === k); return l.length ? fdMealCard(k, n, l) : ""; }).join("")}
-        ${typeof fdNutCard === "function" ? fdNutCard(d) : ""}
       </div>
-      <aside class="cl-side">${fdTotals(d)}${typeof fdNutMini === "function" ? fdNutMini(d) : ""}${fdStomach(d)}${fdWeek(d)}${fdSetsCard()}</aside>
-    </div>`);
+      <aside class="cl-side">${fdTotals(d)}${fdStomach(d)}${fdWeek(d)}${fdSetsCard()}</aside>
+    </div>
+    ${typeof fdNutCard === "function" ? fdNutCard(d) : ""}`);
 }
 // the calendar's food card: what was eaten in one line per meal and the same quick line
 function fdDayCard(d) {
@@ -330,9 +330,6 @@ function initFood() {
     const sd = t.closest("[data-fd-setdel]");
     if (sd && confirm("Удалить этот набор?")) { state.prefs.foodSets = (state.prefs.foodSets || []).filter(s => s.id !== sd.dataset.fdSetdel); save(); renderFood(); renderCalendar(); return; }
     if (t.closest("[data-fd-goal]")) { openFoodGoal(); return; }
-    if (t.closest("[data-fd-nutgo]")) { $("#fdNut")?.scrollIntoView({ behavior: "smooth", block: "start" }); return; }
-    const rg = t.closest("[data-fd-range]"); if (rg) { ui.fdRange = +rg.dataset.fdRange; renderFood(); return; }
-    const nt = t.closest("[data-fd-ntab]"); if (nt) { ui.fdNutTab = nt.dataset.fdNtab; ui.fdNut = null; renderFood(); return; }
     const nu = t.closest("[data-fd-nut]"); if (nu) { ui.fdNut = ui.fdNut === nu.dataset.fdNut ? null : nu.dataset.fdNut; renderFood(); return; }
     const tp = t.closest("[data-fd-tip]");
     if (tp) { const r = FD_BY[tp.dataset.fdTip]; if (r) { const f = fdCatalog().find(x => x.src === r[0]); fdAdd(d, f, f.pg); toast(`Добавлено: ${f.n}`); } return; }

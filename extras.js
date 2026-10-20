@@ -530,7 +530,6 @@ function treatHtml(id, list) {
     <div class="tr-block"><h5>Что помогает — от сильного к слабому</h5><div class="tr-opts">${opts}</div></div>
     ${d.ask?.length ? `<div class="tr-block tr-ask"><h5>Что спросить у врача</h5><ul>${d.ask.map(q => `<li>${esc(q)}</li>`).join("")}</ul>
       <div class="tr-actions"><button type="button" class="btn sm" data-ask-add>Добавить в сводку для врача</button><button type="button" class="btn sm ghost" data-ask-copy>Скопировать вопросы</button></div></div>` : ""}
-    <p class="tr-legend" title="Сила доказательств: сильные — крупные рандомизированные исследования и клинические рекомендации; умеренные — эффект есть, но меньше или данных меньше; слабые — небольшой эффект или исследования низкого качества; не доказано — пользы не нашли или не рекомендуют.">Сила доказательств — наведи, чтобы узнать подробнее</p>
   </div>`;
 }
 

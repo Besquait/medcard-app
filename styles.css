@@ -1961,3 +1961,18 @@ td.out-high b { color: var(--high); } td.out-low b { color: var(--low); }
   .tp-dlg #xBody { padding: 18px 18px 22px; gap: 16px; }
   .tp-dlg .tp-body { gap: 22px; }
 }
+
+/* comfort: larger type gets more room around it */
+#xBody { padding: 28px 30px 24px; gap: 20px; }
+.st-head { margin: 28px 0 20px; }
+.st-year { margin: 28px 0 12px 4px; }
+.st-sec { padding-top: 18px; }
+.st-sec h4 { margin-bottom: 10px; }
+.st-text { line-height: 1.65; max-width: 68ch; }
+.sy-group .sy-row { padding-top: 13px; padding-bottom: 13px; }
+.sy-ghd { padding-top: 16px; }
+.dy-card { gap: 12px; }
+@media (max-width: 720px) {
+  #xBody { padding: 16px 18px 22px; gap: 18px; }
+  .st-head { margin: 22px 0 16px; }
+}

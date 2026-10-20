@@ -2645,7 +2645,6 @@ body[data-view]:not([data-view="labs"]) #addBtn { display: none; }
 .hx-heads figure { margin: 0; text-align: center; }
 .hx-heads svg { width: 100%; max-width: 230px; height: auto; display: block; margin: 0 auto; }
 .hx-heads figcaption { font-size: 12.5px; color: var(--faint); }
-.hx-locs { margin: 6px 0 0; font-size: 14px; color: var(--muted); text-align: center; min-height: 20px; }
 .hx-meds { display: flex; flex-direction: column; gap: 8px; }
 .hx-med { display: grid; grid-template-columns: minmax(0, 1fr) 110px minmax(0, 330px) 32px; gap: 10px; align-items: center; }
 .hx-mt { padding: 7px 10px; }
@@ -2688,13 +2687,24 @@ body[data-view]:not([data-view="labs"]) #addBtn { display: none; }
   .hx-vas { grid-template-columns: repeat(5, minmax(0, 1fr)); }
   .hx-still { min-width: 0; width: 100%; }
 }
-/* the head drawing */
-.hx-skin { fill: color-mix(in srgb, var(--soft) 70%, var(--card)); stroke: color-mix(in srgb, var(--faint) 45%, transparent); stroke-width: 1.6; }
-.hx-ear, .hx-neck { fill: color-mix(in srgb, var(--soft) 55%, var(--card)); stroke: color-mix(in srgb, var(--faint) 40%, transparent); stroke-width: 1.4; }
-.hx-hair { fill: color-mix(in srgb, var(--faint) 12%, transparent); pointer-events: none; }
-.hx-face { fill: none; stroke: color-mix(in srgb, var(--faint) 55%, transparent); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
-.hx-mark { font: 600 13px var(--font); fill: var(--faint); text-anchor: middle; pointer-events: none; }
-.hx-z > :not(title) { fill: transparent; stroke: color-mix(in srgb, var(--faint) 30%, transparent); stroke-width: 1.2; stroke-dasharray: 3 4; cursor: pointer; transition: fill .18s, stroke .18s; }
-.hx-z:hover > :not(title) { fill: color-mix(in srgb, var(--high) 18%, transparent); stroke: color-mix(in srgb, var(--high) 60%, transparent); stroke-dasharray: none; }
-.hx-z.on > :not(title) { fill: color-mix(in srgb, var(--high) 62%, transparent); stroke: var(--high); stroke-dasharray: none; filter: drop-shadow(0 0 6px color-mix(in srgb, var(--high) 55%, transparent)); }
-.hx-heads.heat .hx-z > :not(title) { fill: color-mix(in srgb, var(--high) calc(var(--h) * 80%), transparent); stroke: none; cursor: default; }
+/* the head drawing: zones tile the head like a map, card-coloured seams between them */
+.hx-heads { --hx-tile: color-mix(in srgb, var(--faint) 22%, var(--card)); --hx-seam: var(--card); grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 12px; }
+.hx-heads figcaption { margin-top: 2px; font-size: 13.5px; font-weight: 600; color: var(--muted); }
+.hx-heads svg { max-width: 220px; overflow: visible; -webkit-tap-highlight-color: transparent; }
+.hx-ear, .hx-neck { fill: color-mix(in srgb, var(--faint) 9%, var(--card)); stroke: color-mix(in srgb, var(--faint) 38%, transparent); stroke-width: 1.5; }
+.hx-rim { fill: none; stroke: color-mix(in srgb, var(--faint) 55%, transparent); stroke-width: 1.6; pointer-events: none; }
+.hx-mark { font: 700 14px var(--font); fill: var(--faint); text-anchor: middle; pointer-events: none; }
+.hx-z { cursor: pointer; }
+.hx-z > path { fill: var(--hx-tile); stroke: var(--hx-seam); stroke-width: 3; stroke-linejoin: round; transition: fill .15s; }
+.hx-z:hover > path { fill: color-mix(in srgb, var(--high) 30%, var(--hx-tile)); }
+.hx-heads.all .hx-z > path { fill: color-mix(in srgb, var(--high) 45%, var(--hx-tile)); }
+.hx-z.on > path, .hx-heads.all .hx-z.on > path { fill: var(--high); }
+.hx-z.on:hover > path { fill: color-mix(in srgb, var(--high) 82%, var(--ink)); }
+.hx-zchips { grid-column: 1 / -1; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 8px; }
+.hx-zchips .tchip[aria-pressed="true"] { background: color-mix(in srgb, var(--high) 16%, transparent); color: var(--ink); border-color: color-mix(in srgb, var(--high) 45%, transparent); }
+.hx-zchips .tchip[aria-pressed="true"]:not(:first-child)::after { content: "×"; margin-left: 2px; font-size: 16px; line-height: 1; color: var(--faint); }
+.hx-heads.heat .hx-z { cursor: default; }
+.hx-heads.heat .hx-z > path { fill: color-mix(in srgb, var(--high) calc(var(--h) * 88%), var(--hx-tile)); }
+.hx-z text { font: 700 13px var(--font); fill: var(--ink); text-anchor: middle; pointer-events: none; }
+.hx-z.hot text { fill: #fff; }
+.hx-allc { grid-column: 1 / -1; margin: 4px 0 0; text-align: center; font-size: 14px; color: var(--muted); }

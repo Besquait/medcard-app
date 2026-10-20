@@ -6,8 +6,9 @@
 "use strict";
 
 const HX_ZONES = {
-  crown: "Макушка", forehead: "Лоб", templeR: "Правый висок", templeL: "Левый висок", eyeR: "За правым глазом", eyeL: "За левым глазом",
-  sinus: "Переносица, пазухи", jawR: "Правая челюсть", jawL: "Левая челюсть", occiput: "Затылок", neck: "Шея",
+  whole: "Вся голова", crown: "Макушка", forehead: "Лоб", templeR: "Правый висок", templeL: "Левый висок", eyeR: "За правым глазом", eyeL: "За левым глазом",
+  sinus: "Переносица, пазухи", jawR: "Правая челюсть", jawL: "Левая челюсть", occTop: "Верх затылка", occiput: "Затылок",
+  earL: "За левым ухом", earR: "За правым ухом", neck: "Шея",
 };
 const HX_KIND = [["press", "Давит, сжимает"], ["pulse", "Пульсирует"], ["stab", "Колет, стреляет"], ["ache", "Ноет"], ["heavy", "Тяжесть"]];
 const HX_WITH = [["nausea", "Тошнота"], ["light", "Свет раздражает"], ["sound", "Звук раздражает"], ["aura", "Мушки, аура"], ["dizzy", "Головокружение"], ["neck", "Шея, плечи"], ["nose", "Заложен нос"]];
@@ -39,47 +40,51 @@ function hxDur(e) {
 }
 const hxOpen = () => hxEps().find(e => !e.hx.end && e.d >= addDaysISO(todayISO(), -2));
 
-// the head drawing, front and back. The front is a mirror: the left of the picture is your left.
-// Zones are soft shapes over a calm silhouette; heat maps reuse it with counts.
-const HX_HEAD = "M110 20C158 20 184 60 184 108c0 50-24 92-74 104C60 200 36 158 36 108 36 60 62 20 110 20z";
+// the head drawing, front and back, tiled into zones like a map. The front is anatomical: the person faces you,
+// so their left is on the right of the picture; the back is seen from behind, their left on the left.
+// Zones are shapes clipped by the head outline and painted back to front, so later ones sit on earlier ones and
+// together they always tile the head with no gaps. [id, path, where the heat-map count goes]
+const HX_HEAD = "M100 14C140 14 166 44 166 92c0 36-6 64-20 84-12 18-28 30-46 30s-34-12-46-30C40 156 34 128 34 92 34 44 60 14 100 14z";
+const HX_FRONT = [
+  ["jawR", "M-10 0H100V260H-10z", [76, 176]], ["jawL", "M100 0H210V260H100z", [124, 176]],
+  ["templeR", "M-10-10H60V150H-10z", [46, 106]], ["templeL", "M210-10H140V150H210z", [154, 106]],
+  ["forehead", "M60-10H140V150H60z", [100, 70]],
+  ["sinus", "M95 90H105V124H140V150H60V124H95z", [100, 140]],
+  ["eyeR", "M60 90H95V124H60z", [78, 111]], ["eyeL", "M105 90H140V124H105z", [122, 111]],
+  ["crown", "M-10-10H210V50Q100 26-10 50z", [100, 32]],
+];
+const HX_BACK = [
+  ["earL", "M-10 0H100V260H-10z", [50, 140]], ["earR", "M100 0H210V260H100z", [150, 140]],
+  ["occiput", "M68 80H132Q138 150 128 230H72Q62 150 68 80z", [100, 150]],
+  ["occTop", "M-10-10H210V92Q100 118-10 92z", [100, 76]],
+  ["crown", "M-10-10H210V52Q100 28-10 52z", [100, 32]],
+];
 function hxHead(sel, heat) {
-  const max = heat ? Math.max(1, ...Object.values(heat)) : 1;
-  const z = (id, shape) => {
-    const on = sel?.includes(id), h = heat ? (heat[id] || 0) / max : 0;
-    return `<g class="hx-z${on ? " on" : ""}" data-hx-z="${id}"${heat ? ` style="--h:${h.toFixed(2)}"` : ""}><title>${HX_ZONES[id]}${heat ? ` · ${heat[id] || 0}` : ""}</title>${shape}</g>`;
+  const uid = "hxc" + (hxHead.n = (hxHead.n || 0) + 1);
+  const all = heat?.whole || 0, cnt = id => (heat?.[id] || 0) + all;
+  const max = heat ? Math.max(1, ...[...HX_FRONT, ...HX_BACK, ["neck"]].map(([id]) => cnt(id))) : 1;
+  const z = (id, shape, at) => {
+    const on = sel?.includes(id), n = cnt(id), h = heat ? n / max : 0;
+    return `<g class="hx-z${on ? " on" : ""}${heat && h > .5 ? " hot" : ""}" data-hx-z="${id}"${heat ? ` style="--h:${h.toFixed(2)}"` : ""}><title>${HX_ZONES[id]}${heat ? ` · ${n}` : ""}</title>${shape}${heat && n && at ? `<text x="${at[0]}" y="${at[1] + 5}">${n}</text>` : ""}</g>`;
   };
-  const base = (back) => `
-      <path class="hx-neck" d="M84 196c2 18 0 34-8 48h68c-8-14-10-30-8-48z"/>
-      <ellipse class="hx-ear" cx="35" cy="118" rx="9" ry="19"/><ellipse class="hx-ear" cx="185" cy="118" rx="9" ry="19"/>
-      <path class="hx-skin" d="${HX_HEAD}"/>
-      ${back ? `<path class="hx-hair" d="M40 100C40 54 70 24 110 24s70 30 70 76c-10-22-36-34-70-34S50 78 40 100z"/>` : ""}`;
-  // eyebrows, eyes, nose, mouth: just enough to tell the front from the back
-  const face = `<g class="hx-face" aria-hidden="true">
-      <path d="M70 92q14-7 28 0M122 92q14-7 28 0"/>
-      <path d="M72 108q12-8 24 0q-12 7-24 0zM124 108q12-8 24 0q-12 7-24 0z"/>
-      <path d="M110 112v24q-6 4-10 2M100 160q10 6 20 0"/></g>`;
-  const marks = `<text class="hx-mark" x="16" y="122">Л</text><text class="hx-mark" x="196" y="122">П</text>`;
-  return `<div class="hx-heads${heat ? " heat" : ""}">
-    <figure><svg viewBox="0 0 220 250" aria-label="Голова спереди, как в зеркале">
-      ${base(false)}
-      ${z("crown", '<path d="M62 44C78 28 94 22 110 22s32 6 48 22c-14 6-30 9-48 9s-34-3-48-9z"/>')}
-      ${z("forehead", '<path d="M56 60c16 8 34 12 54 12s38-4 54-12c4 8 6 16 6 24-18 5-38 7-60 7s-42-2-60-7c0-8 2-16 6-24z"/>')}
-      ${z("templeL", '<path d="M42 90c6-4 14-4 20 0 2 14 2 28-2 40-6 2-12 0-18-4-3-12-3-24 0-36z"/>')}
-      ${z("templeR", '<path d="M178 90c-6-4-14-4-20 0-2 14-2 28 2 40 6 2 12 0 18-4 3-12 3-24 0-36z"/>')}
-      ${z("eyeL", '<ellipse cx="84" cy="108" rx="17" ry="11"/>')}
-      ${z("eyeR", '<ellipse cx="136" cy="108" rx="17" ry="11"/>')}
-      ${z("sinus", '<path d="M100 104h20l4 26c10 0 18 2 24 6-8 8-24 12-38 12s-30-4-38-12c6-4 14-6 24-6z"/>')}
-      ${z("jawL", '<path d="M44 140c6 0 12 4 14 10l6 28c-6 4-12 4-16 0-4-12-6-24-4-38z"/>')}
-      ${z("jawR", '<path d="M176 140c-6 0-12 4-14 10l-6 28c6 4 12 4 16 0 4-12 6-24 4-38z"/>')}
-      ${face}${marks}
-    </svg><figcaption>спереди</figcaption></figure>
-    <figure><svg viewBox="0 0 220 250" aria-label="Голова сзади">
-      ${base(true)}
-      ${z("crown", '<path d="M62 44C78 28 94 22 110 22s32 6 48 22c-14 6-30 9-48 9s-34-3-48-9z"/>')}
-      ${z("occiput", '<path d="M52 118c16 10 36 14 58 14s42-4 58-14c0 34-14 64-42 80-10 4-22 4-32 0-28-16-42-46-42-80z"/>')}
-      ${z("neck", '<path d="M86 210h48c0 12 2 22 6 32H80c4-10 6-20 6-32z"/>')}
-      <text class="hx-mark" x="16" y="122">Л</text><text class="hx-mark" x="196" y="122">П</text>
-    </svg><figcaption>сзади</figcaption></figure>
+  const view = (back, list) => {
+    const id = uid + (back ? "b" : "f");
+    return `<svg viewBox="12 6 176 240" aria-label="${back ? "Голова сзади" : "Голова спереди"}">
+      <defs><clipPath id="${id}"><path d="${HX_HEAD}"/></clipPath></defs>
+      <path class="hx-ear" d="M36 102c-10-4-16 4-15 16s6 22 17 20zM164 102c10-4 16 4 15 16s-6 22-17 20z"/>
+      ${back ? z("neck", '<path d="M72 170v46q0 16-18 26h92q-18-10-18-26v-46z"/>', [100, 228])
+             : '<path class="hx-neck" d="M72 170v46q0 16-18 26h92q-18-10-18-26v-46z"/>'}
+      <g clip-path="url(#${id})">${list.map(([zid, d, at]) => z(zid, `<path d="${d}"/>`, at)).join("")}</g>
+      <path class="hx-rim" d="${HX_HEAD}"/>
+      <text class="hx-mark" x="22" y="70">${back ? "Л" : "П"}</text><text class="hx-mark" x="178" y="70">${back ? "П" : "Л"}</text>
+    </svg>`;
+  };
+  const chips = heat ? "" : `<div class="hx-zchips">${["whole", ...(sel || []).filter(k => k !== "whole")].map(k =>
+    `<button type="button" class="tchip" data-hx-z="${k}" aria-pressed="${!!sel?.includes(k)}">${HX_ZONES[k]}</button>`).join("")}</div>`;
+  return `<div class="hx-heads${heat ? " heat" : ""}${sel?.includes("whole") ? " all" : ""}">
+    <figure>${view(false, HX_FRONT)}<figcaption>Спереди</figcaption></figure>
+    <figure>${view(true, HX_BACK)}<figcaption>Сзади</figcaption></figure>
+    ${chips}${heat && all ? `<p class="hx-allc">Вся голова · ${all}</p>` : ""}
   </div>`;
 }
 
@@ -106,7 +111,7 @@ function hxDraw() {
       </div>
       <div class="hx-row"><span class="hx-l">Сила</span><div class="hx-vas" role="group">${Array.from({ length: 10 }, (_, k) => k + 1).map(v => `<button type="button" class="v${v}" data-hx-vas="${v}" aria-pressed="${x.vas === v}">${v}</button>`).join("")}</div></div>
       <div class="hx-grid">
-        <div class="hx-where"><span class="hx-l">Где</span>${hxHead(x.loc)}<p class="hx-locs">${x.loc.map(k => HX_ZONES[k]).join(", ") || "тапни по голове"}</p></div>
+        <div class="hx-where"><span class="hx-l">Где</span>${hxHead(x.loc)}</div>
         <div class="hx-side">
           <div><span class="hx-l">Какая</span>${chips(HX_KIND, "kind")}</div>
           <div><span class="hx-l">Вместе с этим</span>${chips(HX_WITH, "with")}</div>

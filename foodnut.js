@@ -127,7 +127,7 @@ function fdNutRow(k, S, c, open) {
   const st = lim ? (pct > 100 ? "over" : "ok") : r.ul && v > r.ul ? "over" : pct == null ? "" : pct >= 100 ? "ok" : pct >= 50 ? "mid" : "low";
   const ppi = FD_PPI_WATCH.has(k) && fdOnPPI();
   return `<div class="fd-nwrap${open ? " open" : ""}"><button type="button" class="fd-nrow ${st}" data-fd-nut="${k}" aria-expanded="${open}">
-      <span class="fd-nn">${esc(name)}${ppi ? ` <i class="fd-ppi" title="При долгом приёме омепразола и похожих препаратов это усваивается хуже — стоит следить и спросить врача про анализ">омез</i>` : ""}${note ? `<small>${esc(note)}</small>` : ""}</span>
+      <span class="fd-nn"${note ? ` title="${esc(note)}"` : ""}>${esc(name)}${ppi ? ` <i class="fd-ppi" title="При долгом приёме омепразола и похожих препаратов это усваивается хуже — стоит следить и спросить врача про анализ">омез</i>` : ""}</span>
       <span class="fd-nv">${cov < 0.9 ? `<em title="Для части съеденного нет данных по этому веществу — реальное число больше">≈</em>` : ""}${fdFmt(v, k)}${goal ? `<small> / ${lim ? "до " : ""}${fdFmt(goal, k)} ${unit}</small>` : ` <small>${unit}</small>`}</span>
       <span class="fd-nb"><i style="width:${Math.min(100, pct || 0)}%"></i></span>
       <b class="fd-np">${pct != null ? pct + "%" : ""}</b></button>
@@ -141,8 +141,8 @@ function fdNutBy(k, S) {
   const tips = low && idx >= 0 ? FD_DB.filter(x => FD_NUT[x[0]] && FD_NUT[x[0]][idx] && !soft.test(x[10]))
     .map(x => [x, FD_NUT[x[0]][idx] * x[8] / 100]).sort((a, b) => b[1] - a[1]).slice(0, 5) : [];
   return `<div class="fd-nby">
-    ${list.length ? `<div class="fd-nbl"><span class="fd-ql">Откуда</span>${list.map(([n, v]) => `<div class="fd-nbi"><span>${esc(n)}</span><b>${fdFmt(v, k)} ${unit}</b><i style="width:${Math.round(v / tot * 100)}%"></i></div>`).join("")}</div>` : `<p class="cl-muted cl-small">Сегодня этого ещё не было в еде.</p>`}
-    ${tips.length ? `<div class="fd-nbl"><span class="fd-ql">Чем добрать</span><div class="tchips">${tips.map(([x, v]) => `<button type="button" class="tchip" data-fd-tip="${esc(x[0])}">${esc(x[1])}<small>${esc(x[9])} · ${fdFmt(v, k)} ${unit}</small></button>`).join("")}</div><p class="cl-small cl-muted">Только то, что обычно не раздражает желудок. Тап — добавить в текущий приём.</p></div>` : ""}
+    ${list.length ? `<div class="fd-nbl"><span class="fd-ql">Откуда</span>${list.map(([n, v]) => `<div class="fd-nbi"><span>${esc(n)}</span><b>${fdFmt(v, k)} ${unit}</b><i style="width:${Math.round(v / tot * 100)}%"></i></div>`).join("")}</div>` : ``}
+    ${tips.length ? `<div class="fd-nbl"><span class="fd-ql" title="Только то, что обычно не раздражает желудок">Чем добрать</span><div class="tchips">${tips.map(([x, v]) => `<button type="button" class="tchip" data-fd-tip="${esc(x[0])}">${esc(x[1])}<small>${esc(x[9])} · ${fdFmt(v, k)} ${unit}</small></button>`).join("")}</div></div>` : ""}
   </div>`;
 }
 function fdNutCard(d) {
@@ -152,13 +152,11 @@ function fdNutCard(d) {
   const keys = FD_TABS.find(([t]) => t === tab)[2];
   const low = FD_TABS[0][2].filter(k => { const r = fdDRI(k, c); return r.t && S.v[k] < r.t * 0.5; });
   return `<section class="card cl-box t-food fd-nut" id="fdNut" data-key="nut">
-    <div class="cl-bh"><span class="cl-bi t-food">${clSvg('<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>')}</span><div class="cl-bt"><h4>Нутриенты</h4>
-      <small>${!S.n ? "пока пусто — добавь еду, и здесь посчитаются витамины, минералы, жиры и аминокислоты" : range === 1 ? "за день" : `в среднем за ${S.n} ${plural(S.n, "день", "дня", "дней")} с записями`} · нормы для ${c.known ? (c.f ? "женщины" : "мужчины") : "взрослого"} ${c.age} лет${c.known ? "" : " — укажи пол и год рождения в «Данные», нормы подстроятся"}</small></div>
+    <div class="cl-bh"><span class="cl-bi t-food" title="Данные USDA FoodData Central, нормы NASEM, ВОЗ и EFSA. Йода в базе нет.">${clSvg('<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>')}</span><div class="cl-bt"><h4>Нутриенты</h4>
+      <small>${range === 1 ? "за день" : `среднее за ${S.n} ${plural(S.n, "день", "дня", "дней")}`}${c.known ? "" : " · укажи пол и год рождения в «Данные»"}</small></div>
       <div class="cl-br">${clSeg("data-fd-range", [[1, "День"], [7, "7 дней"]], range, "fd-range")}</div></div>
-    ${tab === "main" && low.length && S.n ? `<p class="fd-lowline">Меньше половины нормы: ${low.map(k => `<b>${esc(FD_NI[k][0])}</b>`).join(", ")}. Открой строку — там подсказка, чем добрать.</p>` : ""}
     <div class="fd-ntabs" role="tablist">${FD_TABS.map(([t, n]) => `<button type="button" role="tab" data-fd-ntab="${t}" aria-selected="${t === tab}">${n}</button>`).join("")}</div>
     <div class="fd-nlist">${keys.map(k => fdNutRow(k, S, c, ui.fdNut === k)).join("")}</div>
-    <p class="cl-small cl-muted">Данные: USDA FoodData Central, для блюд — по рецепту из её продуктов. Йода в базе нет. Нормы — справочные (NASEM, ВОЗ, EFSA), не лечебные.</p>
   </section>`;
 }
 // the side summary: how many of the key nutrients are covered, a tap scrolls to the full card
@@ -177,6 +175,5 @@ function openFoodComp(d, id) {
   const o = fdNutOf(e), c = fdCtx();
   const row = k => { const r = fdDRI(k, c), goal = r.max ?? r.t; return o[k] == null ? "" : `<div class="cl-stat"><span>${esc(FD_NI[k][0])}</span><b>${fdFmt(o[k], k)} ${FD_NI[k][1]}${goal ? ` <small class="cl-muted">${Math.round(o[k] / goal * 100)}%</small>` : ""}</b></div>`; };
   openX(`<div class="dlg-head"><h3>${esc(e.n)} · ${fdAmt(e)}</h3><button type="button" class="icon-btn" data-xclose aria-label="Закрыть">×</button></div>
-    <p class="cl-muted cl-small">Процент — от дневной нормы.${FD_NUT[e.src] || FD_NAME[e.n] ? "" : " Для своего продукта известны только калории, БЖУ и клетчатка."}</p>
     <div class="fd-comp">${FD_TABS.slice(1).map(([, n, ks]) => { const rows = ks.map(row).join(""); return rows ? `<section><h4 class="cl-dh4">${n}</h4>${rows}</section>` : ""; }).join("")}</div>`, "st-dlg tp-dlg cl-dlg fd-dlg");
 }

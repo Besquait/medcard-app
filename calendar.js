@@ -211,7 +211,7 @@ function clStrip(sel, today, wide) {
 }
 function clMedsBlock(d) {
   const { sched, prn } = clMeds(d), x = state.days?.[d] || {}, m = x.meds || {};
-  if (!sched.length && !prn.length) return `<section class="card cl-card"><h3 class="cl-h3">Лекарства</h3><p class="cl-muted">На этот день нет препаратов из схем. Добавь схему в «Лечение» — и здесь появится, что принять.</p></section>`;
+  if (!sched.length && !prn.length) return `<section class="card cl-card"><h3 class="cl-h3">Лекарства</h3><p class="cl-muted">Нет препаратов из схем</p></section>`;
   const isT = d === todayISO(), now = clNowSlot();
   const groups = CL_SLOTS.map(([k, n]) => ({ k, n, l: sched.filter(it => it.slot === k) })).filter(g => g.l.length);
   const leftOf = g => g.l.filter(it => !m[it.key]);
@@ -312,7 +312,6 @@ function clDayCard(d, withSleep) {
   const fCount = Object.values(x.f || {}).filter(Boolean).length;
   const gap = clMealGap(d);
   return `<h3 class="cl-sec">Итог дня${filled ? `<span class="cl-okline">✓ записан</span>` : ""}</h3>
-    <p class="cl-hint">Отмечай вечером, как было <b>в худший момент</b> дня. Всё сохраняется само.</p>
     ${e ? `<section class="card cl-box t-acc">${clHead("t-acc", CL_I.exp, `Проверяю: ${esc(e.title)}`, `день ${daysBetween(e.start, d) + 1} из ${e.days}`)}
       ${clSeg("data-cl-x", [[`${e.id}|1`, "Соблюдал", "g0"], [`${e.id}|0`, "Не вышло", "g2"]], x.x?.[e.id] == null ? null : `${e.id}|${x.x[e.id]}`, "yn")}</section>` : ""}
     ${withSleep ? clSleepCard(d) : ""}
@@ -343,7 +342,7 @@ function clExpCard() {
       <span class="cl-bar"><i style="width:${Math.round(n / cur.days * 100)}%"></i></span>
       <button type="button" class="cl-link" data-cl-exp="${esc(cur.id)}">Промежуточный итог →</button>`;
   } else {
-    body = `<p class="cl-muted">Меняешь одно на 2 недели — и сайт покажет, стало ли легче. Так находится то, что помогает именно тебе.</p>
+    body = `<p class="cl-muted">Одно изменение на 2 недели — помогло или нет.</p>
       <button type="button" class="btn primary" data-cl-expnew>Начать проверку</button>`;
   }
   const list = past.length ? `<div class="cl-exp-past"><span class="cl-small cl-muted">Проверено</span>${past.slice().reverse().map(e => { const r = clExpResult(e); return `<button type="button" class="cl-exprow" data-cl-exp="${esc(e.id)}"><span>${esc(e.title)}</span><em class="v-${r.verdict}">${CL_VERDICT[r.verdict]}</em></button>`; }).join("")}</div>` : "";
@@ -354,9 +353,9 @@ function clCureCard() {
   if (!act.length) return "";
   return `<section class="card cl-side-card"><h4>Работает ли лечение</h4>${act.map(p => {
     const n = daysBetween(tpStart(p), today) + 1, rows = tpCompare(p);
-    return `<button type="button" class="cl-cure" data-cl-plan="${esc(p.id)}"><b>${esc(p.title || "Схема лечения")}</b><span class="cl-muted">день ${n} · до и во время</span>
+    return `<button type="button" class="cl-cure" data-cl-plan="${esc(p.id)}"><b>${esc(p.title || "Схема лечения")}</b><span class="cl-muted">день ${n}</span>
       ${rows.length ? rows.map(r => `<span class="cl-stat"><span>${esc(r.s.name)}</span><b class="${clMove(r.a, r.b)}">${dyNum(r.a)} → ${dyNum(r.b)}</b></span>`).join("")
-        : `<span class="cl-muted cl-small">Сравнение появится, когда наберётся по 3 записанных дня до начала и во время.</span>`}</button>`;
+        : `<span class="cl-muted cl-small">мало записей</span>`}</button>`;
   }).join("")}</section>`;
 }
 function clWeekCard() {
@@ -375,7 +374,6 @@ function clWeekCard() {
       return (ms.length >= 3 ? `<div class="cl-stat"><span>Сон в среднем</span><b>${clHours(Math.round(clAvg(ms) / 10) * 10)}</b></div>` : "")
         + (qs.length >= 3 ? `<div class="cl-stat"><span>Качество сна</span><b>${dyNum(clAvg(qs))} из 5</b></div>` : ""); })()}
     ${rows.map(r => `<div class="cl-stat"><span>${esc(r.s.name)}</span><b class="${clMove(r.a, r.b)}">${dyNum(r.a)} → ${dyNum(r.b)}</b></div>`).join("")}
-    ${rows.length ? `<p class="cl-muted cl-small">Средняя сила жалобы, прошлая неделя → эта. Шкала 0–3.</p>` : ""}
   </section>`;
 }
 
@@ -388,7 +386,6 @@ function openBad() {
   const { main, rest } = clMain(), first = (main[0] || rest[0])?.id;
   if (!first) { toast("Сначала добавь жалобу в «Симптомах»"); return; }
   openX(`<div class="dlg-head"><h3>Сейчас плохо · ${clHM()}</h3><button type="button" class="icon-btn" data-xclose aria-label="Закрыть">×</button></div>
-    <p class="cl-muted">Запишется в жалобу и в сегодняшний день. Потом видно, что было перед приступом.</p>
     <h4 class="cl-dh4">Что беспокоит</h4>${clSyPick("data-clb-s", s => s.id === first)}
     <h4 class="cl-dh4">Насколько</h4><div class="dy-sev">${SY_SEV.map(([k, n]) => `<button type="button" class="dy-b s${k}" data-clb-v="${k}" aria-pressed="${k === 2}">${n}</button>`).join("")}</div>
     <h4 class="cl-dh4">Что было за 1–3 часа до этого</h4><div class="tchips">${CL_BEFORE.map(([k, n]) => `<button type="button" class="tchip" data-clb-w="${k}" aria-pressed="false">${n}</button>`).join("")}</div>
@@ -398,7 +395,7 @@ function openExpNew() {
   const today = todayISO();
   const recent = tpList().map(tpStart).filter(s => s && s > addDaysISO(today, -CL_BASE) && s <= today).sort().pop();
   openX(`<div class="dlg-head"><h3>Новая проверка</h3><button type="button" class="icon-btn" data-xclose aria-label="Закрыть">×</button></div>
-    <p class="cl-lead">Меняешь <b>одно</b> на время проверки и каждый вечер отмечаешь, получилось ли. Сайт сравнит жалобы с тремя неделями до начала и скажет, стало ли легче.</p>
+    
     ${recent ? `<p class="cl-note">Лечение сменилось ${fmtDate(recent)}. Если начать сейчас, будет непонятно, что сработало — лекарства или это изменение. Надёжнее начать с ${fmtDate(addDaysISO(recent, CL_BASE))}.</p>` : ""}
     <h4 class="cl-dh4">Что проверить</h4>
     <div class="cl-ideas">${CL_IDEAS.map(([t, w], i) => `<button type="button" class="cl-idea" data-cle-i="${i}" aria-pressed="${i === 0}"><b>${esc(t)}</b><small>${esc(w)}</small></button>`).join("")}
@@ -414,7 +411,6 @@ function openExp(id) {
     <p class="cl-muted">${fmtDate(e.start)} — ${fmtDate(clExpEnd(e))} · соблюдал ${r.kept} из ${daysBetween(e.start, r.end) + 1} ${plural(daysBetween(e.start, r.end) + 1, "дня", "дней", "дней")}</p>
     <div class="cl-verdict v-${r.verdict}"><b>${CL_VERDICT_LONG[r.verdict]}</b>${r.live ? "<span>Проверка ещё идёт — это промежуточный итог.</span>" : ""}</div>
     <div class="cl-res">${r.rows.map(x => `<div class="cl-stat"><span>${esc(x.s.name)}</span>${x.ok ? `<b class="${clMove(x.a, x.b)}">${dyNum(x.a)} → ${dyNum(x.b)}</b>` : `<b class="cl-muted">мало записей</b>`}</div>`).join("")}</div>
-    <p class="cl-small cl-muted">Слева — средняя сила за 3 недели до начала, справа — в дни, когда соблюдал. Шкала 0–3: нет, слабо, заметно, сильно.</p>
     ${r.mixed.length ? `<p class="cl-note">В это же время менялось лечение (${r.mixed.map(p => esc(p.title || "схема")).join(", ")}) — разница может быть и от него.</p>` : ""}
     <div class="dlg-foot"><button type="button" class="btn ghost" data-cle-del="${esc(e.id)}">Удалить</button><span style="flex:1"></span>
       ${r.live ? `<button type="button" class="btn" data-cle-stop="${esc(e.id)}">Закончить сейчас</button>` : ""}<button type="button" class="btn primary" data-xclose>Готово</button></div>`, "st-dlg tp-dlg cl-dlg");

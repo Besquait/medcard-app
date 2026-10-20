@@ -82,8 +82,8 @@ function fdShowRes(inp) {
   ui.fdIdx = 0;
   if (!q) { box.hidden = true; box.innerHTML = ""; ui.fdHits = []; return; }
   ui.fdHits = fdSearch(q);
-  box.innerHTML = `${ui.fdHits.length ? fdHitsHtml(ui.fdHits) : `<p class="fd-none">В моей базе такого нет.</p>`}
-    <div class="fd-rfoot">${navigator.onLine !== false ? `<button type="button" class="cl-link" data-fd-net>Найти «${esc(fdParse(q).t)}» в базе магазинных продуктов</button>` : ""}<button type="button" class="cl-link" data-fd-own>+ Свой продукт</button></div>`;
+  box.innerHTML = `${ui.fdHits.length ? fdHitsHtml(ui.fdHits) : `<p class="fd-none">Не нашлось</p>`}
+    <div class="fd-rfoot">${navigator.onLine !== false ? `<button type="button" class="cl-link" data-fd-net>Искать в магазинных продуктах</button>` : ""}<button type="button" class="cl-link" data-fd-own>+ Свой продукт</button></div>`;
   box.hidden = false;
 }
 // packaged products: Open Food Facts, values per 100 g; an added one is kept as one's own product
@@ -104,9 +104,9 @@ async function fdNet(inp) {
       return { src: "off:" + p.code, n: `${name}${p.brands ? ` (${p.brands.split(",")[0].trim()})` : ""}`, per: [+k || 0, +n.proteins_100g || 0, fat, +n.carbohydrates_100g || 0, +n.fiber_100g || 0].map(v => Math.round(v * 10) / 10), pg: +p.serving_quantity || 100, pl: "порция", tags: fat >= 15 ? "fat" : "", off: true, nut };
     }).filter(Boolean).slice(0, 8);
     ui.fdHits = list.map(f => ({ f, g: fdGrams(f, amt, unit) })); ui.fdIdx = 0;
-    box.innerHTML = `${list.length ? fdHitsHtml(ui.fdHits) : `<p class="fd-none">В базе магазинных продуктов тоже не нашлось.</p>`}<div class="fd-rfoot"><button type="button" class="cl-link" data-fd-own>+ Свой продукт</button></div>`;
+    box.innerHTML = `${list.length ? fdHitsHtml(ui.fdHits) : `<p class="fd-none">Не нашлось</p>`}<div class="fd-rfoot"><button type="button" class="cl-link" data-fd-own>+ Свой продукт</button></div>`;
   } catch (e) {
-    if (foot) foot.innerHTML = `<span class="cl-muted">Не получилось связаться с базой.</span><button type="button" class="cl-link" data-fd-own>+ Свой продукт</button>`;
+    if (foot) foot.innerHTML = `<span class="cl-muted">Нет связи</span><button type="button" class="cl-link" data-fd-own>+ Свой продукт</button>`;
   }
 }
 
@@ -153,7 +153,7 @@ function fdAddBox(d, compact) {
   return `<div class="fd-add${compact ? " compact" : ""}">
     <div class="seg2 fd-meals" role="group" aria-label="Приём пищи">${FD_MEALS.map(([k, n]) => `<button type="button" data-fd-meal="${k}" aria-pressed="${cur === k}">${n}</button>`).join("")}</div>
     <div class="fd-search"><svg class="fd-sico" width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><circle cx="9" cy="9" r="6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M13.5 13.5L17 17" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-      <input class="input" data-fd-q data-fd-day="${d}" placeholder="Что съел? Например: гречка 200, яйцо 2, кофе" autocomplete="off" enterkeyhint="done" aria-label="Что съел">
+      <input class="input" data-fd-q data-fd-day="${d}" placeholder="гречка 200, яйцо 2, кофе…" autocomplete="off" enterkeyhint="done" aria-label="Что съел">
       <div class="fd-res" hidden></div></div>
     ${sets.length ? `<div class="fd-quick"><span class="fd-ql">Наборы</span><div class="tchips">${sets.map(s => `<button type="button" class="tchip fd-set" data-fd-set="${esc(s.id)}">${esc(s.name)}<small>${fdK(fdSum(s.items)[0])} ккал</small></button>`).join("")}</div></div>` : ""}
     ${freq.length ? `<div class="fd-quick"><span class="fd-ql">Часто</span><div class="tchips">${freq.map(r => `<button type="button" class="tchip" data-fd-again="${esc(r.e.n)}">${esc(r.e.n)}<small>${fdAmt(r.e)}</small></button>`).join("")}</div></div>` : ""}
@@ -205,23 +205,21 @@ function fdStomach(d) {
     x.meal ? `<div class="fd-srow"><i class="fd-tag ${gap != null && gap < 180 ? "t-late" : "t-ok"}">${x.meal}</i><span>последняя еда${gap != null ? ` · за ${clHours(gap)} до сна` : ""}</span></div>` : "",
   ].filter(Boolean);
   return `<section class="card cl-side-card"><h4>Для желудка</h4>
-    ${rows.length > 1 || Object.keys(by).length || big.length ? rows.join("") : `<p class="cl-muted">Частых раздражителей нет ✓</p>${rows.join("")}`}
-    <p class="cl-small cl-muted">Это само отмечается в «Что было» в календаре — для связей и проверок.</p></section>`;
+    ${rows.join("")}</section>`;
 }
 function fdWeek(d) {
   const days = Array.from({ length: 7 }, (_, i) => addDaysISO(d, i - 6)), v = days.map(x => fdSum(state.days?.[x]?.food)[0]), g = fdGoal().k;
   if (v.filter(Boolean).length < 2) return "";
   const max = Math.max(...v, g);
   return `<section class="card cl-side-card"><h4>Неделя</h4>
-    <div class="fd-week">${days.map((x, i) => `<button type="button" class="fd-wd${x === d ? " on" : ""}" data-fd-day="${x}" title="${fdK(v[i])} ккал"><span class="fd-wb"><i style="height:${Math.round(v[i] / max * 100)}%"></i><em style="bottom:${Math.round(g / max * 100)}%"></em></span><small>${CL_WD[(new Date(x + "T00:00:00").getDay() + 6) % 7]}</small></button>`).join("")}</div>
-    <p class="cl-small cl-muted">В среднем ${fdK(v.filter(Boolean).reduce((a, b) => a + b, 0) / v.filter(Boolean).length)} ккал в записанные дни.</p></section>`;
+    <div class="fd-week">${days.map((x, i) => `<button type="button" class="fd-wd${x === d ? " on" : ""}" data-fd-day="${x}" title="${fdK(v[i])} ккал"><span class="fd-wb"><i style="height:${Math.round(v[i] / max * 100)}%"></i><em style="bottom:${Math.round(g / max * 100)}%"></em></span><small>${CL_WD[(new Date(x + "T00:00:00").getDay() + 6) % 7]}</small></button>`).join("")}</div></section>`;
 }
 function fdSetsCard() {
   const sets = state.prefs?.foodSets || [];
+  if (!sets.length) return "";
   return `<section class="card cl-side-card"><h4>Наборы</h4>
     ${sets.length ? sets.map(s => `<div class="fd-setrow"><span><b>${esc(s.name)}</b><small>${esc(s.items.map(e => e.n).join(", "))} · ${fdK(fdSum(s.items)[0])} ккал</small></span><button type="button" class="icon-btn sm" data-fd-setdel="${esc(s.id)}" aria-label="Удалить набор">×</button></div>`).join("")
-      : `<p class="cl-muted">Набор — это приём пищи, который часто повторяется: «Мой завтрак», «Перекус на работе». Сохрани любой приём кнопкой «Сохранить как набор» — потом он добавляется одним нажатием.</p>`}
-    <button type="button" class="cl-link" data-fd-own>+ Свой продукт</button></section>`;
+      : ""}</section>`;
 }
 function renderFood() {
   const box = $("#foodView"); if (!box || box.hidden) return;
@@ -235,7 +233,6 @@ function renderFood() {
         <section class="card cl-box t-food fd-addcard">${fdAddBox(d)}</section>
         ${FD_MEALS.map(([k, n]) => { const l = food.filter(e => e.m === k); return l.length ? fdMealCard(k, n, l) : ""; }).join("")}
         ${typeof fdNutCard === "function" ? fdNutCard(d) : ""}
-        ${food.length ? "" : `<div class="fd-empty"><b>Пока ничего не записано</b><p>Пиши как говоришь: «гречка 200», «яйцо 2», «кофе». Enter — добавить. Часто съедаемое потом появится кнопками, а повторяющийся завтрак можно сохранить набором.</p></div>`}
       </div>
       <aside class="cl-side">${fdTotals(d)}${typeof fdNutMini === "function" ? fdNutMini(d) : ""}${fdStomach(d)}${fdWeek(d)}${fdSetsCard()}</aside>
     </div>`);
@@ -256,7 +253,7 @@ function openFoodOwn(name = "") {
   openX(`<div class="dlg-head"><h3>Свой продукт</h3><button type="button" class="icon-btn" data-xclose aria-label="Закрыть">×</button></div>
     <form class="fd-form" data-fd-ownf>
       <label class="fd-num wide"><span>Название</span><input class="input" name="n" value="${esc(name)}" placeholder="Например: сырок «Галактика»" required autocomplete="off"></label>
-      <p class="cl-muted cl-small">На 100 г — смотри на упаковке. Пустое поле считается нулём.</p>
+      <h4 class="cl-dh4">На 100 г</h4>
       <div class="fd-nums">${num("k", "Калории")}${num("p", "Белки, г")}${num("f", "Жиры, г")}${num("c", "Углеводы, г")}${num("fib", "Клетчатка, г")}</div>
       <div class="fd-nums">${num("pg", "Обычная порция, г", 100)}<label class="fd-num"><span>Как называется порция</span><input class="input" name="pl" value="порция" autocomplete="off"></label></div>
       <h4 class="cl-dh4">Может раздражать желудок</h4><div class="tchips">${tag}</div>
@@ -267,9 +264,7 @@ function openFoodGoal() {
   const g = fdGoal(), num = (n, label) => `<label class="fd-num"><span>${label}</span><input class="input" type="number" inputmode="numeric" min="0" name="${n}" value="${g[n]}"></label>`;
   openX(`<div class="dlg-head"><h3>Цели на день</h3><button type="button" class="icon-btn" data-xclose aria-label="Закрыть">×</button></div>
     <form class="fd-form" data-fd-goalf>
-      <p class="cl-muted">Ориентиры для полосок. Точные цифры под тебя лучше обсудить с врачом или диетологом.</p>
       <div class="fd-nums">${num("k", "Калории")}${num("p", "Белки, г")}${num("f", "Жиры, г")}${num("c", "Углеводы, г")}${num("fib", "Клетчатка, г")}${num("w", "Вода, мл")}${num("kg", "Мой вес, кг")}</div>
-      <p class="cl-muted cl-small">Вес нужен для норм белка и аминокислот (0,8 г белка на кг — минимум для взрослого).</p>
       <div class="dlg-foot"><span style="flex:1"></span><button type="submit" class="btn primary">Сохранить</button></div>
     </form>`, "st-dlg tp-dlg cl-dlg fd-dlg");
 }

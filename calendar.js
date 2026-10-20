@@ -133,7 +133,7 @@ function renderCalendar() {
       <div class="cl-main">
         <div class="cl-mob">${clStrip(sel, today, false)}</div>
         ${clBanner(sel)}
-        ${sleepFirst ? `<section class="card cl-card cl-daycard"><h3 class="cl-h3">Как спал?</h3>${clSleepQ(sel)}</section>` : ""}
+        ${sleepFirst ? clSleepCard(sel, true) : ""}
         ${clMedsBlock(sel)}
         ${clDayCard(sel, !sleepFirst)}
       </div>
@@ -246,39 +246,84 @@ function clMedsBlock(d) {
       <span class="cl-left">${left ? `осталось ${left} из ${focus.l.length}` : "всё принято"}</span></div>${body(focus)}</section>` : ""}
     ${rest.length || prnRow ? `<section class="card cl-rows">${rest.map(row).join("")}${prnRow}</section>` : ""}`;
 }
-function clSleepQ(d) {
+// the night: the core of the Consensus Sleep Diary (bed and rise time, how long to fall asleep, awakenings,
+// quality) plus how rested in the morning and what woke you — reflux, cough and mucus wake people with GERD
+const CL_LAT = [[1, "до 15 мин", "g0"], [2, "15–30 мин", "g1"], [3, "30–60 мин", "g2"], [4, "больше часа", "g3"]];
+const CL_WK = [[0, "ни разу", "g0"], [1, "1 раз", "g1"], [2, "2 раза", "g2"], [3, "3 и больше", "g3"]];
+const CL_SQ = [[1, "Очень плохо"], [2, "Плохо"], [3, "Средне"], [4, "Хорошо"], [5, "Отлично"]];
+const CL_REST = [[1, "Разбитый", "g3"], [2, "Так себе", "g2"], [3, "Отдохнувший", "g0"]];
+const CL_WHY = [["reflux", "Изжога, кислота"], ["cough", "Кашель, слизь"], ["dry", "Сухость во рту"], ["toilet", "Туалет"], ["ears", "Шум в ушах"], ["other", "Без причины"]];
+// day factors in groups, so the chips do not pile up
+const CL_FGROUPS = [["Еда", ["acid", "late", "big", "fatty", "coffee", "flax"]], ["Режим", ["stress", "screen", "move", "sick"]]];
+const clSeg = (attr, list, val, cls = "") => `<div class="seg2 ${cls}" role="group">${list.map(([k, n, c]) => `<button type="button" class="${c || ""}" ${attr}="${k}" aria-pressed="${val === k}">${n}</button>`).join("")}</div>`;
+const clHead = (tone, icon, title, sub, right) => `<div class="cl-bh"><span class="cl-bi ${tone}">${icon}</span><div class="cl-bt"><h4>${title}</h4>${sub ? `<small>${sub}</small>` : ""}</div>${right ? `<div class="cl-br">${right}</div>` : ""}</div>`;
+const CL_I = {
+  mood: clSvg('<circle cx="12" cy="12" r="8.5"/><path d="M8.5 14c.9 1.2 2.1 1.8 3.5 1.8s2.6-.6 3.5-1.8M9 9.5h.01M15 9.5h.01"/>'),
+  sy: clSvg('<path d="M3 12h4l2-5 4 10 2-5h6"/>'),
+  fac: clSvg('<path d="M4 7h10M4 12h16M4 17h7"/><circle cx="17" cy="7" r="2"/><circle cx="14" cy="17" r="2"/>'),
+  note: clSvg('<path d="M5 4h10l4 4v12H5z"/><path d="M9 12h6M9 16h4"/>'),
+  exp: clSvg('<path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 1.7 3h10.6a2 2 0 0 0 1.7-3l-5-9V3"/>'),
+};
+// minutes between the last meal and going to bed
+function clMealGap(d) {
+  const x = state.days?.[d]; if (!x?.meal) return null;
+  let bed = state.days?.[addDaysISO(d, 1)]?.bed;
+  if (!bed) {
+    // the usual bedtime of the last two weeks
+    const bs = Array.from({ length: 14 }, (_, i) => state.days?.[addDaysISO(d, -i)]?.bed).filter(Boolean)
+      .map(t => { const [h, m] = t.split(":").map(Number); return (h < 12 ? h + 24 : h) * 60 + m; }).sort((p, q) => p - q);
+    if (!bs.length) return null;
+    const v = bs[bs.length >> 1]; bed = `${String(Math.floor(v / 60) % 24).padStart(2, "0")}:${String(v % 60).padStart(2, "0")}`;
+  }
+  const [bh, bm] = bed.split(":").map(Number), [mh, mm] = x.meal.split(":").map(Number);
+  return ((bh * 60 + bm) - (mh * 60 + mm) + 1440) % 1440;
+}
+function clSleepCard(d, first) {
   const x = state.days?.[d] || {}, m = clSleepMin(x), y = state.days?.[addDaysISO(d, -1)];
   const same = !x.bed && !x.wake && y?.bed && y?.wake;
-  return `<div class="cl-q"><div class="cl-ql"><b>Сон</b><small>${m ? `<span class="cl-hrs">${clHours(m)}</span>` : "когда лёг и когда встал"}</small></div>
-    <div class="cl-sl"><label><span>Лёг</span><input class="input" type="time" data-cl-bed value="${esc(x.bed || "")}"></label><span class="cl-arrow" aria-hidden="true">→</span>
-      <label><span>Встал</span><input class="input" type="time" data-cl-wake value="${esc(x.wake || "")}"></label>
-      ${same ? `<button type="button" class="tchip cl-same" data-cl-same>Как вчера · ${esc(y.bed)} → ${esc(y.wake)}</button>` : ""}</div></div>`;
+  const night = `ночь на ${longDate(d).replace(/ \d{4}$/, "")}`;
+  const right = m ? `<b class="cl-big2">${clHours(m)}</b>${x.sq ? `<span class="cl-q${x.sq}">${CL_SQ[x.sq - 1][1].toLowerCase()}</span>` : ""}` : "";
+  const row = (label, ctl, hint) => `<div class="cl-f"><div class="cl-fl">${label}${hint ? `<small>${hint}</small>` : ""}</div>${ctl}</div>`;
+  return `<section class="card cl-box t-sleep">${clHead("t-sleep", CL_ICON.night, first ? "Как спал?" : "Сон", night, right)}
+    ${row("Лёг и встал", `<div class="cl-sl"><input class="input" type="time" data-cl-bed value="${esc(x.bed || "")}" aria-label="Лёг"><span class="cl-arrow" aria-hidden="true">→</span><input class="input" type="time" data-cl-wake value="${esc(x.wake || "")}" aria-label="Встал">
+      ${same ? `<button type="button" class="tchip cl-same" data-cl-same>как вчера · ${esc(y.bed)} → ${esc(y.wake)}</button>` : ""}</div>`)}
+    ${row("Заснул за", clSeg("data-cl-lat", CL_LAT, x.lat))}
+    ${row("Просыпался", clSeg("data-cl-wk", CL_WK, x.wk))}
+    ${x.wk > 0 ? row("Что будило", `<div class="tchips cl-why">${CL_WHY.map(([k, n]) => `<button type="button" class="tchip" data-cl-why="${k}" aria-pressed="${!!x.why?.[k]}">${n}</button>`).join("")}</div>`, "можно несколько") : ""}
+    ${row("Как спалось", clSeg("data-cl-sq", CL_SQ.map(([k, n]) => [k, n, "m" + k]), x.sq, "dots"))}
+    ${row("Утром", clSeg("data-cl-rest", CL_REST, x.rest))}
+  </section>`;
 }
 function clDayCard(d, withSleep) {
   const x = state.days?.[d] || {}, { main, rest } = clMain(), e = clExpOn(d);
-  const syRow = s => `<div class="dy-sy"><span class="dy-syn">${esc(s.name)}</span>
-    <div class="dy-sev" role="group" aria-label="${esc(s.name)}">${[[0, "Нет"], ...SY_SEV].map(([k, n]) => `<button type="button" class="dy-b s${k}" data-dy-sy="${esc(s.id)}|${k}" aria-pressed="${dyVal(s, d) === k}">${n}</button>`).join("")}</div></div>`;
-  const marked = rest.filter(s => dyVal(s, d) != null).length;
+  const syRow = s => { const v = dyVal(s, d); return `<div class="cl-syr"><span class="cl-syn"><i class="cl-sdot${v != null ? " s" + v : ""}"></i>${esc(s.name)}</span>
+    ${clSeg("data-dy-sy", [[0, "Нет", "s0"], ...SY_SEV.map(([k, n]) => [k, n, "s" + k])].map(([k, n, c]) => [`${s.id}|${k}`, n, c]), v == null ? null : `${s.id}|${v}`, "sev")}</div>`; };
+  const marked = main.filter(s => dyVal(s, d) != null).length, restMarked = rest.filter(s => dyVal(s, d) != null).length;
   const filled = !!x.mood && (main.length ? main.every(s => dyVal(s, d) != null) : true);
+  const facs = dyFactors(), name = Object.fromEntries(facs.map(([k, n]) => [k, n]));
+  const grouped = new Set(CL_FGROUPS.flatMap(([, l]) => l)), own = facs.filter(([k]) => !grouped.has(k));
+  const chip = k => `<button type="button" class="tchip" data-dy-f="${esc(k)}" aria-pressed="${!!x.f?.[k]}">${esc(name[k])}</button>`;
+  const fCount = Object.values(x.f || {}).filter(Boolean).length;
+  const gap = clMealGap(d);
   return `<h3 class="cl-sec">Итог дня${filled ? `<span class="cl-okline">✓ записан</span>` : ""}</h3>
-  <section class="card cl-card cl-daycard">
-    <p class="cl-hint">${filled ? "Всё отмечено. Поправить можно в любой момент." : "Отмечай вечером, как было <b>в худший момент</b> дня. Сохраняется само."}</p>
-    ${e ? `<div class="cl-q cl-expq"><div class="cl-ql"><b>Проверяю: ${esc(e.title)}</b><small>день ${daysBetween(e.start, d) + 1} из ${e.days}</small></div>
-      <div class="dy-sev cl-yn">${[[1, "Соблюдал", "s0"], [0, "Не вышло", "s2"]].map(([k, n, c]) => `<button type="button" class="dy-b ${c}" data-cl-x="${esc(e.id)}|${k}" aria-pressed="${x.x?.[e.id] === k}">${n}</button>`).join("")}</div></div>` : ""}
-    ${withSleep ? clSleepQ(d) : ""}
-    <div class="cl-q"><div class="cl-ql"><b>В целом</b><small>${x.mood ? esc(DY_MOOD_NAME[x.mood]) : "самочувствие за день"}</small></div>
-      <div class="dy-moods">${DY_MOOD.map(([k, n]) => `<button type="button" class="dy-mood m${k}" data-dy-mood="${k}" aria-pressed="${x.mood === k}">${n}</button>`).join("")}</div></div>
-    ${main.length || rest.length ? `<div class="cl-q cl-wide"><div class="cl-ql"><b>${main.length ? "Главные жалобы" : "Жалобы"}</b><small>как было в худший момент</small></div>
-      <div class="dy-sys">${main.map(syRow).join("")}
-        ${rest.length ? `<details class="dy-more"${ui.dyMore || !main.length ? " open" : ""}><summary>${main.length ? "Остальные жалобы" : "Все жалобы"}${marked ? ` · отмечено ${marked}` : ""}</summary><div class="dy-sys">${rest.map(syRow).join("")}</div></details>` : ""}</div></div>` : ""}
-    <div class="cl-q cl-wide"><div class="cl-ql"><b>Что было</b><small>только то, что могло повлиять</small></div>
-      <div><div class="tchips dy-facs">${dyFactors().map(([k, n]) => `<button type="button" class="tchip" data-dy-f="${esc(k)}" aria-pressed="${!!x.f?.[k]}">${esc(n)}</button>`).join("")}
-        <button type="button" class="tchip dy-none" data-dy-none aria-pressed="${!!x.f && !Object.values(x.f).some(Boolean)}">Ничего из этого</button>
-        <button type="button" class="tchip dy-add" data-dy-fadd>+ Своё</button></div>
-      <form class="sy-addf" data-dy-faddf hidden><input class="input" name="name" placeholder="Например: энергетик, тренировка" autocomplete="off"><button type="submit" class="btn">Добавить</button></form></div></div>
-    <div class="cl-q cl-wide"><div class="cl-ql"><b>Заметка</b><small>по желанию</small></div>
-      <textarea class="input sy-grow dy-note" data-dy-note rows="2" placeholder="Почему так, что ещё было">${esc(x.note || "")}</textarea></div>
-  </section>`;
+    <p class="cl-hint">Отмечай вечером, как было <b>в худший момент</b> дня. Всё сохраняется само.</p>
+    ${e ? `<section class="card cl-box t-acc">${clHead("t-acc", CL_I.exp, `Проверяю: ${esc(e.title)}`, `день ${daysBetween(e.start, d) + 1} из ${e.days}`)}
+      ${clSeg("data-cl-x", [[`${e.id}|1`, "Соблюдал", "g0"], [`${e.id}|0`, "Не вышло", "g2"]], x.x?.[e.id] == null ? null : `${e.id}|${x.x[e.id]}`, "yn")}</section>` : ""}
+    ${withSleep ? clSleepCard(d) : ""}
+    <section class="card cl-box t-ok">${clHead("t-ok", CL_I.mood, "Самочувствие", "в целом за день", x.mood ? `<span class="cl-pillv m${x.mood}">${esc(DY_MOOD_NAME[x.mood])}</span>` : "")}
+      ${clSeg("data-dy-mood", DY_MOOD.map(([k, n]) => [k, n, "m" + k]), x.mood, "dots big")}</section>
+    ${main.length || rest.length ? `<section class="card cl-box t-edge">${clHead("t-edge", CL_I.sy, main.length ? "Главные жалобы" : "Жалобы", "как было в худший момент", main.length ? `<span class="cl-cnt">${marked} из ${main.length}</span>` : "")}
+      <div class="cl-sys">${main.map(syRow).join("")}</div>
+      ${rest.length ? `<details class="dy-more cl-more2"${ui.dyMore || !main.length ? " open" : ""}><summary>${main.length ? "Остальные жалобы" : "Все жалобы"} · ${rest.length}${restMarked ? `, отмечено ${restMarked}` : ""}</summary><div class="cl-sys">${rest.map(syRow).join("")}</div></details>` : ""}</section>` : ""}
+    <section class="card cl-box t-low">${clHead("t-low", CL_I.fac, "Что было", "только то, что могло повлиять", fCount ? `<span class="cl-cnt">${fCount}</span>` : "")}
+      ${CL_FGROUPS.map(([g, l]) => `<div class="cl-fg"><span class="cl-fgn">${g}</span><div class="tchips">${l.filter(k => name[k]).map(chip).join("")}
+        ${g === "Еда" ? `<label class="cl-meal${gap != null && gap < 180 ? " late" : ""}"><span>Последняя еда</span><input class="input" type="time" data-cl-meal value="${esc(x.meal || "")}">${gap != null ? `<em>за ${clHours(gap)} до сна</em>` : ""}</label>` : ""}</div></div>`).join("")}
+      <div class="cl-fg"><span class="cl-fgn">Своё</span><div class="tchips">${own.map(([k]) => chip(k)).join("")}
+        <button type="button" class="tchip dy-add" data-dy-fadd>+ Добавить</button>
+        <button type="button" class="tchip dy-none" data-dy-none aria-pressed="${!!x.f && !Object.values(x.f).some(Boolean)}">Ничего из этого</button></div></div>
+      <form class="sy-addf" data-dy-faddf hidden><input class="input" name="name" placeholder="Например: энергетик, тренировка" autocomplete="off"><button type="submit" class="btn">Добавить</button></form></section>
+    <section class="card cl-box t-mute">${clHead("t-mute", CL_I.note, "Заметка", "по желанию")}
+      <textarea class="input sy-grow dy-note" data-dy-note rows="2" placeholder="Почему так, что ещё было">${esc(x.note || "")}</textarea></section>`;
 }
 
 /* ---------- side column ---------- */
@@ -319,6 +364,9 @@ function clWeekCard() {
   return `<section class="card cl-side-card"><h4>Последние 7 дней</h4>
     <div class="cl-stat"><span>Записано дней</span><b>${rec} из 7</b></div>
     ${n ? `<div class="cl-stat"><span>Лекарства приняты</span><b>${Math.round(k / n * 100)}%</b></div>` : ""}
+    ${(() => { const ms = days.map(d => clSleepMin(state.days?.[d])).filter(Boolean), qs = days.map(d => state.days?.[d]?.sq).filter(Boolean);
+      return (ms.length >= 3 ? `<div class="cl-stat"><span>Сон в среднем</span><b>${clHours(Math.round(clAvg(ms) / 10) * 10)}</b></div>` : "")
+        + (qs.length >= 3 ? `<div class="cl-stat"><span>Качество сна</span><b>${dyNum(clAvg(qs))} из 5</b></div>` : ""); })()}
     ${rows.map(r => `<div class="cl-stat"><span>${esc(r.s.name)}</span><b class="${clMove(r.a, r.b)}">${dyNum(r.a)} → ${dyNum(r.b)}</b></div>`).join("")}
     ${rows.length ? `<p class="cl-muted cl-small">Средняя сила жалобы, прошлая неделя → эта. Шкала 0–3.</p>` : ""}
   </section>`;
@@ -412,6 +460,14 @@ function initCalendar() {
     if (pr) { const [id, k] = pr.dataset.clPrn.split("|"); touch(d, x => { x.prn = { ...(x.prn || {}) }; x.prn[id] = Math.max(0, (x.prn[id] || 0) + +k); if (!x.prn[id]) delete x.prn[id]; if (!Object.keys(x.prn).length) delete x.prn; }); return; }
     const xx = t.closest("[data-cl-x]");
     if (xx) { const [id, k] = xx.dataset.clX.split("|"); touch(d, x => { x.x = { ...(x.x || {}) }; if (x.x[id] === +k) delete x.x[id]; else x.x[id] = +k; if (!Object.keys(x.x).length) delete x.x; }); return; }
+    const nk = t.closest("[data-cl-lat],[data-cl-wk],[data-cl-sq],[data-cl-rest]");
+    if (nk) {
+      const f = ["lat", "wk", "sq", "rest"].find(k => nk.hasAttribute("data-cl-" + k)), v = +nk.getAttribute("data-cl-" + f);
+      touch(d, x => { if (x[f] === v) delete x[f]; else x[f] = v; if (!(x.wk > 0)) delete x.why; });
+      return;
+    }
+    const wy = t.closest("[data-cl-why]");
+    if (wy) { const k = wy.dataset.clWhy; touch(d, x => { x.why = { ...(x.why || {}) }; if (x.why[k]) delete x.why[k]; else x.why[k] = true; if (!Object.keys(x.why).length) delete x.why; }); return; }
     if (t.closest("[data-cl-same]")) { const y = state.days?.[addDaysISO(d, -1)]; if (y) touch(d, x => { x.bed = y.bed; x.wake = y.wake; clSleepSet(x); }); return; }
     if (t.closest("[data-cl-bad]")) { openBad(); return; }
     if (t.closest("[data-cl-expnew]")) { openExpNew(); return; }
@@ -420,6 +476,14 @@ function initCalendar() {
     if (t.closest("[data-cl-remind]")) clRemind();
   });
   page.addEventListener("change", e => {
+    // the last meal: under 3 hours before bed ticks "late dinner" by itself
+    if (e.target.matches("[data-cl-meal]")) {
+      const d = clSel(), v = e.target.value;
+      touch(d, x => { if (v) x.meal = v; else delete x.meal; });
+      const gap = clMealGap(d);
+      if (gap != null) touch(d, x => { x.f = { ...(x.f || {}), late: gap < 180 }; });
+      return;
+    }
     if (!e.target.matches("[data-cl-bed],[data-cl-wake]")) return;
     const k = e.target.matches("[data-cl-bed]") ? "bed" : "wake", v = e.target.value;
     touch(clSel(), x => { if (v) x[k] = v; else delete x[k]; clSleepSet(x); });

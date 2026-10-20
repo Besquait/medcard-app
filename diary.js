@@ -27,7 +27,7 @@ const DY_MIN = 3, DY_FIRST = 7, DY_GOAL = 14, DY_GRID = 28;
 const DY_WEEKDAY = ["воскресенье", "понедельник", "вторник", "среда", "четверг", "пятница", "суббота"];
 
 const dyFactors = () => [...DY_FACTORS, ...(state.prefs?.dayFactors || []).map(f => [f.id, f.name, f.name.toLowerCase(), 1])];
-const dyHas = x => !!x && !!(x.mood || x.sleep || x.note || x.f || x.meds || x.prn || x.bed || x.wake || x.x || (x.sy && Object.keys(x.sy).length));
+const dyHas = x => !!x && !!(x.mood || x.sleep || x.note || x.f || x.meds || x.prn || x.bed || x.wake || x.x || x.sq || x.lat || x.rest || x.wk != null || x.meal || (x.sy && Object.keys(x.sy).length));
 const dyCount = () => Object.values(state.days || {}).filter(dyHas).length;
 function dyDay(d) { state.days ||= {}; return (state.days[d] ||= {}); }
 // an emptied day does not count as recorded
@@ -112,8 +112,15 @@ function dyLinks() {
   const days = state.days || {}, dates = Object.keys(days).filter(d => dyHas(days[d])).sort();
   const outs = [{ name: "Самочувствие", mood: true, scale: 4, get: d => days[d]?.mood || null }];
   syList().filter(s => !syPast(s)).forEach(s => { const by = syDays(s); outs.push({ name: s.name, id: s.id, scale: 3, get: d => dyVal(s, d, by) }); });
-  const facs = [["sleep", "", "сон 6 часов и меньше", 0], ...dyFactors()];
-  const fv = (d, id) => { const x = days[d]; if (!x) return null; if (id === "sleep") return x.sleep ? x.sleep <= 6 : null; return x.f ? !!x.f[id] : null; };
+  const facs = [["sleep", "", "сон 6 часов и меньше", 0], ["sq", "", "плохой сон", 0], ["wk", "", "просыпался ночью 2 раза и больше", 0], ["nreflux", "", "ночью будила изжога", 0], ...dyFactors()];
+  const fv = (d, id) => {
+    const x = days[d]; if (!x) return null;
+    if (id === "sleep") return x.sleep ? x.sleep <= 6 : null;
+    if (id === "sq") return x.sq ? x.sq <= 2 : null;
+    if (id === "wk") return x.wk != null ? x.wk >= 2 : null;
+    if (id === "nreflux") return x.wk != null ? !!x.why?.reflux : null;
+    return x.f ? !!x.f[id] : null;
+  };
   const avg = a => a.reduce((s, v) => s + v, 0) / a.length;
   const vari = (a, m) => a.length > 1 ? a.reduce((s, v) => s + (v - m) ** 2, 0) / (a.length - 1) : 0;
   const best = new Map();

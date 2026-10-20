@@ -227,48 +227,53 @@ const ui = { q: "", group: "all", filter: "all", open: null, editing: null, conf
 try { ui.showAll = !!localStorage.getItem("medcard.showAll"); } catch (e) { /* ignore */ }
 
 /* ============ overview ============ */
+// what needs attention: worth discussing (significant) first, then outside the norm but harmless
+function attentionList() {
+  const bm = byMarker(), out = [];
+  for (const id of Object.keys(bm)) { const l = bm[id], x = l[l.length - 1], s = status(x); if (s === "high" || s === "low") out.push({ id, x, s, g: significance(x) }); }
+  return out.sort((a, b) => b.g.lvl - a.g.lvl || (b.x.date || "").localeCompare(a.x.date || ""));
+}
 function renderOverview() {
   const bm = byMarker(), ids = Object.keys(bm), ds = dates(), last = ds[ds.length - 1];
   const lastRows = Object.values(state.results).filter(r => r.date === last);
   const labs = [...new Set(lastRows.map(r => r.lab).filter(Boolean))].join(", ");
   let okCount = 0, withNorm = 0, better = 0, worse = 0;
-  const attention = [];
   for (const id of ids) {
     const l = bm[id], x = l[l.length - 1], s = status(x);
     if (s && s !== "none") { withNorm++; if (s === "ok" || s === "edge") okCount++; }
-    if (s === "high" || s === "low") attention.push({ id, x, s, g: significance(x) });
     const t = trend(l); if (t?.kind === "better") better++; if (t?.kind === "worse") worse++;
   }
-  attention.sort((a, b) => b.g.lvl - a.g.lvl || (b.x.date || "").localeCompare(a.x.date || ""));
-  const worth = attention.filter(a => a.g.lvl >= 1), calm = attention.length - worth.length;
-  const shown = worth.slice(0, 4);
-  const calmItems = attention.filter(a => a.g.lvl === 0);
-  const calmList = () => calmItems.length ? `<div class="attn-calm"><div class="ov-s">Вне нормы, но не опасно:</div>${calmItems.map(a => `<button class="attn-item calm" data-goto="${esc(a.id)}" title="${esc(a.g.why)}"><span class="attn-name"><i class="attn-dot s0"></i>${esc(info(a.id).ru)}</span><span class="attn-val num">${fmt(a.x.v)} ${a.s === "high" ? "↑" : "↓"}</span></button>`).join("")}</div>` : "";
+  const att = attentionList(), worth = att.filter(a => a.g.lvl >= 1), calm = att.length - worth.length;
+  const due = dueAll(), soon = due[0];
   $("#overview").innerHTML = `
+    <button type="button" class="ov" ${last ? `data-digest="${last}"` : "disabled"}>
+      <span class="ov-k">Последняя сдача</span>
+      <span class="ov-v num">${last ? fmtDate(last) : "—"}</span>
+      <span class="ov-s">${lastRows.length} ${plural(lastRows.length, "показатель", "показателя", "показателей")}${labs ? " · " + esc(labs) : ""}</span>
+      ${last ? `<span class="ov-link">Что изменилось →</span>` : ""}</button>
     <div class="ov">
-      <div class="ov-k">Последняя сдача</div>
-      <div class="ov-v num">${last ? fmtDate(last) : "—"}</div>
-      <div class="ov-s">${lastRows.length} ${plural(lastRows.length, "показатель", "показателя", "показателей")}${labs ? " · " + esc(labs) : ""}</div>
-    </div>
-    <div class="ov">
-      <div class="ov-k">В норме сейчас</div>
-      <div class="ov-v num">${okCount}<span class="sep"> из ${withNorm}</span></div>
-      <div class="ov-s">по последнему значению каждого показателя</div>
-    </div>
-    <div class="ov">
-      <div class="ov-k">С прошлой сдачи</div>
-      <div class="ov-v num"><span class="good">↑ ${better}</span> <span class="sep">·</span> <span class="${worse ? "bad" : ""}">↓ ${worse}</span></div>
-      <div class="ov-s">стало лучше · стало хуже</div>
-      ${last ? `<button type="button" class="ov-link" data-digest="${last}">Что изменилось ${fmtDate(last)} →</button>` : ""}
-    </div>
-    <div class="ov">
-      <div class="ov-k">Стоит обсудить с врачом</div>
-      ${worth.length ? `<div class="attn">${shown.map(a => `
-        <button class="attn-item" data-goto="${esc(a.id)}" title="${esc(a.g.why)}"><span class="attn-name"><i class="attn-dot s${a.g.lvl}"></i>${esc(info(a.id).ru)}${a.g.lvl >= 2 ? ` <small class="attn-urg s${a.g.lvl}">${a.g.lvl === 3 ? "срочно" : "в ближайшие недели"}</small>` : ""}</span><span class="attn-val num">${fmt(a.x.v)} ${a.s === "high" ? "↑" : "↓"}</span></button>`).join("")}
-        ${worth.length > shown.length ? `<div class="ov-s">и ещё ${worth.length - shown.length}</div>` : ""}
-        ${calmList()}</div>`
-      : `<div class="ov-v" style="font-size:18px;color:var(--ok)">Ничего важного</div><div class="attn">${calmList()}</div>`}
-    </div>`;
+      <span class="ov-k">В норме сейчас</span>
+      <span class="ov-v num">${okCount}<span class="sep"> из ${withNorm}</span></span>
+      <span class="ov-s">${better || worse ? `с прошлой сдачи: <span class="good">↑ ${better} лучше</span> · <span class="${worse ? "bad" : ""}">↓ ${worse} хуже</span>` : "по последнему значению каждого показателя"}</span></div>
+    <button type="button" class="ov" data-ov-attn>
+      <span class="ov-k">Обсудить с врачом</span>
+      <span class="ov-v num ${worth.length ? "bad" : "good"}">${worth.length || "—"}</span>
+      <span class="ov-s">${worth.length ? `${plural(worth.length, "показатель", "показателя", "показателей")} вне нормы` : "ничего важного"}${calm ? ` · ещё ${calm} не опасно` : ""}</span>
+      ${att.length ? `<span class="ov-link">Посмотреть →</span>` : ""}</button>
+    <button type="button" class="ov" data-ov-due${due.length ? "" : " disabled"}>
+      <span class="ov-k">Пора пересдать</span>
+      <span class="ov-v num">${due.length || "—"}</span>
+      <span class="ov-s">${soon ? `первым: ${esc(soon.s ? studyTitle(soon.s) : info(soon.m).ru)}` : "всё сдано вовремя"}</span>
+      ${due.length ? `<span class="ov-link">Список →</span>` : ""}</button>`;
+}
+function openAttention() {
+  const att = attentionList(), worth = att.filter(a => a.g.lvl >= 1), calm = att.filter(a => a.g.lvl === 0);
+  const row = a => `<button type="button" class="ov-row" data-goto="${esc(a.id)}"><i class="attn-dot s${a.g.lvl}"></i>
+    <span class="ov-rn">${esc(info(a.id).ru)}${a.g.lvl >= 2 ? `<small class="attn-urg s${a.g.lvl}">${a.g.lvl === 3 ? "срочно" : "в ближайшие недели"}</small>` : ""}<small>${esc(a.g.why || "")}</small></span>
+    <span class="ov-rv num">${fmt(a.x.v)} ${a.s === "high" ? "↑" : "↓"}</span></button>`;
+  openX(`<div class="dlg-head"><h3>Обсудить с врачом</h3><button type="button" class="icon-btn" data-xclose aria-label="Закрыть">×</button></div>
+    ${worth.length ? `<section><h4 class="ov-h">Вне нормы · ${worth.length}</h4><div class="ov-list">${worth.map(row).join("")}</div></section>` : `<p class="muted">Ничего важного вне нормы.</p>`}
+    ${calm.length ? `<section><h4 class="ov-h">Вне нормы, но не опасно · ${calm.length}</h4><div class="ov-list">${calm.map(row).join("")}</div></section>` : ""}`, "st-dlg tp-dlg ov-dlg");
 }
 
 /* ============ range bar ============ */

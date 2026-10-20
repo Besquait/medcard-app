@@ -154,24 +154,21 @@ function retestPlan() {
   }
   return out.sort((a, b) => (!!outside(b.x) - !!outside(a.x)) || a.left - b.left);
 }
-function renderDue() {
-  const box = $("#due"); if (!box) return;
+// retests due within a month: lab markers and studies with a repeat interval
+function dueAll() {
   const today = todayISO();
   const st = studyList().filter(s => s.repeat).map(s => ({ s, due: addMonths(s.date, s.repeat) })).map(x => ({ ...x, left: daysBetween(today, x.due) })).filter(x => x.left <= 30);
-  const all = [...retestPlan().filter(p => p.left <= 30), ...st].sort((a, b) => a.left - b.left);
-  if (!all.length) { box.hidden = true; return; }
-  const open = ui.dueOpen, shown = open ? all : all.slice(0, 6);
-  box.hidden = false;
-  box.innerHTML = `<div class="due-head"><h3>Пора пересдать <span class="cnt num">${all.length}</span></h3>
-      <button type="button" class="btn sm ghost" data-ics>Напомнить в календаре</button></div>
-    <div class="due-list">${shown.map(p => {
-      if (p.s) return `<button type="button" class="due-item st" data-st-open="${esc(p.s.id)}" title="${esc(studyTitle(p.s))} · ${fmtDate(p.s.date)}">${icon(p.s.type)}<span class="due-name">${esc(studyTitle(p.s))}</span><span class="due-when">${p.left < 0 ? `просрочено на ${spanText(p.left)}` : `через ${spanText(p.left)}`}</span></button>`;
-      const s = status(p.x) || "none";
-      return `<button type="button" class="due-item ${s}" data-goto="${esc(p.m)}" title="Сдавал ${fmtDate(p.x.date)} · интервал ${p.months} мес.${p.auto ? " (авто)" : ""}">
-        <i class="gc-dot"></i><span class="due-name">${esc(info(p.m).ru)}</span>
-        <span class="due-when">${p.left < 0 ? `просрочено на ${spanText(p.left)}` : p.left === 0 ? "сегодня" : `через ${spanText(p.left)}`}</span></button>`;
-    }).join("")}</div>
-    ${all.length > 6 ? `<button type="button" class="due-more" data-due-more>${open ? "Свернуть" : `Показать все · ${all.length}`}</button>` : ""}`;
+  return [...retestPlan().filter(p => p.left <= 30), ...st].sort((a, b) => a.left - b.left);
+}
+function renderDue() { const box = $("#due"); if (box) { box.hidden = true; box.innerHTML = ""; } }
+function openDue() {
+  const all = dueAll();
+  const when = p => p.left < 0 ? `просрочено на ${spanText(p.left)}` : p.left === 0 ? "сегодня" : `через ${spanText(p.left)}`;
+  openX(`<div class="dlg-head"><h3>Пора пересдать · ${all.length}</h3><button type="button" class="icon-btn" data-xclose aria-label="Закрыть">×</button></div>
+    <div class="ov-list">${all.map(p => p.s
+      ? `<button type="button" class="ov-row" data-st-open="${esc(p.s.id)}"><i class="attn-dot"></i><span class="ov-rn">${esc(studyTitle(p.s))}<small>было ${fmtDate(p.s.date)}</small></span><span class="ov-rv">${when(p)}</span></button>`
+      : `<button type="button" class="ov-row" data-goto="${esc(p.m)}"><i class="attn-dot ${status(p.x) === "high" || status(p.x) === "low" ? "s1" : ""}"></i><span class="ov-rn">${esc(info(p.m).ru)}<small>сдавал ${fmtDate(p.x.date)} · раз в ${p.months} мес.</small></span><span class="ov-rv">${when(p)}</span></button>`).join("")}</div>
+    <div class="dlg-foot"><span style="flex:1"></span><button type="button" class="btn" data-ics>Напомнить в календаре</button></div>`, "st-dlg tp-dlg ov-dlg");
 }
 function downloadIcs() {
   const due = retestPlan().filter(p => p.left <= 30);
@@ -553,6 +550,7 @@ function initExtras() {
     const t = e.target;
     if (t === xd || t.closest("[data-xclose]")) { closeX(); return; }
     const so = t.closest("[data-st-open]"); if (so) { openStudy(so.dataset.stOpen); return; }
+    if (t.closest(".ov-dlg [data-ics]")) { downloadIcs(); return; }
     const go = t.closest("[data-goto]");
     if (go && !t.closest("select")) { closeX(); focusRow(go.dataset.goto); return; }
     // events
@@ -649,7 +647,11 @@ function initExtras() {
     const so = e.target.closest("[data-st-open]"); if (so) { openStudy(so.dataset.stOpen); return; }
     const g = e.target.closest("[data-goto]"); if (g) focusRow(g.dataset.goto);
   });
-  $("#overview").addEventListener("click", e => { const d = e.target.closest("[data-digest]"); if (d) openDigest(d.dataset.digest); });
+  $("#overview").addEventListener("click", e => {
+    const d = e.target.closest("[data-digest]"); if (d) { openDigest(d.dataset.digest); return; }
+    if (e.target.closest("[data-ov-attn]")) { openAttention(); return; }
+    if (e.target.closest("[data-ov-due]")) openDue();
+  });
   $("#histCtl").addEventListener("click", e => {
     const h = e.target.closest("[data-h]");
     if (h) { ui.histMode = h.dataset.h; $$("#histCtl [data-h]").forEach(b => b.setAttribute("aria-pressed", b === h)); renderTimeline(); return; }

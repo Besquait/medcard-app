@@ -1992,3 +1992,31 @@ h3 .dr-form .input { font-size: 19px; font-weight: 600; }
   .tabbar .tb-add { position: absolute; right: 16px; bottom: calc(100% + 14px); width: 56px; height: 56px; margin: 0; border-radius: 50%; }
   .to-top { bottom: calc(160px + env(safe-area-inset-bottom)); }
 }
+
+/* labs overview: four equal tiles, one number each; lists open in a window */
+.overview { grid-template-columns: repeat(4, minmax(0, 1fr)); align-items: stretch; }
+.ov { display: flex; flex-direction: column; align-items: flex-start; min-height: 156px; border: 0; text-align: left; font: inherit; color: var(--ink); }
+button.ov { cursor: pointer; transition: transform .15s, box-shadow .15s; }
+button.ov:hover:not([disabled]) { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(0, 0, 0, .18); }
+button.ov[disabled] { cursor: default; }
+.ov .ov-link { margin-top: auto; padding-top: 14px; }
+.ov-v.bad { color: var(--high); } .ov-v.good { color: var(--ok); }
+.ov-s .good { color: var(--ok); } .ov-s .bad { color: var(--high); }
+.ov-h { margin: 0 0 8px; font-size: 13.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.ov-dlg section + section { margin-top: 10px; }
+.ov-list { display: flex; flex-direction: column; }
+.ov-row { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; gap: 14px; align-items: start; width: 100%; padding: 14px 2px; border: 0; border-top: 1px solid var(--line); background: none; text-align: left; font: inherit; color: var(--ink); cursor: pointer; }
+.ov-list > .ov-row:first-child { border-top: 0; }
+.ov-row:hover .ov-rn { color: var(--accent); }
+.ov-row .attn-dot { margin-top: 8px; }
+.ov-rn { display: flex; flex-direction: column; gap: 3px; font-size: 16px; font-weight: 500; min-width: 0; }
+.ov-rn small { font-size: 14px; font-weight: 400; color: var(--muted); line-height: 1.45; }
+.ov-rn .attn-urg { color: var(--high); font-weight: 600; }
+.ov-rv { font-size: 15.5px; font-weight: 600; white-space: nowrap; color: var(--muted); }
+@media (max-width: 1000px) { .overview { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 720px) {
+  .overview { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; overflow: visible; margin: 16px 0 0; padding: 0; }
+  .ov { min-height: 132px; padding: 16px; }
+  .ov-v { font-size: 25px; }
+  .ov-rv { font-size: 14.5px; }
+}

@@ -2236,6 +2236,9 @@ body[data-view="calendar"] .tabbar .tb-add { display: none; }
   .cl-q { grid-template-columns: minmax(0, 1fr); }
   .cl-sl .input { width: 128px; }
   .cl-daycard .dy-b, .cl-dlg .dy-b { min-width: 0; padding: 10px 6px; }
+  .cl-daycard .dy-sy { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .cl-daycard .dy-sev, .cl-dlg .dy-sev { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 6px; }
+  .cl-yn .dy-b { min-width: 0; }
   .cl-daycard .dy-mood { font-size: 13px; padding: 11px 2px 10px; }
   .cl-strip { padding: 14px 12px 12px; }
   .cl-day { min-height: 52px; border-radius: 12px; }

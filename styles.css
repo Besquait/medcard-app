@@ -2566,3 +2566,38 @@ body[data-view]:not([data-view="labs"]) #addBtn { display: none; }
   .cl-side { top: calc(var(--hdr) + 16px); }
   .cl-top { margin-top: 18px; }
 }
+/* comfortable size on desktop: a little larger than usual, not huge */
+@media (min-width: 721px) {
+  body { font-size: 15.5px; }
+  .cl-top { margin-bottom: 22px; }
+  .cl-big { font-size: 34px; }
+  .cl-date { font-size: 15.5px; }
+  .cl-sec { font-size: 20px; margin-top: 8px; }
+  .cl-now-t b { font-size: 18px; } .cl-now-t span { font-size: 14.5px; }
+  .cl-ring, .cl-ring svg { width: 60px; height: 60px; } .cl-ring b { font-size: 15px; }
+  .cl-badbtn { min-height: 42px; font-size: 15px; }
+  .cl-main, .cl-side { gap: 16px; }
+  .cl-card { padding: 20px 22px; gap: 14px; border-radius: 18px; }
+  .cl-box { padding: 18px 22px 20px; gap: 14px; border-radius: 18px; }
+  .cl-bi { width: 38px; height: 38px; border-radius: 12px; }
+  .cl-bt h4 { font-size: 17.5px; } .cl-bt small { font-size: 13.5px; }
+  .cl-big2 { font-size: 20px; }
+  .cl-slothead h4 { font-size: 19px; }
+  .cl-tile { min-height: 64px; padding: 10px 16px; border-radius: 14px; }
+  .cl-tick { width: 34px; height: 34px; }
+  .cl-mn b { font-size: 16px; } .cl-mn small { font-size: 13.5px; }
+  .cl-allbtn { min-height: 44px; font-size: 15.5px; padding: 0 22px; }
+  .cl-row { padding: 14px 0; } .cl-rn b { font-size: 16px; } .cl-names { font-size: 14.5px; }
+  .cl-f { grid-template-columns: 150px minmax(0, 1fr); } .cl-fl { font-size: 15px; }
+  .seg2 button { min-height: 38px; font-size: 14.5px; padding: 6px 8px; }
+  .seg2.big button { min-height: 46px; font-size: 14.5px; }
+  .cl-syn { font-size: 15.5px; }
+  .cl-box .tchip { padding: 7px 12px; font-size: 14.5px; }
+  .cl-box .cl-sl .input { width: 128px; font-size: 17px; padding: 7px 12px; }
+  .cl-side-card { padding: 18px 20px; } .cl-side-card h4 { font-size: 16.5px; } .cl-side-card p, .cl-stat { font-size: 14.5px; }
+  .cl-day { min-height: 46px; } .cl-day b { font-size: 15px; } .cl-nav b { font-size: 16px; }
+  .fd-search .input { min-height: 48px; font-size: 16px; }
+  .fd-irow { padding: 9px 4px; } .fd-in { font-size: 15.5px; } .fd-ig { font-size: 14.5px; } .fd-ik { font-size: 15px; }
+  .fd-kcal b { font-size: 24px; }
+  .fd-line { font-size: 14.5px; }
+}

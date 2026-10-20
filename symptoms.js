@@ -182,7 +182,7 @@ function renderSymptoms() {
     morph(box, `<div class="st-head"><div><h2>Симптомы</h2></div></div>
       <div class="st-empty">
         <h3>Что беспокоит?</h3>
-        <p>Записывай всё, что чувствуешь: головные боли, шум в ушах, боль в глазах, хруст в колене. Отмечай дни, когда было, и что пробовал — помогло или нет. Перед приёмом всё соберётся в сводку для врача.</p>
+        <p>Всё, что беспокоит, — по органам.</p>
         <button type="button" class="btn primary" data-sy-new>Добавить симптом</button>
       </div>
       ${syAnamCard()}`);
@@ -210,7 +210,7 @@ function renderSymptoms() {
 // complaints: main ones first, then one card per organ, the history of illness and what has passed
 function syListPage(now, main, past) {
   return `
-    ${main.length ? syGroup("Главное", main, true) : now.length > 3 ? `<p class="sy-tip">Открой жалобу и нажми «☆ Главное» — главные встанут сюда и первыми пойдут в сводку для врача.</p>` : ""}
+    ${main.length ? syGroup("Главное", main, true) : now.length > 3 ? `` : ""}
     ${now.length ? `<div class="sy-organs">${SY_ZONES.map(([z, n]) => { const l = now.filter(s => syZoneOf(s) === z); return l.length ? syGroup(n, l) : ""; }).join("")}</div>`
       : `<div class="empty">Сейчас ничего не беспокоит.</div>`}
     ${syAnamCard()}
@@ -223,8 +223,7 @@ function syToday(list) {
   if (!list.length) return "";
   const d = syDayISO();
   return `<section class="card sy-today" aria-label="Отметка за день">
-    <div class="sy-thead"><div><h3>${ui.syDay ? "Что беспокоило вчера?" : "Что беспокоит сегодня?"}</h3>
-      <p>Нажми — слабо, ещё раз — заметно, третий — сильно, четвёртый снимет отметку.</p></div>
+    <div class="sy-thead"><div><h3>${ui.syDay ? "Что беспокоило вчера?" : "Что беспокоит сегодня?"}</h3></div>
       <div class="seg" role="group" aria-label="День">${[[0, "Сегодня"], [1, "Вчера"]].map(([k, n]) => `<button type="button" data-sy-day="${k}" aria-pressed="${(ui.syDay || 0) === k}">${n}</button>`).join("")}</div></div>
     <div class="sy-chips">${list.map(s => { const v = syOn(s, d); return `<button type="button" class="sy-chip ${syCls(v)}" data-sy-tap="${esc(s.id)}" aria-pressed="${!!v}"><i aria-hidden="true"></i><span>${esc(s.name)}</span>${v ? `<small>${esc(sySevWord(v))}</small>` : ""}</button>`; }).join("")}</div>
   </section>`;
@@ -236,7 +235,7 @@ function syDiary(list) {
   if (!rows.length) return "";
   const days = Array.from({ length: SY_DIARY_DAYS }, (_, i) => addDaysISO(from, i));
   return `<section class="card sy-diary" aria-label="Дневник за 4 недели">
-    <div class="sy-thead"><div><h3>Дневник за 4 недели</h3><p>Клетка — день, цвет — сила. Видно, что приходит вместе.</p></div></div>
+    <div class="sy-thead"><div><h3>Дневник за 4 недели</h3></div></div>
     <div class="sy-grid">${rows.map(({ s, by }) => `<button type="button" class="sy-gname" data-sy="${esc(s.id)}">${esc(s.name)}</button>
       <div class="sy-gcells">${days.map(d => `<i class="${syCls(by[d])}${d === today ? " now" : ""}" title="${fmtDate(d)}${by[d] ? " · " + sySevWord(by[d]).toLowerCase() : ""}"></i>`).join("")}</div>`).join("")}
       <span class="sy-gpad"></span><div class="sy-gaxis"><span>${fmtDate(from)}</span><span>сегодня</span></div></div>
@@ -272,7 +271,7 @@ function syAnamCard() {
   const a = syAnam(), l = SY_ANAM.filter(([k]) => (a[k] || "").trim());
   if (!l.length) return `<button type="button" class="sy-anam-empty" data-sy-anam><b>+ История болезни</b><span>С чего всё началось, что уже проверял, свои догадки. Врачу это нужно не меньше, чем анализы.</span></button>`;
   return `<section class="card sy-anam${ui.syAnamFull ? " full" : ""}" aria-label="История болезни">
-    <div class="sy-thead"><div><h3>История болезни</h3><p>Попадёт в сводку для врача перед жалобами.</p></div><button type="button" class="btn sm" data-sy-anam>Изменить</button></div>
+    <div class="sy-thead"><div><h3>История болезни</h3></div><button type="button" class="btn sm" data-sy-anam>Изменить</button></div>
     <dl>${l.map(([k, t]) => `<div><dt>${esc(t)}</dt><dd>${esc(a[k].trim())}</dd></div>`).join("")}</dl>
     <button type="button" class="btn sm ghost sy-anam-more" data-sy-anamfull>${ui.syAnamFull ? "Свернуть" : "Читать полностью"}</button>
   </section>`;
@@ -280,7 +279,7 @@ function syAnamCard() {
 function openAnamnesis() {
   const a = syAnam();
   openX(`<div class="dlg-head"><h3>История болезни</h3><button type="button" class="icon-btn" data-xclose aria-label="Закрыть">×</button></div>
-    <p class="x-lead">Всё, что не про одну жалобу: как начиналось, что уже выяснили, свои догадки. Попадёт в сводку для врача.</p>
+    <p class="x-lead">Попадёт в сводку для врача.</p>
     <form class="st-form" data-sy-anamf>
       ${SY_ANAM.map(([k, t, h]) => `<label class="fld"><span>${esc(t)}</span><textarea class="input sy-grow" name="${k}" rows="${k === "hist" ? 8 : 3}" placeholder="${esc(h)}">${esc(a[k] || "")}</textarea></label>`).join("")}
       <div class="dlg-foot"><span style="flex:1"></span><button type="button" class="btn ghost" data-xclose>Отмена</button><button type="submit" class="btn primary">Сохранить</button></div>
@@ -374,7 +373,7 @@ function openSymptom(id) {
       ${s.pattern !== "const" ? `<div class="tchips sy-durs" role="group" aria-label="Сколько длилось">${SY_DUR.map(([k, n]) => `<button type="button" class="tchip" data-sy-dur="${k}" aria-pressed="${k === 1}">${n}</button>`).join("")}</div><input type="hidden" name="dur" value="1">` : ""}
       ${open ? fields : `<details class="sy-moref"><summary>Подробности: что спровоцировало, что помогло</summary>${fields}</details>`}
       <div><button type="submit" class="btn primary">Записать</button></div>
-      ${s.pattern === "once" ? `<p class="muted sy-hint">После записи в другой день симптом станет «приступами» — будет видно, как часто повторяется.</p>` : ""}
+      ${s.pattern === "once" ? `` : ""}
     </form>`;
   const addBtn = k => `<button type="button" class="btn sm ghost" data-sy-addopen="${k}" aria-expanded="${ui.syAddOpen === k}">+ Добавить</button>`;
   const body = {
@@ -398,12 +397,12 @@ function openSymptom(id) {
       ${tried.length ? `<div class="sy-tried">${tried.map((x, i) => `<div class="sy-trow"><span class="sy-tname"><b>${esc(x.name)}</b>${x.note ? `<small>${esc(x.note)}</small>` : ""}</span>
         <div class="sy-effs" role="group" aria-label="Как подействовало: ${esc(x.name)}">${SY_EFF.map(([k, n]) => `<button type="button" class="sy-eff e-${k}" data-sy-eff="${i}|${k}" aria-pressed="${x.eff === k}">${n}</button>`).join("")}</div>
         <button type="button" class="icon-btn sm" data-sy-tdel="${i}" aria-label="Убрать: ${esc(x.name)}">×</button></div>`).join("")}</div>`
-        : `<p class="muted sy-hint">Лекарства, капли, упражнения, процедуры — и помогло ли. Врачу важно и то, что не помогло.</p>`}
+        : ``}
       <form class="sy-addf" data-sy-tadd${ui.syAddOpen === "tried" ? "" : " hidden"}><input class="input" name="name" placeholder="Например: парацетамол 500 мг" autocomplete="off"><input class="input" name="note" placeholder="как принимал — необязательно" autocomplete="off"><button type="submit" class="btn">Добавить</button></form>
     </section>
     <section class="st-sec"><div class="sy-sech"><h4>Что провоцирует${trig.length ? ` · ${trig.length}` : ""}</h4>${addBtn("trig")}</div>
       ${trig.length ? `<div class="tchips sy-trigs">${trig.map((t, i) => `<span class="tchip">${esc(t)}<button type="button" data-sy-trdel="${i}" aria-label="Убрать: ${esc(t)}">×</button></span>`).join("")}</div>`
-        : `<p class="muted sy-hint">Запахи, еда, недосып, погода, стресс — что замечаешь перед ухудшением.</p>`}
+        : ``}
       <form class="sy-addf" data-sy-tradd${ui.syAddOpen === "trig" ? "" : " hidden"}><input class="input" name="t" placeholder="Например: недосып" autocomplete="off"><button type="submit" class="btn">Добавить</button></form>
     </section>`,
     labs: () => syTestsTab(s, tests),

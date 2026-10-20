@@ -126,7 +126,7 @@ function renderStudies() {
     morph(box, `<div class="st-head"><div><h2>Обследования</h2></div></div>
       <div class="st-empty">
         <h3>Пока пусто</h3>
-        <p>Здесь хранятся заключения УЗИ, КТ, МРТ, рентгена, ЭКГ, эндоскопий и выписки — вместе с файлами. Каждое обследование можно связать с анализами, чтобы видеть их рядом.</p>
+        <p>УЗИ, МРТ, ФГДС, заключения и выписки — с файлами.</p>
         <button type="button" class="btn primary" data-st-new>Добавить обследование</button>
       </div>`);
     return;
@@ -192,7 +192,7 @@ function openStudy(id) {
     ${files.length ? `<section class="st-sec"><h4>Файлы · ${files.length}</h4><div class="st-gallery">${files.map((f, i) => isImg(f)
       ? `<button type="button" class="st-gimg" data-thumb="${esc(f.path)}" data-file="${i}" title="${esc(f.name)}"></button>`
       : `<button type="button" class="st-gfile" data-file="${i}"><span class="st-ext">${esc((f.name.split(".").pop() || "файл").slice(0, 4).toUpperCase())}</span><span class="st-fname">${esc(f.name)}</span><small>${kb(f.size || 0)}</small></button>`).join("")}</div></section>` : ""}
-    ${links ? `<section class="st-sec"><h4>Связанные анализы</h4><p class="muted st-hint">Значение, ближайшее по дате к обследованию. Нажми, чтобы открыть анализ.</p><div class="st-lrows">${links}</div></section>` : ""}
+    ${links ? `<section class="st-sec"><h4>Связанные анализы</h4><div class="st-lrows">${links}</div></section>` : ""}
     ${s.note ? `<section class="st-sec"><h4>Заметка</h4>${richText(s.note)}</section>` : ""}
     <div class="dlg-foot"><button type="button" class="btn ghost danger" data-st-del="${esc(id)}">${ui.confirmSt === id ? "Точно удалить вместе с файлами?" : "Удалить"}</button><span style="flex:1"></span><button type="button" class="btn primary" data-st-edit="${esc(id)}">Изменить</button></div>`, "st-dlg");
   ui.stOpen = id;
@@ -240,7 +240,7 @@ function openStudyForm(id, presetType) {
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M20 11.5l-7.8 7.8a5 5 0 0 1-7.1-7.1l8.5-8.5a3.3 3.3 0 0 1 4.7 4.7l-8.5 8.5a1.7 1.7 0 0 1-2.4-2.4l7.8-7.8"/></svg>
             <span>Прикрепить снимки или PDF</span><small>до 50 МБ</small></label>
             <div class="st-flist" data-flist></div>` : `<p class="muted st-note">Файлы можно прикреплять после входа через Google.</p>`}</div>
-        <div class="fld"><span>Связанные анализы</span><p class="muted st-note">Отметь анализы, которые относятся к этому обследованию — они будут видны рядом.</p>
+        <div class="fld"><span>Связанные анализы</span>
           <div class="st-linkbox" data-links></div>
           <input class="input st-linkq" data-link-q placeholder="Найти другой анализ" autocomplete="off"><div class="tchips" data-link-sugg></div></div>
         <label class="fld"><span>Заметка</span><input class="input" name="note" value="${esc(s.note || "")}" placeholder="необязательно" autocomplete="off"></label>
@@ -285,7 +285,7 @@ function refreshStudyForm() {
     ${sugg.length ? `<div class="st-lgroup"><small>Обычно смотрят вместе</small><div class="tchips">${sugg.map(chip).join("")}</div></div>` : ""}
     ${near.length ? `<div class="st-lgroup"><small>Сданы в пределах 2 месяцев</small><div class="tchips">${near.slice(0, 12).map(chip).join("")}</div></div>` : ""}
     ${extra.length ? `<div class="st-lgroup"><small>Добавлены</small><div class="tchips">${extra.map(chip).join("")}</div></div>` : ""}
-    ${!sugg.length && !near.length && !extra.length ? `<p class="muted st-note">Укажи область — предложу подходящие анализы.</p>` : ""}`;
+    ${!sugg.length && !near.length && !extra.length ? `` : ""}`;
   renderFileList();
 }
 function renderFileList() {

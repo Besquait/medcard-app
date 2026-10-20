@@ -771,7 +771,7 @@ function about(id) {
     </div>
     ${hlHtml(id)}
     ${panels.length ? `<h5 class="about-h">С чем сдают вместе <span>· наборы, куда входит ${esc(m.ru)}</span></h5><div class="pcards">${panelHtml}</div>` : ""}
-    <p class="about-note">Справка по общим медицинским источникам, не диагноз. Что сдавать и как трактовать именно тебе, решает врач.
+    <p class="about-note">Справка, не диагноз.
       Подробнее: <a href="https://vsearch.nlm.nih.gov/vivisimo/cgi-bin/query-meta?v%3Aproject=medlineplus&query=${encodeURIComponent(m.en + " test")}" target="_blank" rel="noopener">MedlinePlus (NIH)</a> ·
       <a href="https://pubmed.ncbi.nlm.nih.gov/?term=${encodeURIComponent(m.en)}" target="_blank" rel="noopener">исследования в PubMed</a></p>
   </div>`;

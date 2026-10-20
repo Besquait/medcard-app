@@ -52,7 +52,7 @@ function renderTherapy() {
   const now = all.filter(tpActive), past = all.filter(p => !tpActive(p));
   morph(box, `<div class="st-head"><div><h2>Лечение</h2></div>
       ${ui.readonly ? "" : `<button type="button" class="btn primary" data-tp-new>Добавить</button>`}</div>
-    ${!all.length ? `<div class="st-empty"><h3>Схем лечения пока нет</h3><p>Записывай сюда, что назначил врач: препараты, советы по питанию и режиму — и какие жалобы это лечит.</p>${ui.readonly ? "" : `<button type="button" class="btn primary" data-tp-new>Добавить</button>`}</div>` : ""}
+    ${!all.length ? `<div class="st-empty"><h3>Схем лечения пока нет</h3><p>Что назначил врач и что это лечит.</p>${ui.readonly ? "" : `<button type="button" class="btn primary" data-tp-new>Добавить</button>`}</div>` : ""}
     ${now.length ? `<div class="tp-grid">${now.map(tpTile).join("")}</div>` : ""}
     ${past.length ? `<details class="sy-past"${ui.tpPastOpen ? " open" : ""}><summary class="st-year">Раньше · ${past.length}</summary><div class="tp-grid">${past.map(tpTile).join("")}</div></details>` : ""}`);
 }

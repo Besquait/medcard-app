@@ -78,7 +78,7 @@ function dyTab() {
       <h3>Как в целом</h3>
       <div class="dy-moods">${DY_MOOD.map(([k, n]) => `<button type="button" class="dy-mood m${k}" data-dy-mood="${k}" aria-pressed="${day.mood === k}">${n}</button>`).join("")}</div>
       ${main.length ? `<h3>Главные жалобы</h3><div class="dy-sys">${main.map(syRowD).join("")}</div>`
-        : `<p class="muted dy-tip">Отметь главные жалобы звёздочкой в их карточках — они встанут сюда, остальные спрятаны ниже.</p>`}
+        : ``}
       ${rest.length ? `<details class="dy-more"${ui.dyMore || !main.length ? " open" : ""}><summary>${main.length ? "Остальные жалобы" : "Жалобы"}${marked ? ` · отмечено ${marked}` : ""}</summary><div class="dy-sys">${rest.map(syRowD).join("")}</div></details>` : ""}
       <h3>Что было</h3>
       <div class="dy-sleep"><span>Сон</span>${DY_SLEEP.map(([k, n]) => `<button type="button" class="tchip" data-dy-sleep="${k}" aria-pressed="${day.sleep === k}">${n}</button>`).join("")}</div>
@@ -155,7 +155,7 @@ function dyGrid() {
   }
   if (!rows.length) return "";
   return `<section class="card sy-diary" aria-label="Четыре недели">
-    <div class="sy-thead"><div><h3>Четыре недели</h3><p>Клетка — день. Сверху самочувствие, ниже жалобы: видно, что приходит вместе.</p></div></div>
+    <div class="sy-thead"><div><h3>Четыре недели</h3></div></div>
     <div class="sy-grid">${rows.map(r => `${r.id ? `<button type="button" class="sy-gname" data-sy="${esc(r.id)}">${esc(r.name)}</button>` : `<span class="sy-gname">${esc(r.name)}</span>`}<div class="sy-gcells">${r.cells.join("")}</div>`).join("")}
       <span class="sy-gpad"></span><div class="sy-gaxis"><span>${fmtDate(from)}</span><span>сегодня</span></div></div>
   </section>`;
@@ -177,8 +177,8 @@ function dyLinksTab() {
   };
   return `<section class="card dy-links"><h3>Что связано с самочувствием</h3>
       <p>По ${n} ${plural(n, "записанному дню", "записанным дням", "записанным дням")}${n < DY_GOAL ? " — пока предварительно" : ""}: в какие дни становится лучше или хуже.</p>
-      ${list.length ? list.map(item).join("") : `<p>Явных связей пока не видно. Продолжай записывать — чем больше дней, тем точнее.</p>`}
-      <p class="dy-caveat">Это совпадения в твоих записях — гипотезы, а не доказанная причина: сравнений много, пара случайных совпадений бывает всегда. Проверить гипотезу можно в «Проверке» в календаре. Покажи их врачу — вместе с ним проще понять, что за ними стоит.</p>
+      ${list.length ? list.map(item).join("") : `<p>Явных связей пока нет.</p>`}
+      <p class="dy-caveat">Это совпадения, а не доказанные причины. Проверить можно в «Проверке».</p>
     </section>${grid}`;
 }
 

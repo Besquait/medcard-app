@@ -149,18 +149,27 @@ function fdNutCard(d) {
   const range = ui.fdRange || 1, tab = ui.fdNutTab || "main", c = fdCtx();
   const days = range === 1 ? [d] : Array.from({ length: 7 }, (_, i) => addDaysISO(d, i - 6));
   const S = fdNutSum(days);
-  if (!S.n) return "";
   const keys = FD_TABS.find(([t]) => t === tab)[2];
   const low = FD_TABS[0][2].filter(k => { const r = fdDRI(k, c); return r.t && S.v[k] < r.t * 0.5; });
-  return `<section class="card cl-box t-food fd-nut" data-key="nut">
+  return `<section class="card cl-box t-food fd-nut" id="fdNut" data-key="nut">
     <div class="cl-bh"><span class="cl-bi t-food">${clSvg('<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>')}</span><div class="cl-bt"><h4>Нутриенты</h4>
-      <small>${range === 1 ? "за день" : `в среднем за ${S.n} ${plural(S.n, "день", "дня", "дней")} с записями`} · нормы для ${c.known ? (c.f ? "женщины" : "мужчины") : "взрослого"} ${c.age} лет${c.known ? "" : " — укажи пол и год рождения в «Данные», нормы подстроятся"}</small></div>
+      <small>${!S.n ? "пока пусто — добавь еду, и здесь посчитаются витамины, минералы, жиры и аминокислоты" : range === 1 ? "за день" : `в среднем за ${S.n} ${plural(S.n, "день", "дня", "дней")} с записями`} · нормы для ${c.known ? (c.f ? "женщины" : "мужчины") : "взрослого"} ${c.age} лет${c.known ? "" : " — укажи пол и год рождения в «Данные», нормы подстроятся"}</small></div>
       <div class="cl-br">${clSeg("data-fd-range", [[1, "День"], [7, "7 дней"]], range, "fd-range")}</div></div>
-    ${tab === "main" && low.length ? `<p class="fd-lowline">Меньше половины нормы: ${low.map(k => `<b>${esc(FD_NI[k][0])}</b>`).join(", ")}. Открой строку — там подсказка, чем добрать.</p>` : ""}
+    ${tab === "main" && low.length && S.n ? `<p class="fd-lowline">Меньше половины нормы: ${low.map(k => `<b>${esc(FD_NI[k][0])}</b>`).join(", ")}. Открой строку — там подсказка, чем добрать.</p>` : ""}
     <div class="fd-ntabs" role="tablist">${FD_TABS.map(([t, n]) => `<button type="button" role="tab" data-fd-ntab="${t}" aria-selected="${t === tab}">${n}</button>`).join("")}</div>
     <div class="fd-nlist">${keys.map(k => fdNutRow(k, S, c, ui.fdNut === k)).join("")}</div>
     <p class="cl-small cl-muted">Данные: USDA FoodData Central, для блюд — по рецепту из её продуктов. Йода в базе нет. Нормы — справочные (NASEM, ВОЗ, EFSA), не лечебные.</p>
   </section>`;
+}
+// the side summary: how many of the key nutrients are covered, a tap scrolls to the full card
+function fdNutMini(d) {
+  const S = fdNutSum([d]), c = fdCtx(), keys = FD_TABS[0][2];
+  const pct = k => { const r = fdDRI(k, c); return r.t ? Math.round(S.v[k] / r.t * 100) : 0; };
+  const ok = keys.filter(k => pct(k) >= 100).length;
+  return `<section class="card cl-side-card"><h4>Витамины и минералы</h4>
+    <div class="cl-stat"><span>Главных в норме</span><b>${ok} из ${keys.length}</b></div>
+    <div class="fd-mini">${keys.map(k => `<span class="fd-mi ${pct(k) >= 100 ? "ok" : pct(k) >= 50 ? "mid" : "low"}" title="${esc(FD_NI[k][0])}: ${pct(k)}%"><i style="height:${Math.min(100, pct(k))}%"></i><small>${esc(FD_NI[k][0].replace(/^(Витамин |Омега-3 )/, "").split(" ")[0].slice(0, 6))}</small></span>`).join("")}</div>
+    <button type="button" class="cl-link" data-fd-nutgo>Все нутриенты →</button></section>`;
 }
 // the full make-up of one eaten item
 function openFoodComp(d, id) {

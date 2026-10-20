@@ -134,10 +134,10 @@ function openDrug(id) {
   ui.drOpen = id;
   const tab = ["how", "care", "ev"].includes(ui.drTab) ? ui.drTab : "how";
   const li = l => l?.length ? `<ul>${l.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : "";
-  const sec = (t, l) => l?.length ? `<section class="tp-recg"><h4>${t}</h4>${li(l)}</section>` : "";
+  const sec = (t, l, cls = "") => l?.length ? `<section class="tp-recg ${cls}"><h4>${t}</h4>${li(l)}</section>` : "";
   const mine = tpList().flatMap(p => (p.drugs || []).filter(x => drugFor(x.name)?.id === id).map(x => `${p.title}: ${x.how || "как назначено"}`));
   const body = {
-    how: () => `<p class="tp-what">${esc(d.what)}</p>${mine.length ? sec("У тебя", mine) : ""}${sec("Как принимать", d.how)}${sec("Как лучше", d.best)}`,
+    how: () => `<p class="tp-what">${esc(d.what)}</p>${mine.length ? sec("У тебя", mine, "tp-mine") : ""}${sec("Как принимать", d.how)}${sec("Как лучше", d.best)}`,
     care: () => `${sec("Нельзя, если", d.contra)}${sec("Побочные", d.side)}${sec("С чем осторожно", d.mix)}`,
     ev: () => `${sec("Что показывают исследования", d.evidence)}${d.src?.length ? `<section class="tp-recg"><h4>Источники</h4><ul>${d.src.map(([t, u]) => `<li><a href="${esc(u)}" target="_blank" rel="noopener">${esc(t)}</a></li>`).join("")}</ul></section>` : ""}`,
   };

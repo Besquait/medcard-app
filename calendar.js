@@ -26,6 +26,8 @@ function clMeds(d) {
   }
   return { sched, prn };
 }
+// the first day anything was ticked: earlier days are not "missed", tracking had not started yet
+const clStart = () => Object.keys(state.days || {}).filter(d => state.days[d].meds || state.days[d].prn).sort()[0] || todayISO();
 function clDone(d) { const { sched } = clMeds(d), m = state.days?.[d]?.meds || {}; return { n: sched.length, k: sched.filter(x => m[x.key]).length }; }
 // minutes asleep from "went to bed" (the evening before) to "got up"
 function clSleepMin(x) {
@@ -75,9 +77,10 @@ function clStrip(sel, today) {
     days = Array.from({ length: 7 }, (_, i) => addDaysISO(start, i));
     title = `${fmtDate(days[0]).slice(0, 5)} — ${fmtDate(days[6]).slice(0, 5)}`;
   }
+  const start = clStart();
   const cell = d => {
     const fut = d > today, other = month && d.slice(5, 7) !== sel.slice(5, 7), x = state.days?.[d], c = clDone(d);
-    const pill = !c.n || fut ? "" : c.k === c.n ? "ok" : c.k ? "part" : d < today ? "miss" : "todo";
+    const pill = !c.n || fut || d < start ? "" : c.k === c.n ? "ok" : c.k ? "part" : d < today ? "miss" : "todo";
     return `<button type="button" class="cl-day${d === sel ? " on" : ""}${d === today ? " now" : ""}${other ? " other" : ""}" data-cl-day="${d}"${fut ? " disabled" : ""}>
       <b>${+d.slice(8)}</b><span class="cl-marks">${pill ? `<i class="cl-pill ${pill}" title="Лекарства: ${c.k} из ${c.n}"></i>` : ""}${x?.mood ? `<i class="dy-dot m${x.mood}"></i>` : ""}</span></button>`;
   };

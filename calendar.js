@@ -92,7 +92,8 @@ const clDayName = d => { const t = todayISO(); return d === t ? "Сегодня"
 const clHM = () => { const n = new Date(); return `${String(n.getHours()).padStart(2, "0")}:${String(n.getMinutes()).padStart(2, "0")}`; };
 function clMain() {
   const cur = syList().filter(s => !syPast(s));
-  return { main: cur.filter(s => s.main).sort(syByWeight), rest: cur.filter(s => !s.main).sort(syOrder) };
+  const zo = z => { const i = ["gut", "ent", "teeth", "head"].indexOf(syZoneOf(z)); return i < 0 ? 9 : i; };
+  return { main: cur.filter(s => s.main).sort((a, b) => zo(a) - zo(b) || syByWeight(a, b)), rest: cur.filter(s => !s.main).sort(syOrder) };
 }
 const clAvg = a => a.reduce((s, v) => s + v, 0) / a.length;
 // an arrow class for "0–3 strength went from a to b"
@@ -252,12 +253,14 @@ const CL_LAT = [[1, "до 15 мин", "g0"], [2, "15–30 мин", "g1"], [3, "3
 const CL_WK = [[0, "ни разу", "g0"], [1, "1 раз", "g1"], [2, "2 раза", "g2"], [3, "3 и больше", "g3"]];
 const CL_SQ = [[1, "Очень плохо"], [2, "Плохо"], [3, "Средне"], [4, "Хорошо"], [5, "Отлично"]];
 const CL_REST = [[1, "Разбитый", "g3"], [2, "Так себе", "g2"], [3, "Отдохнувший", "g0"]];
-// on waking: together with a morning headache these are worth showing a doctor (sleep breathing, bruxism, reflux)
-const CL_AM = [["dry", "Сухость во рту"], ["bitter", "Горечь, кислый вкус"], ["jaw", "Челюсть сжата, устала"]];
+// on waking: a clenched, tired jaw (night clenching) — with a morning headache worth showing a dentist or doctor
+const CL_AM = [["jaw", "Челюсть сжата, устала"]];
 const CL_WHY = [["reflux", "Изжога, кислота"], ["cough", "Кашель, слизь"], ["dry", "Сухость во рту"], ["toilet", "Туалет"], ["ears", "Шум в ушах"], ["other", "Без причины"]];
 // day factors in groups, so the chips do not pile up
 const CL_FGROUPS = [["Еда", ["fatty", "acid", "big", "late", "lay", "coffee", "flax"]], ["Режим", ["stress", "screen", "move", "sick"]]];
-const clSeg = (attr, list, val, cls = "") => `<div class="seg2 ${cls}" role="group">${list.map(([k, n, c]) => `<button type="button" class="${c || ""}" ${attr}="${k}" aria-pressed="${val === k}">${n}</button>`).join("")}</div>`;
+const clSeg = (attr, list, val, cls = "") => `<div class="seg2 ${cls}" role="group">${list.map(([k, n, c, h]) => `<button type="button" class="${c || ""}" ${attr}="${k}" aria-pressed="${val === k}"${h ? ` title="${esc(h)}"` : ""}>${n}</button>`).join("")}</div>`;
+// what each strength means, shown on hover
+const CL_SEVH = { 0: "не беспокоило", 1: "заметно, но не мешает", 2: "мешает делам или сну", 3: "пришлось что-то делать или принять средство" };
 const clHead = (tone, icon, title, sub, right) => `<div class="cl-bh"><span class="cl-bi ${tone}">${icon}</span><div class="cl-bt"><h4>${title}</h4>${sub ? `<small>${sub}</small>` : ""}</div>${right ? `<div class="cl-br">${right}</div>` : ""}</div>`;
 const CL_I = {
   mood: clSvg('<circle cx="12" cy="12" r="8.5"/><path d="M8.5 14c.9 1.2 2.1 1.8 3.5 1.8s2.6-.6 3.5-1.8M9 9.5h.01M15 9.5h.01"/>'),
@@ -294,14 +297,13 @@ function clSleepCard(d, first) {
     ${x.wk > 0 ? row("Что будило", `<div class="tchips cl-why">${CL_WHY.map(([k, n]) => `<button type="button" class="tchip" data-cl-why="${k}" aria-pressed="${!!x.why?.[k]}">${n}</button>`).join("")}</div>`, "можно несколько") : ""}
     ${row("Как спалось", clSeg("data-cl-sq", CL_SQ.map(([k, n]) => [k, n, "m" + k]), x.sq, "dots"))}
     ${row("Утром", clSeg("data-cl-rest", CL_REST, x.rest))}
-    ${row("Голова утром", clSeg("data-cl-amh", [[0, "Нет", "s0"], ...SY_SEV.map(([k, n]) => [k, n, "s" + k])], x.amh))}
     ${row("При пробуждении", `<div class="tchips cl-why">${CL_AM.map(([k, n]) => `<button type="button" class="tchip" data-cl-am="${k}" aria-pressed="${!!x.am?.[k]}">${n}</button>`).join("")}</div>`, "если было")}
   </section>`;
 }
 function clDayCard(d, withSleep) {
   const x = state.days?.[d] || {}, { main, rest } = clMain(), e = clExpOn(d);
   const syRow = s => { const v = dyVal(s, d); return `<div class="cl-syr"><span class="cl-syn"><i class="cl-sdot${v != null ? " s" + v : ""}"></i>${esc(s.name)}</span>
-    ${clSeg("data-dy-sy", [[0, "Нет", "s0"], ...SY_SEV.map(([k, n]) => [k, n, "s" + k])].map(([k, n, c]) => [`${s.id}|${k}`, n, c]), v == null ? null : `${s.id}|${v}`, "sev")}</div>`; };
+    ${clSeg("data-dy-sy", [[0, "Нет", "s0"], ...SY_SEV.map(([k, n]) => [k, n, "s" + k])].map(([k, n, c]) => [`${s.id}|${k}`, n, c, CL_SEVH[k]]), v == null ? null : `${s.id}|${v}`, "sev")}</div>`; };
   const marked = main.filter(s => dyVal(s, d) != null).length, restMarked = rest.filter(s => dyVal(s, d) != null).length;
   const filled = !!x.mood && (main.length ? main.every(s => dyVal(s, d) != null) : true);
   const facs = dyFactors(), name = Object.fromEntries(facs.map(([k, n]) => [k, n]));
@@ -317,7 +319,6 @@ function clDayCard(d, withSleep) {
     <section class="card cl-box t-ok">${clHead("t-ok", CL_I.mood, "Самочувствие", "в целом за день", x.mood ? `<span class="cl-pillv m${x.mood}">${esc(DY_MOOD_NAME[x.mood])}</span>` : "")}
       ${clSeg("data-dy-mood", DY_MOOD.map(([k, n]) => [k, n, "m" + k]), x.mood, "dots big")}</section>
     ${main.length || rest.length ? `<section class="card cl-box t-edge">${clHead("t-edge", CL_I.sy, main.length ? "Главные жалобы" : "Жалобы", "как было в худший момент", main.length ? `<span class="cl-cnt">${marked} из ${main.length}</span>` : "")}
-      <p class="cl-scale"><b>Слабо</b> — заметно, но не мешает · <b>Заметно</b> — мешает делам или сну · <b>Сильно</b> — пришлось что-то делать или принять средство</p>
       <div class="cl-sys">${main.map(syRow).join("")}</div>
       ${rest.length ? `<details class="dy-more cl-more2"${ui.dyMore || !main.length ? " open" : ""}><summary>${main.length ? "Остальные жалобы" : "Все жалобы"} · ${rest.length}${restMarked ? `, отмечено ${restMarked}` : ""}</summary><div class="cl-sys">${rest.map(syRow).join("")}</div></details>` : ""}</section>` : ""}
     ${typeof fdDayCard === "function" ? fdDayCard(d) : ""}

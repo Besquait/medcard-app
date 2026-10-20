@@ -111,7 +111,7 @@ function dyRecent() {
 // Welch's t of 2.5 and more (hundreds of pairs are compared, so the bar is above the usual 2); per pair the surer of "same day" and "next day" is kept.
 function dyLinks() {
   const days = state.days || {}, dates = Object.keys(days).filter(d => dyHas(days[d])).sort();
-  const outs = [{ name: "Самочувствие", mood: true, scale: 4, get: d => days[d]?.mood || null }, { name: "Голова утром", id: "amh", scale: 3, get: d => days[d]?.amh ?? null }];
+  const outs = [{ name: "Самочувствие", mood: true, scale: 4, get: d => days[d]?.mood || null }];
   syList().filter(s => !syPast(s)).forEach(s => { const by = syDays(s); outs.push({ name: s.name, id: s.id, scale: 3, get: d => dyVal(s, d, by) }); });
   const facs = [["sleep", "", "сон 6 часов и меньше", 0], ["sq", "", "плохой сон", 0], ["wk", "", "просыпался ночью 2 раза и больше", 0], ["nreflux", "", "ночью будила изжога", 0], ["jaw", "", "утром сжата челюсть", 0], ...dyFactors()];
   const fv = (d, id) => {

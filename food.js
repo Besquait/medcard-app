@@ -65,7 +65,9 @@ function fdFreq(days = 30) {
 function fdSearch(q) {
   const { t, amt, unit } = fdParse(q); if (!t) return [];
   const words = t.split(/\s+/).filter(Boolean), freq = fdFreq();
-  const hits = fdCatalog().filter(f => words.every(w => f.s.includes(w)));
+  // Russian endings vary ("котлеты", "банана"): a long word also matches by its stem
+  const stem = w => w.length > 4 ? w.slice(0, Math.max(4, w.length - 2)) : w;
+  const hits = fdCatalog().filter(f => words.every(w => f.s.includes(w) || f.s.includes(stem(w))));
   const starts = f => f.s.startsWith(words[0]) ? 0 : 1;
   hits.sort((a, b) => (freq[b.n]?.n || 0) - (freq[a.n]?.n || 0) || starts(a) - starts(b) || (b.my ? 1 : 0) - (a.my ? 1 : 0) || a.n.length - b.n.length);
   return hits.slice(0, 8).map(f => ({ f, g: fdGrams(f, amt, unit) }));
@@ -106,7 +108,8 @@ async function fdNet(inp) {
 }
 
 /* ---------- day records ---------- */
-const fdTimeFor = (d, m) => (state.days?.[d]?.food || []).find(e => e.m === m)?.t || (d === todayISO() ? clHM() : FD_MEAL_T[m]);
+// a meal keeps one time; a new one gets "now" if it is the meal of this hour, otherwise its usual time
+const fdTimeFor = (d, m) => (state.days?.[d]?.food || []).find(e => e.m === m)?.t || (d === todayISO() && m === fdNowMeal() ? clHM() : FD_MEAL_T[m]);
 function fdAdd(d, f, g, m = fdMealCur()) {
   const x = dyDay(d);
   x.food = [...(x.food || []), { id: newId("e"), n: f.n, g: Math.round(g), per: f.per.map(v => Math.round(v * 10) / 10), tags: f.tags || "", pl: f.pl || "", pg: f.pg || 100, m, t: fdTimeFor(d, m) }];

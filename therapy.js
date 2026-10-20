@@ -70,7 +70,7 @@ function tpTile(p) {
 // a tap on a drug opens it for editing, "+" rows add drugs, advice and complaints, × removes them
 function openPlan(id) {
   const p = state.plans?.[id]; if (!p) return;
-  if (ui.tpOpen !== id) { ui.tpDrug = null; ui.tpAdd = null; }
+  if (ui.tpOpen !== id) { ui.tpDrug = null; ui.tpAdd = null; ui.tpRec = null; }
   ui.tpOpen = id;
   const ro = !!ui.readonly, drugs = p.drugs || [], recs = p.recs || [];
   const sy = (p.sy || []).map(x => syList().find(s => s.id === x)).filter(Boolean);
@@ -87,7 +87,8 @@ function openPlan(id) {
     drugs: () => `<div class="tp-list">${drugs.map((d, i) => ui.tpDrug === i ? drugEdit(d, i)
         : `<div class="tp-drugrow"><button type="button" class="tp-drug" data-tp-dedit="${i}"${ro ? " disabled" : ""}><b>${esc(d.name)}</b>${d.how ? `<span>${esc(d.how)}</span>` : ""}</button>${drugMatch(d.name) ? `<button type="button" class="btn sm ghost tp-about" data-dr="${esc(drugMatch(d.name))}">О препарате</button>` : ""}</div>`).join("")}
       ${ui.tpDrug === "new" ? drugEdit({}, "new") : add("drug", "Препарат")}</div>`,
-    recs: () => `${TP_RECS.map(([k, n]) => { const l = recs.map((r, i) => ({ ...r, i })).filter(r => (r.cat || "other") === k); return l.length ? `<section class="tp-recg"><h4>${n}</h4><ul>${l.map(r => `<li><span>${esc(r.text)}</span>${ro ? "" : `<button type="button" class="icon-btn sm" data-tp-rdel="${r.i}" aria-label="Убрать совет">×</button>`}</li>`).join("")}</ul></section>` : ""; }).join("")}
+    recs: () => `${TP_RECS.map(([k, n]) => { const l = recs.map((r, i) => ({ ...r, i })).filter(r => (r.cat || "other") === k); return l.length ? `<section class="tp-recg"><h4>${n}</h4><ul>${l.map(r => ui.tpRec === r.i ? `<li class="tp-recedit"><form class="dr-form" data-tp-rsave="${r.i}"><textarea class="input sy-grow" name="t" rows="2">${esc(r.text)}</textarea><div class="tp-edb"><button type="button" class="btn sm ghost danger" data-tp-rdel="${r.i}">Удалить</button><span style="flex:1"></span><button type="button" class="btn sm ghost" data-tp-cancel>Отмена</button><button type="submit" class="btn sm primary">Сохранить</button></div></form></li>`
+          : `<li><span class="${ro ? "" : "dr-ed"}" data-tp-red="${r.i}">${esc(r.text)}</span>${ro ? "" : `<button type="button" class="icon-btn sm" data-tp-rdel="${r.i}" aria-label="Убрать совет">×</button>`}</li>`).join("")}</ul></section>` : ""; }).join("")}
       ${ui.tpAdd === "rec" ? `<form class="tp-ed" data-tp-radd><div class="seg tp-cats" role="group" aria-label="Раздел">${TP_RECS.slice(0, 3).map(([k, n], i) => `<button type="button" data-tp-cat="${k}" aria-pressed="${(ui.tpCat || "food") === k}">${n}</button>`).join("")}</div>
           <input class="input" name="text" placeholder="Совет, например: не есть за 3 часа до сна" autocomplete="off">
           <div class="tp-edb"><span style="flex:1"></span><button type="button" class="btn sm ghost" data-tp-cancel>Отмена</button><button type="submit" class="btn sm primary">Добавить</button></div></form>`
@@ -189,9 +190,10 @@ function initTherapy() {
       const de = t.closest("[data-tp-dedit]"); if (de) { ui.tpDrug = +de.dataset.tpDedit; ui.tpAdd = null; openPlan(ui.tpOpen); return; }
       const ao = t.closest("[data-tp-addopen]");
       if (ao) { const k = ao.dataset.tpAddopen; if (k === "drug") { ui.tpDrug = "new"; ui.tpAdd = null; } else { ui.tpAdd = k; ui.tpDrug = null; } openPlan(ui.tpOpen); return; }
-      if (t.closest("[data-tp-cancel]")) { ui.tpDrug = null; ui.tpAdd = null; openPlan(ui.tpOpen); return; }
+      if (t.closest("[data-tp-cancel]")) { ui.tpDrug = null; ui.tpAdd = null; ui.tpRec = null; openPlan(ui.tpOpen); return; }
+      const re = t.closest("[data-tp-red]"); if (re && !ui.readonly) { ui.tpRec = +re.dataset.tpRed; ui.tpAdd = null; ui.tpDrug = null; openPlan(ui.tpOpen); $("#xDlg [data-tp-rsave] textarea")?.focus(); return; }
       const dd = t.closest("[data-tp-ddel]"); if (dd) { p.drugs.splice(+dd.dataset.tpDdel, 1); ui.tpDrug = null; tpRedraw(); return; }
-      const rd = t.closest("[data-tp-rdel]"); if (rd) { p.recs.splice(+rd.dataset.tpRdel, 1); tpRedraw(); return; }
+      const rd = t.closest("[data-tp-rdel]"); if (rd) { p.recs.splice(+rd.dataset.tpRdel, 1); ui.tpRec = null; tpRedraw(); return; }
       const ct = t.closest("[data-tp-cat]"); if (ct) { ui.tpCat = ct.dataset.tpCat; $$("[data-tp-cat]").forEach(b => b.setAttribute("aria-pressed", b === ct)); $("#xDlg .tp-ed input")?.focus(); return; }
       const sd = t.closest("[data-tp-sydel]"); if (sd) { p.sy = (p.sy || []).filter(x => x !== sd.dataset.tpSydel); tpRedraw(); return; }
       if (t.closest("[data-tp-sydone]")) { p.sy = $$("#xDlg [data-tp-sy]:checked").map(b => b.dataset.tpSy); ui.tpAdd = null; tpRedraw(); return; }
@@ -216,6 +218,12 @@ function initTherapy() {
       p.drugs ||= [];
       if (i === "new") p.drugs.push({ name, how, start: todayISO(), end: "" }); else Object.assign(p.drugs[+i], { name, how });
       ui.tpDrug = null; tpRedraw(); return;
+    }
+    if (f.matches("[data-tp-rsave]")) {
+      e.preventDefault();
+      const i = +f.dataset.tpRsave, text = f.elements.t.value.trim();
+      if (text) p.recs[i].text = text; else p.recs.splice(i, 1);
+      ui.tpRec = null; tpRedraw(); return;
     }
     if (f.matches("[data-tp-radd]")) {
       e.preventDefault();

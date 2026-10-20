@@ -151,8 +151,8 @@ function hxPage() {
   return `<div class="hx-page">
     ${open ? hxBanner(open) : ""}
     <div class="hx-top">
-      ${stat(days.size, "дней с болью за 30 дней", days.size >= 15 ? "warn" : "")}
-      ${stat(medDays.size, "дней с таблетками", medDays.size >= 10 ? "warn" : "")}
+      ${stat(days.size, `${plural(days.size, "день", "дня", "дней")} с болью за 30 дней`, days.size >= 15 ? "warn" : "")}
+      ${stat(medDays.size, `${plural(medDays.size, "день", "дня", "дней")} с таблетками`, medDays.size >= 10 ? "warn" : "")}
       ${stat(last30.length ? dyNum(avgVas) : "—", "средняя сила из 10")}
       ${stat(durs.length ? clHours(Math.round(durs.reduce((a, b) => a + b, 0) / durs.length / 10) * 10) : "—", "в среднем длится")}
       <button type="button" class="btn primary hx-add" data-hx-new>+ Болит голова</button>

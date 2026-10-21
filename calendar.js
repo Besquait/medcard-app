@@ -129,14 +129,14 @@ function clMain() {
   return { main: cur.filter(s => s.main).sort((a, b) => zo(a) - zo(b) || syByWeight(a, b)), rest: cur.filter(s => !s.main).sort(syOrder) };
 }
 const clAvg = a => a.reduce((s, v) => s + v, 0) / a.length;
-// an arrow class for "0–3 strength went from a to b"
-const clMove = (a, b) => b < a - 0.3 ? "down" : b > a + 0.3 ? "up" : "";
+// an arrow class for "0–10 strength went from a to b"
+const clMove = (a, b) => b < a - 1 ? "down" : b > a + 1 ? "up" : "";
 
 /* ---------- checks ---------- */
 const clExps = () => state.prefs?.exps || [];
 const clExpEnd = e => e.stop || addDaysISO(e.start, e.days - 1);
 const clExpOn = d => clExps().find(e => e.start <= d && d <= clExpEnd(e));
-const clExpSy = e => (e.sy?.length ? e.sy : clMain().main.map(s => s.id)).map(id => state.symptoms?.[id]).filter(Boolean);
+const clExpSy = e => (e.sy?.length ? e.sy : clMain().main.map(s => s.id)).filter(id => state.symptoms?.[id]).map(id => ({ id, ...state.symptoms[id] }));
 // days the change was kept against the three weeks before the start, per complaint
 function clExpResult(e) {
   const today = todayISO(), end = [clExpEnd(e), today].sort()[0], days = state.days || {};
@@ -147,7 +147,7 @@ function clExpResult(e) {
     for (let i = CL_BASE; i >= 1; i--) { const v = dyVal(s, addDaysISO(e.start, -i), by); if (v != null) before.push(v); }
     for (let d = e.start; d <= end; d = addDaysISO(d, 1)) if (days[d]?.x?.[e.id] === 1) { const v = dyVal(s, d, by); if (v != null) during.push(v); }
     const ok = before.length >= 4 && during.length >= 4, a = ok ? clAvg(before) : 0, b = ok ? clAvg(during) : 0;
-    return { s, ok, a, b, v: !ok ? "few" : b - a <= -0.4 ? "better" : b - a >= 0.4 ? "worse" : "same" };
+    return { s, ok, a, b, v: !ok ? "few" : b - a <= -1.3 ? "better" : b - a >= 1.3 ? "worse" : "same" };
   });
   // a scheme started in the same window muddles the answer
   const from = addDaysISO(e.start, -CL_BASE);
@@ -298,8 +298,6 @@ const CL_WHY = [["reflux", "Изжога, кислота"], ["cough", "Каше�
 // day factors in groups, so the chips do not pile up
 const CL_FGROUPS = [["Еда", ["fatty", "acid", "big", "late", "lay", "coffee", "flax"]], ["Режим", ["stress", "screen", "move", "sick"]]];
 const clSeg = (attr, list, val, cls = "") => `<div class="seg2 ${cls}" role="group">${list.map(([k, n, c, h]) => `<button type="button" class="${c || ""}" ${attr}="${k}" aria-pressed="${val === k}"${h ? ` title="${esc(h)}"` : ""}>${n}</button>`).join("")}</div>`;
-// what each strength means, shown on hover
-const CL_SEVH = { 0: "не беспокоило", 1: "заметно, но не мешает", 2: "мешает делам или сну", 3: "пришлось что-то делать или принять средство" };
 const clHead = (tone, icon, title, sub, right) => `<div class="cl-bh"><span class="cl-bi ${tone}">${icon}</span><div class="cl-bt"><h4>${title}</h4>${sub ? `<small>${sub}</small>` : ""}</div>${right ? `<div class="cl-br">${right}</div>` : ""}</div>`;
 const CL_I = {
   mood: clSvg('<circle cx="12" cy="12" r="8.5"/><path d="M8.5 14c.9 1.2 2.1 1.8 3.5 1.8s2.6-.6 3.5-1.8M9 9.5h.01M15 9.5h.01"/>'),
@@ -341,8 +339,9 @@ function clSleepCard(d, first) {
 }
 function clDayCard(d, withSleep) {
   const x = state.days?.[d] || {}, { main, rest } = clMain(), e = clExpOn(d);
-  const syRow = s => { const v = dyVal(s, d); return `<div class="cl-syr"><span class="cl-syn"><i class="cl-sdot${v != null ? " s" + v : ""}"></i>${esc(s.name)}</span>
-    ${clSeg("data-dy-sy", [[0, "Нет", "s0"], ...SY_SEV.map(([k, n]) => [k, n, "s" + k])].map(([k, n, c]) => [`${s.id}|${k}`, n, c, CL_SEVH[k]]), v == null ? null : `${s.id}|${v}`, "sev")}</div>`; };
+  // a 0–10 row per complaint; yesterday's score is a faint mark
+  const syRow = s => { const v = dyVal(s, d); return `<div class="cl-syr"><span class="cl-syn"><i class="cl-sdot${v != null ? " s" + syB(v) : ""}"></i>${esc(s.name)}</span>
+    ${syScale("data-dy-sy", `${esc(s.id)}|`, v, { prev: dyVal(s, addDaysISO(d, -1)), label: s.name })}</div>`; };
   const marked = main.filter(s => dyVal(s, d) != null).length, restMarked = rest.filter(s => dyVal(s, d) != null).length;
   const filled = !!x.mood && (main.length ? main.every(s => dyVal(s, d) != null) : true);
   const facs = dyFactors(), name = Object.fromEntries(facs.map(([k, n]) => [k, n]));
@@ -356,7 +355,7 @@ function clDayCard(d, withSleep) {
     ${withSleep ? clSleepCard(d) : ""}
     <section class="card cl-box t-ok">${clHead("t-ok", CL_I.mood, "Самочувствие", "в целом за день", x.mood ? `<span class="cl-pillv m${x.mood}">${esc(DY_MOOD_NAME[x.mood])}</span>` : "")}
       ${clSeg("data-dy-mood", DY_MOOD.map(([k, n]) => [k, n, "m" + k]), x.mood, "dots big")}</section>
-    ${main.length || rest.length ? `<section class="card cl-box t-edge">${clHead("t-edge", CL_I.sy, main.length ? "Главные жалобы" : "Жалобы", "как было в худший момент", main.length ? `<span class="cl-cnt">${marked} из ${main.length}</span>` : "")}
+    ${main.length || rest.length ? `<section class="card cl-box t-edge">${clHead("t-edge", CL_I.sy, main.length ? "Главные жалобы" : "Жалобы", "худший момент, 0–10", main.length ? `<span class="cl-cnt">${marked} из ${main.length}</span>` : "")}
       <div class="cl-sys">${main.map(syRow).join("")}</div>
       ${rest.length ? `<details class="dy-more cl-more2"${ui.dyMore || !main.length ? " open" : ""}><summary>${main.length ? "Остальные жалобы" : "Все жалобы"} · ${rest.length}${restMarked ? `, отмечено ${restMarked}` : ""}</summary><div class="cl-sys">${rest.map(syRow).join("")}</div></details>` : ""}</section>` : ""}
     ${typeof fdDayCard === "function" ? fdDayCard(d) : ""}
@@ -426,7 +425,7 @@ function openBad() {
   if (!first) { toast("Сначала добавь жалобу в «Симптомах»"); return; }
   openX(`<div class="dlg-head"><h3>Сейчас плохо · ${clHM()}</h3><button type="button" class="icon-btn" data-xclose aria-label="Закрыть">×</button></div>
     <h4 class="cl-dh4">Что беспокоит</h4>${clSyPick("data-clb-s", s => s.id === first)}
-    <h4 class="cl-dh4">Насколько</h4><div class="dy-sev">${SY_SEV.map(([k, n]) => `<button type="button" class="dy-b s${k}" data-clb-v="${k}" aria-pressed="${k === 2}">${n}</button>`).join("")}</div>
+    <h4 class="cl-dh4">Насколько, от 1 до 10</h4>${syScale("data-clb-v", "", 5, { from: 1, label: "Насколько" })}
     <h4 class="cl-dh4">Что было за 1–3 часа до этого</h4><div class="tchips">${CL_BEFORE.map(([k, n]) => `<button type="button" class="tchip" data-clb-w="${k}" aria-pressed="false">${n}</button>`).join("")}</div>
     <div class="dlg-foot"><span style="flex:1"></span><button type="button" class="btn primary" data-clb-save>Записать</button></div>`, "st-dlg tp-dlg cl-dlg");
 }
@@ -595,7 +594,7 @@ function dvDraw(top) {
 
   // complaints: the main ones first, the others only when marked
   const { main, rest } = clMain(), syRow = s => { const v = dyVal(s, d);
-    return `<div class="dv-sy"><span class="cl-syn"><i class="cl-sdot${v != null ? " s" + v : ""}"></i>${esc(s.name)}</span><b class="dv-sv${v != null ? " s" + v : ""}">${v == null ? "—" : v === 0 ? "нет" : SY_SEV[v - 1][1].toLowerCase()}</b></div>`; };
+    return `<div class="dv-sy"><span class="cl-syn"><i class="cl-sdot${v != null ? " s" + syB(v) : ""}"></i>${esc(s.name)}</span><b class="dv-sv${v != null ? " s" + syB(v) : ""}" title="${v == null ? "" : esc(SY_HINT[syB(v)])}">${v == null ? "—" : v === 0 ? "нет" : syTen(v)}</b></div>`; };
   const restOn = rest.filter(s => dyVal(s, d) != null), anySy = main.some(s => dyVal(s, d) != null) || restOn.length;
   const sy = anySy ? sec("dv-s-sy", "t-edge", CL_I.sy, "Жалобы", `<div class="dv-list">${main.map(syRow).join("")}${restOn.map(syRow).join("")}</div>`) : "";
 
@@ -757,16 +756,16 @@ function initCalendar() {
       return;
     }
     if (t.closest("[data-clb-save]")) {
-      const id = $("[data-clb-s][aria-pressed=true]", xd)?.dataset.clbS, sev = +($("[data-clb-v][aria-pressed=true]", xd)?.dataset.clbV || 2);
+      const id = $("[data-clb-s][aria-pressed=true]", xd)?.dataset.clbS, v = +($("[data-clb-v][aria-pressed=true]", xd)?.dataset.clbV || 5);
       if (!id) return;
       const why = $$("[data-clb-w][aria-pressed=true]", xd).map(b => b.dataset.clbW).filter(k => k !== "none");
       const words = why.map(k => CL_BEFORE.find(([x]) => x === k)[1].toLowerCase());
       const d = todayISO(), x = dyDay(d);
-      (x.sy ||= {})[id] = Math.max(x.sy[id] || 0, sev);
+      syDaySet(d, id, Math.max(syDayV(d, id) ?? 0, v));
       const facs = why.filter(k => DY_FACTORS.some(([f]) => f === k));
       if (facs.length) x.f = { ...(x.f || {}), ...Object.fromEntries(facs.map(k => [k, true])) };
       closeX();
-      syAddEntry(id, { d, sev, note: `в ${clHM()}${words.length ? ` · перед этим: ${words.join(", ")}` : ""}` });
+      syAddEntry(id, { d, v, note: `в ${clHM()}${words.length ? ` · перед этим: ${words.join(", ")}` : ""}` });
       toast("Записано");
       return;
     }

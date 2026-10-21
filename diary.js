@@ -36,28 +36,30 @@ function dyTidy(d) { if (state.days?.[d] && !dyHas(state.days[d])) delete state.
 const dyNum = v => String(Math.round(v * 10) / 10).replace(".", ",");
 const dyCap = t => t ? t[0].toUpperCase() + t.slice(1) : t;
 
-// a complaint on a day: the diary's answer (0 means "not bothering"), else a mark or an episode from its log
+// a complaint on a day, 0–10 — the one reader every average and comparison uses: the day's own rating
+// (0 means "not bothering"), else the strongest entry of that day in its log, else an episode that covers the day.
+// An entry without a strength counts as 2 ("слабо").
 function dyVal(s, d, by) {
-  const a = state.days?.[d]?.sy?.[s.id];
+  const a = syDayV(d, s.id ?? syIdOf(s));
   if (a != null) return a;
-  const e = (s.log || []).filter(x => x.d === d).pop();
-  if (e) return e.sev || 1;
+  const l = (s.log || []).filter(x => x.d === d);
+  if (l.length) { const vs = l.map(syEV).filter(v => v != null); return vs.length ? Math.max(...vs) : 2; }
   const v = by?.[d];
-  return v ? Math.max(1, Math.round(v)) : null;
+  return v == null ? null : v < 0 ? 2 : v;
 }
-// mark a complaint for a day: 1–3 strength, 0 "not bothering", null clears the answer.
-// A plain mark in the complaint's log follows along; an entry with a note or a duration is kept.
+// mark a complaint for a day: 1–10 strength, 0 "not bothering", null clears the answer.
+// A plain mark in the complaint's log follows along; an entry with a note or a duration is kept,
+// a headache episode keeps its own strength.
 function dyMark(id, d, v) {
   const s = state.symptoms[id]; if (!s) return;
-  const log = s.log || [], e = log.filter(x => x.d === d).pop(), plain = e && !e.note && !e.trig && !e.help && !((e.dur || 0) > 1);
+  const log = s.log || [], e = log.filter(x => x.d === d).pop(), plain = e && !e.hx && !e.note && !e.trig && !e.help && !((e.dur || 0) > 1);
   if (v > 0) {
-    if (e) e.sev = v; else s.log = [...log, { d, sev: v, t: Date.now() }];
+    if (e) { if (!e.hx) { e.v = v; e.sev = syB(v); } } else s.log = [...log, { d, v, sev: syB(v), t: Date.now() }];
     if (s.end && d >= s.end) s.end = "";
     if (s.pattern !== "const" && (!s.start || d < syStartISO(s.start))) s.start = d;
     if (s.pattern === "once" && new Set(s.log.map(l => l.d)).size > 1) s.pattern = "recur";
   } else if (plain) s.log = log.filter(x => x !== e);
-  if (v == null) { const x = state.days?.[d]; if (x?.sy) delete x.sy[id]; dyTidy(d); }
-  else (dyDay(d).sy ||= {})[id] = v;
+  syDaySet(d, id, v);
 }
 
 /* ---------- one day ---------- */
@@ -67,7 +69,7 @@ function dyTab() {
   const main = cur.filter(s => s.main).sort(syByWeight), rest = cur.filter(s => !s.main).sort(syOrder);
   const val = s => dyVal(s, d);
   const syRowD = s => `<div class="dy-sy"><span class="dy-syn">${esc(s.name)}</span>
-    <div class="dy-sev" role="group" aria-label="${esc(s.name)}">${[[0, "Нет"], ...SY_SEV].map(([k, n]) => `<button type="button" class="dy-b s${k}" data-dy-sy="${esc(s.id)}|${k}" aria-pressed="${val(s) === k}">${n}</button>`).join("")}</div></div>`;
+    ${syScale("data-dy-sy", `${esc(s.id)}|`, val(s), { prev: dyVal(s, addDaysISO(d, -1)), label: s.name })}</div>`;
   const marked = rest.filter(s => val(s) != null).length;
   const label = d === today ? "Сегодня" : d === addDaysISO(today, -1) ? "Вчера" : dyCap(DY_WEEKDAY[new Date(d + "T00:00:00").getDay()]);
   return `<div class="dy-nav"><button type="button" class="icon-btn" data-dy-go="-1" aria-label="Предыдущий день">‹</button>
@@ -98,7 +100,7 @@ function dyRecent() {
   const row = d => {
     const x = days[d];
     const facs = [x.sleep ? `сон ${DY_SLEEP.find(([k]) => k === x.sleep)?.[1] || x.sleep + " ч"}` : "", ...dyFactors().filter(([k]) => x.f?.[k]).map(([, n]) => n.toLowerCase())].filter(Boolean).join(", ");
-    const hard = Object.entries(x.sy || {}).filter(([, v]) => v >= 2).map(([id]) => state.symptoms[id]?.name).filter(Boolean);
+    const hard = Object.keys(x.sy || {}).filter(id => syDayV(d, id) >= 4).map(id => state.symptoms[id]?.name).filter(Boolean);
     const sub = [facs, hard.length ? `сильнее: ${hard.join(", ")}` : "", x.note ? x.note.split("\n")[0] : ""].filter(Boolean).join(" · ");
     return `<button type="button" class="dy-row" data-dy-day="${d}"><i class="dy-dot${x.mood ? " m" + x.mood : ""}"></i>
       <span class="dy-rmain"><b>${fmtDate(d)}${x.mood ? ` · ${esc(DY_MOOD_NAME[x.mood])}` : ""}</b>${sub ? `<small>${esc(sub)}</small>` : ""}</span></button>`;
@@ -112,7 +114,7 @@ function dyRecent() {
 function dyLinks() {
   const days = state.days || {}, dates = Object.keys(days).filter(d => dyHas(days[d])).sort();
   const outs = [{ name: "Самочувствие", mood: true, scale: 4, get: d => days[d]?.mood || null }];
-  syList().filter(s => !syPast(s)).forEach(s => { const by = syDays(s); outs.push({ name: s.name, id: s.id, scale: 3, get: d => dyVal(s, d, by) }); });
+  syList().filter(s => !syPast(s)).forEach(s => { const by = syDays(s); outs.push({ name: s.name, id: s.id, scale: 10, get: d => dyVal(s, d, by) }); });
   const facs = [["sleep", "", "сон 6 часов и меньше", 0], ["sq", "", "плохой сон", 0], ["wk", "", "просыпался ночью 2 раза и больше", 0], ["nreflux", "", "ночью будила изжога", 0], ["jaw", "", "утром сжата челюсть", 0], ...dyFactors()];
   const fv = (d, id) => {
     const x = days[d]; if (!x) return null;
@@ -151,7 +153,7 @@ function dyGrid() {
   for (const s of syList().filter(x => !syPast(x)).sort(syOrder)) {
     const by = syDays(s), vals = days.map(d => dyVal(s, d, by));
     if (!vals.some(v => v != null)) continue;
-    rows.push({ id: s.id, name: s.name, cells: vals.map((v, i) => cell(v == null ? "" : v ? "s" + v : "s0", days[i], v == null ? "" : v ? SY_SEV_NAME[v].toLowerCase() : "нет")) });
+    rows.push({ id: s.id, name: s.name, cells: vals.map((v, i) => cell(v == null ? "" : "s" + syB(v), days[i], v == null ? "" : v ? syTen(v) : "нет")) });
   }
   if (!rows.length) return "";
   return `<section class="card sy-diary" aria-label="Четыре недели">
@@ -173,7 +175,7 @@ function dyLinksTab() {
     const what = r.o.mood ? `самочувствие ${r.diff > 0 ? "лучше" : "хуже"}` : `«${esc(r.o.name)}» ${r.diff > 0 ? "сильнее" : "слабее"}`;
     return `<div class="dy-link${worse ? " worse" : ""}"><div class="dy-lt"><b>${esc(dyCap(r.phrase))}</b> → ${what}${r.lag ? " на следующий день" : ""}</div>
       <div class="dy-lbar"><i style="width:${Math.min(100, Math.round(r.w * 250))}%"></i></div>
-      <small>${r.t >= 3.5 ? "Чёткая связь" : "Есть связь"} · в среднем ${dyNum(r.a)} против ${dyNum(r.b)} ${r.o.mood ? "из 5" : "по шкале 0–3"} · дней с этим ${r.na}, без — ${r.nb}</small></div>`;
+      <small>${r.t >= 3.5 ? "Чёткая связь" : "Есть связь"} · в среднем ${dyNum(r.a)} против ${dyNum(r.b)} ${r.o.mood ? "из 5" : "из 10"} · дней с этим ${r.na}, без — ${r.nb}</small></div>`;
   };
   return `<section class="card dy-links"><h3>Что связано с самочувствием</h3>
       <p>По ${n} ${plural(n, "записанному дню", "записанным дням", "записанным дням")}${n < DY_GOAL ? " — пока предварительно" : ""}: в какие дни становится лучше или хуже.</p>

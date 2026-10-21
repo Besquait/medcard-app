@@ -2923,3 +2923,44 @@ div.cl-row:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px
   .dv-hx { grid-template-columns: 36px minmax(0, 1fr); }
   .dv-hx .hx-epmeds { grid-column: 2; justify-content: flex-start; }
 }
+
+/* complaint strength 0–10: one compact row, a green → amber → red ramp; the chosen score is filled,
+   yesterday's has a faint dot. Words on hover (title). On phones the row takes the full width under the name. */
+.sy-vas { --g: 4px; display: grid; grid-template-columns: repeat(11, minmax(0, 1fr)); gap: var(--g); width: 100%; }
+.sy-vas.f1 { grid-template-columns: repeat(10, minmax(0, 1fr)); }
+.sy-vas button { --c: var(--ok); position: relative; min-width: 0; min-height: 40px; padding: 0; border: 1px solid var(--line); border-radius: 10px; background: var(--card); font: 600 15px var(--font); font-variant-numeric: tabular-nums; color: var(--muted); cursor: pointer; overflow: hidden; transition: background-color .12s, border-color .12s, color .12s; }
+.sy-vas button::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: var(--c); opacity: .55; }
+.sy-vas button:hover { color: var(--ink); border-color: var(--c); background: color-mix(in srgb, var(--c) 12%, var(--card)); }
+.sy-vas button:focus-visible { outline: 2px solid var(--c); outline-offset: 1px; }
+.sy-vas button[aria-pressed="true"] { background: var(--c); border-color: var(--c); color: #fff; font-weight: 750; }
+@media (prefers-color-scheme: dark) { .sy-vas button[aria-pressed="true"] { color: color-mix(in srgb, var(--c) 22%, #000); } }
+.sy-vas button[aria-pressed="true"]::after { opacity: 0; }
+.sy-vas button.prev::before { content: ""; position: absolute; top: 4px; left: 50%; width: 5px; height: 5px; margin-left: -2.5px; border-radius: 50%; background: var(--faint); opacity: .8; }
+.sy-vas .v0 { --c: var(--ok); }
+.sy-vas .v1 { --c: color-mix(in srgb, var(--ok) 72%, var(--edge)); }
+.sy-vas .v2 { --c: color-mix(in srgb, var(--ok) 48%, var(--edge)); }
+.sy-vas .v3 { --c: color-mix(in srgb, var(--ok) 24%, var(--edge)); }
+.sy-vas .v4 { --c: var(--edge); }
+.sy-vas .v5 { --c: color-mix(in srgb, var(--edge) 82%, var(--high)); }
+.sy-vas .v6 { --c: color-mix(in srgb, var(--edge) 64%, var(--high)); }
+.sy-vas .v7 { --c: color-mix(in srgb, var(--edge) 42%, var(--high)); }
+.sy-vas .v8 { --c: color-mix(in srgb, var(--edge) 24%, var(--high)); }
+.sy-vas .v9 { --c: color-mix(in srgb, var(--edge) 10%, var(--high)); }
+.sy-vas .v10 { --c: var(--high); }
+.cl-syr .sy-vas, .dy-sy .sy-vas { max-width: 470px; justify-self: end; }
+.cl-syr { grid-template-columns: minmax(0, 1fr) minmax(0, 470px); }
+.sy-logrow .sy-vas { flex: 1 1 340px; }
+.sy-form .sy-vas, .cl-dlg .sy-vas { max-width: 480px; }
+@media (max-width: 720px) {
+  .sy-vas { --g: 3px; }
+  .sy-vas button { min-height: 42px; border-radius: 8px; font-size: 14px; }
+  .cl-syr { grid-template-columns: minmax(0, 1fr); gap: 8px; padding: 4px 0 8px; }
+  .cl-syr .sy-vas, .dy-sy .sy-vas { max-width: none; justify-self: stretch; }
+  .sy-logrow .sy-vas { flex-basis: 100%; }
+  /* five labelled dots (sleep quality, overall state, headache mood): two rows, 2 + 3 (the bad ones on top), dot beside a whole word */
+  .seg2.dots { grid-auto-flow: row; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 4px; }
+  .seg2.dots button { grid-column: span 2; flex-direction: row; gap: 6px; min-height: 44px; padding: 6px 3px; font-size: 14px; line-height: 1.2; white-space: nowrap; }
+  .seg2.dots button:nth-child(-n+2) { grid-column: span 3; }
+  .seg2.dots.big button { min-height: 48px; font-size: 14px; }
+  .seg2 button { padding-left: 3px; padding-right: 3px; }
+}

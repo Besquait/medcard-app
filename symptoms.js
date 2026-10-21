@@ -18,6 +18,46 @@ const SY_PATTERNS = [
 const SY_PATTERN = Object.fromEntries(SY_PATTERNS.map(([k, n]) => [k, n]));
 const SY_SEV = [[1, "Слабо"], [2, "Заметно"], [3, "Сильно"]];
 const SY_SEV_NAME = Object.fromEntries(SY_SEV);
+// Strength is a 0–10 score. Older records hold a 0–3 word (day.sy, entry.sev); it reads as 0/2/5/8, and every
+// new score keeps its word next to it (the bucket: 0 нет, 1–3 слабо, 4–6 заметно, 7–10 сильно).
+//   day rating: day.syv[id] = 0..10 beside day.sy[id] = bucket; log entry: { v: 0..10, sev: bucket }
+const SY_OLD = [0, 2, 5, 8];
+const SY_WORD = ["нет", "слабо", "заметно", "сильно"];
+const SY_HINT = ["не беспокоило", "слабо: заметно, но не мешает", "заметно: мешает делам или сну", "сильно: пришлось что-то делать или принять средство"];
+const syB = v => { if (v == null || isNaN(v)) return null; const r = Math.round(v); return r <= 0 ? 0 : r <= 3 ? 1 : r <= 6 ? 2 : 3; };
+const syWord = v => SY_WORD[syB(v)] || "";
+// "5/10"; an average keeps one decimal: "4,2/10"
+const syTen = v => `${Number.isInteger(v) ? v : String(Math.round(v * 10) / 10).replace(".", ",")}/10`;
+// one log entry: a headache episode by its worst check-in, a new entry by its score, an old one by its word; unrated → null
+const syEV = e => !e ? null : e.hx ? (e.hx.pts?.length ? Math.max(...e.hx.pts.map(p => +p.v || 0)) : +e.hx.vas || null)
+  : e.v != null && e.v !== "" ? +e.v : e.sev >= 1 ? SY_OLD[Math.min(3, Math.round(e.sev))] : null;
+// the day's own rating («Итог дня»): the score while it agrees with the word beside it, else the word mapped
+function syDayV(d, id) {
+  const x = state.days?.[d], w = x?.sy?.[id]; if (w == null) return null;
+  const v = x.syv?.[id];
+  return v != null && syB(v) === syB(SY_OLD[w] ?? w) ? +v : SY_OLD[w] ?? null;
+}
+// write or clear a day rating; the 0–3 word goes along so older readers keep working
+function syDaySet(d, id, v) {
+  if (v == null) {
+    const x = state.days?.[d]; if (!x) return;
+    if (x.sy) { delete x.sy[id]; if (!Object.keys(x.sy).length) delete x.sy; }
+    if (x.syv) { delete x.syv[id]; if (!Object.keys(x.syv).length) delete x.syv; }
+    dyTidy(d); return;
+  }
+  const x = dyDay(d); (x.sy ||= {})[id] = syB(v); (x.syv ||= {})[id] = +v;
+}
+// the strength set in the complaint's form: the score, else the old word
+const syFormV = s => s.v != null && s.v !== "" ? +s.v : s.sev >= 1 ? SY_OLD[Math.min(3, s.sev)] : 0;
+// days rated in «Итог дня» for one complaint: [[date, 0..10]]
+const syRated = s => { const id = syIdOf(s); return id ? Object.keys(state.days || {}).filter(d => state.days[d]?.sy?.[id] != null).map(d => [d, syDayV(d, id)]) : []; };
+const syIdOf = s => s?.id ?? Object.keys(state.symptoms || {}).find(k => state.symptoms[k] === s);
+// a 0–10 row: 11 buttons on a green → amber → red ramp, words on hover; yesterday's score gets a faint mark.
+// from: 1 for an episode, where "0" means nothing. A tap on the chosen one clears it (handled by the caller).
+function syScale(attr, key, val, { prev = null, from = 0, label = "", cls = "" } = {}) {
+  const vs = Array.from({ length: 11 - from }, (_, i) => i + from);
+  return `<div class="sy-vas${from ? " f1" : ""}${cls ? " " + cls : ""}" role="group"${label ? ` aria-label="${esc(label)}"` : ""}>${vs.map(v => `<button type="button" class="v${v}${prev === v && val !== v ? " prev" : ""}" ${attr}="${key}${v}" aria-pressed="${val === v}" title="${v} — ${SY_HINT[syB(v)]}${prev === v ? " · вчера было так" : ""}">${v}</button>`).join("")}</div>`;
+}
 // episode length in days; 0 — a few hours
 const SY_DUR = [[0, "Несколько часов"], [1, "День"], [2, "2 дня"], [3, "3 дня и дольше"]];
 const SY_EFF = [["yes", "Помогает"], ["part", "Немного"], ["no", "Не помогает"]];
@@ -51,7 +91,8 @@ const SY_ANAM = [
 const addDaysISO = (iso, n) => { const d = new Date(iso + "T00:00:00"); d.setDate(d.getDate() + n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
 const syList = () => Object.entries(state.symptoms || {}).map(([id, s]) => ({ id, ...s }));
 const syLog = s => [...(s.log || [])].sort((a, b) => (a.d || "").localeCompare(b.d || "") || (a.t || 0) - (b.t || 0));
-const syLast = s => { const l = syLog(s); return l.length ? l[l.length - 1].d : ""; };
+// the last day it bothered: a log entry or a day rated above 0 in «Итог дня»
+const syLast = s => { const l = syLog(s), a = l.length ? l[l.length - 1].d : "", b = syRated(s).filter(([, v]) => v > 0).map(([d]) => d).sort().pop() || ""; return a > b ? a : b; };
 const syAgoDays = s => { const d = syLast(s); return d ? daysBetween(d, todayISO()) : null; };
 const syPreset = name => SY_PRESETS.find(p => norm(p.name) === norm(name));
 // complaints written in own words get their organ from the words: stems matched at the start of a word,
@@ -83,8 +124,8 @@ const syAnamHas = () => SY_ANAM.some(([k]) => (syAnam()[k] || "").trim());
 // A recurring one is never hidden by itself: a forgotten diary must not drop a real complaint from the list.
 const syPast = s => !!s.end || (s.pattern === "once" && (syAgoDays(s) ?? 0) > SY_ONCE_DAYS);
 const syQuiet = s => !s.end && s.pattern === "recur" && (syAgoDays(s) ?? 0) > SY_QUIET_DAYS;
-// severity: the latest rated entry wins, otherwise the one set in the form
-const sySev = s => { const l = syLog(s).filter(e => e.sev); return l.length ? l[l.length - 1].sev : s.sev || 0; };
+// strength now, 0–10: the latest day it was rated (log or «Итог дня»), otherwise the one set in the form
+const sySev = s => { const by = syDays(s), t = todayISO(), d = Object.keys(by).filter(k => by[k] > 0 && k <= t).sort().pop(); return d ? by[d] : syFormV(s); };
 const syOrder = (a, b) => SY_ZONE_ORDER[syZoneOf(a)] - SY_ZONE_ORDER[syZoneOf(b)] || !!b.main - !!a.main || sySev(b) - sySev(a) || a.name.localeCompare(b.name, "ru");
 const syByWeight = (a, b) => sySev(b) - sySev(a) || syOrder(a, b);
 
@@ -112,17 +153,24 @@ function syAgo(d) {
 const syDurText = d => d === 0 ? "несколько часов" : d === 2 ? "2 дня" : d >= 3 ? "3 дня и дольше" : "";
 
 /* ---------- episodes ---------- */
-// day → strength; a multi-day episode covers every day it lasted; an unrated entry is 0.5
+// day → 0–10 strength on the days it bothered: log entries (a multi-day episode covers every day it lasted)
+// merged with the day ratings of «Итог дня»; an unrated entry is -1 (grey), a day rated 0 is left out
 function syDays(s) {
   const by = {};
   (s.log || []).forEach(e => {
     if (!e.d) return;
-    for (let i = 0; i < Math.max(1, e.dur || 0); i++) { const d = addDaysISO(e.d, i); by[d] = Math.max(by[d] || 0, e.sev || 0.5); }
+    const v = syEV(e) ?? -1;
+    for (let i = 0; i < Math.max(1, e.dur || 0); i++) { const d = addDaysISO(e.d, i); by[d] = Math.max(by[d] ?? -1, v); }
   });
+  for (const [d, v] of syRated(s)) if (v > 0) by[d] = Math.max(by[d] ?? -1, v);
   return by;
 }
-const syCls = v => !v ? "" : v < 1 ? "su" : "s" + v;
-const sySevWord = v => SY_SEV_NAME[v] || "отмечено";
+const syCls = v => v == null || v === 0 ? "" : v < 0 ? "su" : "s" + syB(v);
+const sySevWord = v => v == null || v < 0 ? "сила не указана" : v === 0 ? "нет" : syTen(v);
+// the strength as a coloured "5/10"
+const syBadge = v => v > 0 ? `<span class="sy-sev s${syB(v)}" title="${esc(SY_HINT[syB(v)])}">${syTen(v)}</span>` : "";
+// the average strength over the last n days that have a value, or null
+const syAvg = (s, n) => { const by = syDays(s), t = todayISO(), l = Object.keys(by).filter(d => d <= t && daysBetween(d, t) < n && by[d] > 0).map(d => by[d]); return l.length ? l.reduce((a, b) => a + b, 0) / l.length : null; };
 const syCount = (s, days) => (s.log || []).filter(e => e.d && e.d <= todayISO() && daysBetween(e.d, todayISO()) < days).length;
 const syDaysIn = (s, days) => Object.keys(syDays(s)).filter(d => d <= todayISO() && daysBetween(d, todayISO()) < days).length;
 const syDot = sev => `<i class="sy-dot ${syCls(sev)}" aria-hidden="true"></i>`;
@@ -133,14 +181,16 @@ function syShort(s) {
   if (s.pattern === "once") return last ? `разово · ${longDate(last)}` : "разово";
   if (s.pattern === "recur") {
     if (!last) return ["приступами", syAge(s) || (s.start ? syOnset(s) : shortSince)].filter(Boolean).join(" · ");
-    const n = syCount(s, 30);
-    return `приступами · ${n ? `${n} ${plural(n, "раз", "раза", "раз")} за 30 дней` : `последний ${syAgo(last)}`}`;
+    // days it bothered: episodes and days rated in «Итог дня» alike
+    const n = syDaysIn(s, 30);
+    return `приступами · ${n ? `${n} ${plural(n, "день", "дня", "дней")} за 30` : `последний ${syAgo(last)}`}`;
   }
   return ["постоянно", syAge(s) || shortSince].filter(Boolean).join(" · ");
 }
 function syAddEntry(id, e) {
   const s = state.symptoms[id]; if (!s) return;
-  const x = { d: e.d, sev: +e.sev || 0, t: Date.now() };
+  const v = e.v != null && e.v !== "" ? +e.v : null;
+  const x = v != null ? { d: e.d, v, sev: syB(v), t: Date.now() } : { d: e.d, sev: +e.sev || 0, t: Date.now() };
   if (e.dur !== undefined && e.dur !== "") x.dur = +e.dur;
   ["trig", "help", "note"].forEach(k => { if (e[k]) x[k] = e[k]; });
   s.log = [...(s.log || []), x];
@@ -150,13 +200,14 @@ function syAddEntry(id, e) {
   if (x.trig && !(s.trig || []).some(t => norm(t) === norm(x.trig))) s.trig = [...(s.trig || []), x.trig];
   save(); renderAll();
 }
-// check-in tap: none → слабо → заметно → сильно → none. An entry with details is never dropped, it wraps to слабо.
+// check-in tap: none → 2 → 5 → 8 → none. An entry with details is never dropped, it wraps to 2.
 function syTap(id, d) {
   const s = state.symptoms[id]; if (!s) return;
-  const e = (s.log || []).filter(x => x.d === d).pop();
-  if (!e) { syAddEntry(id, { d, sev: 1 }); return; }
-  if ((e.sev || 0) < 3) e.sev = (e.sev || 0) + 1;
-  else if (e.note || e.trig || e.help || (e.dur || 0) > 1) e.sev = 1;
+  const e = (s.log || []).filter(x => x.d === d && !x.hx).pop();
+  if (!e) { syAddEntry(id, { d, v: 2 }); return; }
+  const v = syEV(e) || 0, next = SY_OLD.find(k => k > v);
+  if (next) { e.v = next; e.sev = syB(next); }
+  else if (e.note || e.trig || e.help || (e.dur || 0) > 1) { e.v = 2; e.sev = 1; }
   else s.log.splice(s.log.indexOf(e), 1);
   save(); renderAll();
 }
@@ -191,7 +242,7 @@ function renderSymptoms() {
   const now = all.filter(s => !syPast(s)).sort(syOrder);
   const past = all.filter(syPast).sort((a, b) => (b.end || syLast(b) || "").localeCompare(a.end || syLast(a) || ""));
   const main = now.filter(s => s.main).sort(syByWeight);
-  const strong = now.filter(s => sySev(s) === 3).length;
+  const strong = now.filter(s => sySev(s) >= 7).length;
   const eps = now.reduce((n, s) => n + (s.pattern === "const" ? 0 : syCount(s, 30)), 0);
   const sub = [`${now.length} ${plural(now.length, "жалоба", "жалобы", "жалоб")} сейчас`, strong ? `${strong} ${plural(strong, "сильная", "сильные", "сильных")}` : "",
     eps ? `${eps} ${plural(eps, "приступ", "приступа", "приступов")} за 30 дней` : "", past.length ? `${past.length} прошло` : ""].filter(Boolean).join(" · ");
@@ -218,7 +269,7 @@ function syListPage(now, main, past) {
 }
 const syDayISO = () => addDaysISO(todayISO(), -(ui.syDay || 0));
 // strength of an entry made on that very day; an episode carried over from earlier days is not a check-in
-const syOn = (s, d) => { const e = (s.log || []).filter(x => x.d === d).pop(); return e ? e.sev || 0.5 : 0; };
+const syOn = (s, d) => { const e = (s.log || []).filter(x => x.d === d).pop(); return e ? syEV(e) ?? -1 : 0; };
 function syToday(list) {
   if (!list.length) return "";
   const d = syDayISO();
@@ -261,7 +312,7 @@ function syRow(s, inMain) {
       <b class="st-title">${esc(s.name)}${s.main && !inMain && !past ? `<span class="sy-star" aria-label="главное">★</span>` : ""}</b>
       <span class="sy-when">${esc(meta)}</span>
     </span>
-    <span class="sy-side">${side}${sev ? `<span class="sy-sev s${sev}">${esc(SY_SEV_NAME[sev])}</span>` : ""}</span>
+    <span class="sy-side">${side}${syBadge(sev)}</span>
     <svg class="chev" width="18" height="18" viewBox="0 0 20 20" aria-hidden="true"><path d="M7 4l6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
   </div>`;
 }
@@ -350,17 +401,21 @@ function syTestsTab(s, t) {
 }
 
 function openSymptom(id) {
-  const s = state.symptoms?.[id]; if (!s) return;
-  const past = syPast(s), quiet = syQuiet(s), log = syLog(s).reverse(), sev = sySev(s), last = syLast(s);
+  const s0 = state.symptoms?.[id]; if (!s0) return;
+  const s = { id, ...s0 }, past = syPast(s), quiet = syQuiet(s), sev = sySev(s), last = syLast(s);
+  // the log plus the days rated only in «Итог дня», newest first
+  const logged = new Set((s.log || []).map(e => e.d));
+  const log = [...syLog(s), ...syRated(s).filter(([d, v]) => v > 0 && !logged.has(d)).map(([d, v]) => ({ d, v, day: true }))]
+    .sort((a, b) => (a.d || "").localeCompare(b.d || "") || (a.t || 0) - (b.t || 0)).reverse();
   const shown = ui.syAllLog ? log : log.slice(0, 8);
   const tried = s.tried || [], trig = s.trig || [];
   const onset = syOnsetFull(s).join(" · ");
-  const today = todayISO(), todayE = (s.log || []).filter(e => e.d === today).pop();
+  const today = todayISO(), todayV = dyVal(s, today), yV = dyVal(s, addDaysISO(today, -1));
   const tests = syTests(s);
   ui.syOpen = id;
   const tab = ["over", "log", "care", "labs"].includes(ui.syTab) ? ui.syTab : "over";
   const status = past ? `<span class="st-status"><i></i>Прошло</span>` : quiet ? `<span class="st-status watch"><i></i>Давно не было</span>` : `<span class="st-status find"><i></i>Беспокоит</span>`;
-  const entry = e => [syDurText(e.dur), e.note, e.trig && `спровоцировало: ${e.trig}`, e.help && `помогло: ${e.help}`].filter(Boolean).join(" · ");
+  const entry = e => [e.day ? "итог дня" : "", syDurText(e.dur), e.note, e.trig && `спровоцировало: ${e.trig}`, e.help && `помогло: ${e.help}`].filter(Boolean).join(" · ");
   const heatCap = s.pattern === "const" ? "16 недель: столбец — неделя, сверху понедельник. Цвет — как было в этот день." : "16 недель: столбец — неделя, сверху понедельник. Цвет — сила, серый — сила не указана.";
   const fields = `<input class="input" name="trig" placeholder="Что спровоцировало" list="syTrigList" autocomplete="off">
       <input class="input" name="help" placeholder="Что помогло" autocomplete="off">
@@ -368,8 +423,8 @@ function openSymptom(id) {
       <datalist id="syTrigList">${trig.map(t => `<option value="${esc(t)}">`).join("")}</datalist>`;
   const logForm = open => `<form class="sy-logf" data-sy-logf>
       <div class="sy-logrow">${dfield('name="d"', today)}
-        <div class="sy-sevs">${SY_SEV.map(([k, n]) => `<button type="button" class="sy-sevb s${k}" data-sy-lsev="${k}" aria-pressed="${k === (sev || 2)}">${n}</button>`).join("")}</div>
-        <input type="hidden" name="sev" value="${sev || 2}"></div>
+        ${syScale("data-sy-lsev", "", Math.round(sev) || 5, { from: 1, label: "Сила", cls: "sy-lvas" })}
+        <input type="hidden" name="v" value="${Math.round(sev) || 5}"></div>
       ${s.pattern !== "const" ? `<div class="tchips sy-durs" role="group" aria-label="Сколько длилось">${SY_DUR.map(([k, n]) => `<button type="button" class="tchip" data-sy-dur="${k}" aria-pressed="${k === 1}">${n}</button>`).join("")}</div><input type="hidden" name="dur" value="1">` : ""}
       ${open ? fields : `<details class="sy-moref"><summary>Подробности: что спровоцировало, что помогло</summary>${fields}</details>`}
       <div><button type="submit" class="btn primary">Записать</button></div>
@@ -380,14 +435,14 @@ function openSymptom(id) {
     // what it is and the one thing done most often: today's mark or a new episode
     over: () => `${s.note ? `<section class="st-sec"><h4>Как проявляется</h4>${richText(s.note)}</section>` : ""}
       ${s.pattern === "const" ? `<section class="st-sec"><h4>Как сегодня</h4>
-        <div class="sy-sevs sy-now" role="group" aria-label="Как сегодня">${SY_SEV.map(([k, n]) => `<button type="button" class="sy-sevb s${k}" data-sy-today="${k}" aria-pressed="${todayE?.sev === k}">${n}</button>`).join("")}</div>
-        <p class="muted sy-hint">${todayE ? "Сегодня отмечено. Нажми ту же кнопку ещё раз, чтобы снять." : "Одно нажатие — и день отмечен. По таким отметкам видно, лучше становится или хуже."}</p></section>`
+        ${syScale("data-sy-today", "", todayV, { prev: yV, label: "Как сегодня, от 0 до 10", cls: "sy-now" })}
+        <p class="muted sy-hint">${todayV != null ? `Сегодня ${syTen(todayV)}. Нажми ту же цифру ещё раз, чтобы снять.` : "0 — не беспокоит, 10 — хуже некуда."}</p></section>`
         : `<section class="st-sec"><h4>${s.pattern === "once" ? "Было ещё раз?" : "Отметить приступ"}</h4>${logForm(false)}</section>`}`,
     log: () => `${s.pattern === "recur" && log.length ? `<section class="st-sec"><h4>Как часто</h4>
         <div class="sy-stats"><div><b class="num">${syCount(s, 30)}</b><span>приступов за 30 дней</span></div><div><b class="num">${syDaysIn(s, 30)}</b><span>дней с симптомом за 30</span></div><div><b>${esc(syAgo(last))}</b><span>последний раз</span></div></div></section>` : ""}
       ${log.length ? `<section class="st-sec">${syHeat(s)}<p class="muted sy-heatcap">${heatCap}</p></section>` : ""}
       ${s.pattern === "const" ? `<details class="sy-moref sy-other"><summary>Отметить другой день или с заметкой</summary>${logForm(true)}</details>` : ""}
-      ${log.length ? `<section class="st-sec"><h4>${s.pattern === "const" ? "Отметки" : "Когда было"} · ${log.length}</h4><div class="sy-log">${shown.map(e => `<div class="sy-lrow">${syDot(e.sev)}<span class="num">${fmtDate(e.d)}</span><span class="sy-lnote">${e.sev ? `<b class="sy-sev s${e.sev}">${esc(SY_SEV_NAME[e.sev])}</b>${entry(e) ? " · " : ""}` : ""}${esc(entry(e))}</span><button type="button" class="icon-btn sm" data-sy-ldel="${esc(e.d)}|${esc(e.t || "")}" aria-label="Удалить запись">×</button></div>`).join("")}</div>
+      ${log.length ? `<section class="st-sec"><h4>${s.pattern === "const" ? "Отметки" : "Когда было"} · ${log.length}</h4><div class="sy-log">${shown.map(e => `<div class="sy-lrow">${syDot(syEV(e) ?? -1)}<span class="num">${fmtDate(e.d)}</span><span class="sy-lnote">${syEV(e) ? `<b class="sy-sev s${syB(syEV(e))}">${syTen(syEV(e))}</b>${entry(e) ? " · " : ""}` : ""}${esc(entry(e))}</span><button type="button" class="icon-btn sm" ${e.day ? `data-sy-ddel="${esc(e.d)}"` : `data-sy-ldel="${esc(e.d)}|${esc(e.t || "")}"`} aria-label="Удалить запись">×</button></div>`).join("")}</div>
         ${log.length > shown.length ? `<button type="button" class="btn sm ghost" data-sy-alllog>Показать все ${log.length}</button>` : ""}</section>`
         : `<p class="muted sy-hint">${s.pattern === "const" ? "Отметок пока нет. Отмечай на вкладке «Обзор», как сегодня, — здесь появится картина по дням." : "Приступов пока не отмечено."}</p>`}`,
     care: () => `${tpForSymptom(id).length ? `<section class="st-sec"><h4>Схемы лечения</h4><div class="sy-mks-list">${tpForSymptom(id).map(p => `<div class="sy-mkr"><button type="button" class="sy-mk" data-sy-plan="${esc(p.id)}">
@@ -411,7 +466,7 @@ function openSymptom(id) {
   openX(`<div class="dlg-head"><div><div class="info-group">${esc(SY_ZONE[syZoneOf(s)])}</div><h3>${esc(s.name)}</h3>
       <div class="st-meta">${esc([SY_PATTERN[s.pattern], onset].filter(Boolean).join(" · "))}</div></div>
       <button type="button" class="icon-btn" data-xclose aria-label="Закрыть">×</button></div>
-    <div class="st-tags">${status}${sev ? `<span class="sy-sev s${sev}">${esc(SY_SEV_NAME[sev])}</span>` : ""}
+    <div class="st-tags">${status}${syBadge(sev)}
       <button type="button" class="sy-mainb" data-sy-main aria-pressed="${!!s.main}">${s.main ? "★ Главное" : "☆ Главное"}</button></div>
     ${quiet ? `<div class="sy-ask"><span>Последний раз отмечено ${esc(longDate(last))}. Прошло?</span><button type="button" class="btn sm" data-sy-end="${esc(id)}">Да, прошло</button></div>` : ""}
     <div class="sy-tabs" role="tablist">${tabs.map(([k, n, c]) => `<button type="button" role="tab" data-sy-tab="${k}" aria-selected="${tab === k}">${n}${c ? `<span class="num">${c}</span>` : ""}</button>`).join("")}</div>
@@ -432,11 +487,11 @@ function syReopen() {
 function symptomsReport(from) {
   const l = syList().filter(s => !syPast(s) || (s.end || syLast(s) || "") >= from);
   if (!l.length) return "";
-  const freq = s => s.pattern === "const" ? "постоянно" : s.pattern === "once" ? "разово" : syLast(s) ? `приступами: ${syCount(s, 30)} за 30 дней, ${syCount(s, 90)} за 90; последний ${fmtDate(syLast(s))}` : "приступами";
+  const freq = s => s.pattern === "const" ? "постоянно" : s.pattern === "once" ? "разово" : syLast(s) ? `приступами: ${syDaysIn(s, 30)} ${plural(syDaysIn(s, 30), "день", "дня", "дней")} за 30, ${syDaysIn(s, 90)} за 90; последний ${fmtDate(syLast(s))}` : "приступами";
   const tried = s => (s.tried || []).map(x => `${esc(x.name)}${x.eff ? ` — ${esc(SY_EFF_NAME[x.eff].toLowerCase())}` : ""}`).join("<br>");
   const row = (s, zone) => `<tr>
-    <td><b>${esc(s.name)}</b>${sySev(s) ? ` <small>${esc(SY_SEV_NAME[sySev(s)].toLowerCase())}</small>` : ""}${syPast(s) ? ` <small>прошло${s.end ? " " + fmtDate(s.end) : ""}</small>` : ""}${zone ? `<br><small>${esc(SY_ZONE[syZoneOf(s)])}</small>` : ""}</td>
-    <td>${esc(syOnsetFull(s).join(", ")) || "—"}</td><td>${esc(freq(s))}</td><td>${tried(s) || "—"}</td>
+    <td><b>${esc(s.name)}</b>${sySev(s) > 0 ? ` <small>${syTen(sySev(s))}</small>` : ""}${syPast(s) ? ` <small>прошло${s.end ? " " + fmtDate(s.end) : ""}</small>` : ""}${zone ? `<br><small>${esc(SY_ZONE[syZoneOf(s)])}</small>` : ""}</td>
+    <td>${esc(syOnsetFull(s).join(", ")) || "—"}</td><td>${esc(freq(s))}${syAvg(s, 30) != null ? `<br><small>средняя сила за 30 дней ${syTen(syAvg(s, 30))}</small>` : ""}</td><td>${tried(s) || "—"}</td>
     <td>${esc(s.note || "")}${(s.trig || []).length ? `<br><small>Провоцирует: ${esc(s.trig.join(", "))}</small>` : ""}</td></tr>`;
   const table = body => `<table class="rep-t rep-sy"><thead><tr><th>Жалоба</th><th>С какого времени</th><th>Как часто</th><th>Что пробовал</th><th>Подробно</th></tr></thead><tbody>${body}</tbody></table>`;
   const main = l.filter(s => s.main && !syPast(s)).sort(syByWeight);
@@ -452,7 +507,7 @@ function symptomsReport(from) {
 const syF = n => $(`[data-sy-form] [name=${n}]`);
 function openSymptomForm(id, presetName) {
   const p = presetName ? syPreset(presetName) : null, today = todayISO();
-  const s = id ? state.symptoms[id] : { name: presetName || "", zone: p?.zone || "", pattern: p?.pattern || "recur", sev: 2, start: today.slice(0, 7), since: "", note: "", sit: p?.sit || "" };
+  const s = id ? state.symptoms[id] : { name: presetName || "", zone: p?.zone || "", pattern: p?.pattern || "recur", v: 5, start: today.slice(0, 7), since: "", note: "", sit: p?.sit || "" };
   ui.syEdit = { id };
   const [sy, sm] = (s.start || "").split("-"), y0 = +today.slice(0, 4);
   const years = [["", "Год — не помню"], ...Array.from({ length: 61 }, (_, i) => [String(y0 - i), String(y0 - i)])];
@@ -463,8 +518,8 @@ function openSymptomForm(id, presetName) {
       <div class="fld"><textarea class="input sy-name sy-grow" name="name" rows="1" placeholder="Например: болит голова" autocomplete="off" enterkeyhint="done" aria-label="Что беспокоит">${esc(s.name)}</textarea></div>
       <div class="fld"><span>Как часто</span><input type="hidden" name="pattern" value="${esc(s.pattern)}">
         <div class="wz-status sy-pats">${SY_PATTERNS.map(([k, n, h]) => `<button type="button" class="wz-st sy-pat" data-sy-pat="${k}" aria-pressed="${s.pattern === k}"><b>${n}</b><small>${h}</small></button>`).join("")}</div></div>
-      <div class="fld"><span>Насколько сильно</span><input type="hidden" name="sev" value="${s.sev || ""}">
-        <div class="sy-sevs">${SY_SEV.map(([k, n]) => `<button type="button" class="sy-sevb s${k}" data-sy-sev="${k}" aria-pressed="${s.sev === k}">${n}</button>`).join("")}</div></div>
+      <div class="fld"><span>Насколько сильно, от 1 до 10</span><input type="hidden" name="v" value="${syFormV(s) || ""}">
+        ${syScale("data-sy-sev", "", syFormV(s) || null, { from: 1, label: "Насколько сильно" })}</div>
       <label class="sy-mainf"><input type="checkbox" name="main"${s.main ? " checked" : ""}><span><b>Главное</b><small>Беспокоит сильнее всего: будет наверху и первым в сводке для врача</small></span></label>
       <div class="fld"><span>С какого времени</span>
         <div class="sy-since">${csel('name="sy"', years, sy || "")}${csel('name="sm"', months, sm || "")}</div>
@@ -499,10 +554,10 @@ function saveSymptom() {
   if (start.length === 7 && (prev.start || "").length === 10 && prev.start.startsWith(start)) start = prev.start;
   // the same complaint again (not closed) is a new episode, not a second card
   const same = !ed.id && syList().find(s => norm(s.name) === norm(name) && !s.end);
-  if (same) { syAddEntry(same.id, { d: v.first || todayISO(), sev: v.sev, note: v.note.trim() }); openSymptom(same.id); toast(`Записано в «${same.name}»`); return; }
+  if (same) { syAddEntry(same.id, { d: v.first || todayISO(), v: v.v || 5, note: v.note.trim() }); openSymptom(same.id); toast(`Записано в «${same.name}»`); return; }
   const id = ed.id || newId("sy");
-  const sym = { ...prev, name, zone, zoneHand: v.zonePick === "other", main: !!v.main, pattern: v.pattern, sev: +v.sev || 0, start, since: v.since.trim(), note: v.note.trim(), sit: v.sit || p?.sit || prev.sit || "", end: prev.end || "" };
-  if (!ed.id) { sym.log = v.pattern !== "const" && v.first ? [{ d: v.first, sev: +v.sev || 0, t: Date.now() }] : []; sym.tried = []; sym.trig = []; }
+  const sym = { ...prev, name, zone, zoneHand: v.zonePick === "other", main: !!v.main, pattern: v.pattern, v: +v.v || 0, sev: +v.v ? syB(+v.v) : 0, start, since: v.since.trim(), note: v.note.trim(), sit: v.sit || p?.sit || prev.sit || "", end: prev.end || "" };
+  if (!ed.id) { sym.log = v.pattern !== "const" && v.first ? [+v.v ? { d: v.first, v: +v.v, sev: syB(+v.v), t: Date.now() } : { d: v.first, sev: 0, t: Date.now() }] : []; sym.tried = []; sym.trig = []; }
   state.symptoms ||= {}; state.symptoms[id] = sym;
   save(); renderAll(); openSymptom(id);
   toast(ed.id ? "Симптом сохранён" : `Записано: ${name}`);
@@ -556,7 +611,7 @@ function initSymptoms() {
     const tdy = t.closest("[data-sy-today]");
     if (tdy) {
       // the same button again clears today's mark, unless it carries a note
-      const k = +tdy.dataset.syToday, d = todayISO(), now = (cur().log || []).filter(x => x.d === d).pop()?.sev;
+      const k = +tdy.dataset.syToday, d = todayISO(), now = dyVal({ id: ui.syOpen, ...cur() }, d);
       dyMark(ui.syOpen, d, now === k ? null : k);
       reopen(); return;
     }
@@ -569,8 +624,10 @@ function initSymptoms() {
     }
     const ld = t.closest("[data-sy-ldel]");
     if (ld) { const [d, tt] = ld.dataset.syLdel.split("|"), s = cur(); const i = s.log.findIndex(x => x.d === d && String(x.t || "") === tt); if (i >= 0) s.log.splice(i, 1); reopen(); return; }
+    // a day rated only in «Итог дня»: removing the row clears that rating
+    const dd = t.closest("[data-sy-ddel]"); if (dd) { syDaySet(dd.dataset.syDdel, ui.syOpen, null); reopen(); return; }
     const ls = t.closest("[data-sy-lsev]");
-    if (ls) { $("[data-sy-logf] [name=sev]").value = ls.dataset.syLsev; $$("[data-sy-lsev]").forEach(b => b.setAttribute("aria-pressed", b === ls)); return; }
+    if (ls) { $("[data-sy-logf] [name=v]").value = ls.dataset.syLsev; $$("[data-sy-lsev]").forEach(b => b.setAttribute("aria-pressed", b === ls)); return; }
     const du = t.closest("[data-sy-dur]");
     if (du) { $("[data-sy-logf] [name=dur]").value = du.dataset.syDur; $$("[data-sy-dur]").forEach(b => b.setAttribute("aria-pressed", b === du)); return; }
     const ef = t.closest("[data-sy-eff]");
@@ -585,7 +642,7 @@ function initSymptoms() {
     if (!$("[data-sy-form]")) return;
     const pt = t.closest("[data-sy-pat]"); if (pt) { sySetPattern(pt.dataset.syPat); return; }
     const sv = t.closest("[data-sy-sev]");
-    if (sv) { const on = syF("sev").value !== sv.dataset.sySev; syF("sev").value = on ? sv.dataset.sySev : ""; $$("[data-sy-sev]").forEach(b => b.setAttribute("aria-pressed", on && b === sv)); return; }
+    if (sv) { const on = syF("v").value !== sv.dataset.sySev; syF("v").value = on ? sv.dataset.sySev : ""; $$("[data-sy-sev]").forEach(b => b.setAttribute("aria-pressed", on && b === sv)); return; }
   });
   // the test plan of the open complaint, picked from the list on the tests tab
   xd.addEventListener("change", e => {
@@ -621,7 +678,7 @@ function initSymptoms() {
     if (f.matches("[data-sy-logf]")) {
       e.preventDefault();
       if (!v.d) { toast("Выбери дату"); return; }
-      syAddEntry(ui.syOpen, { d: v.d, sev: v.sev, dur: v.dur, trig: v.trig?.trim(), help: v.help?.trim(), note: v.note?.trim() });
+      syAddEntry(ui.syOpen, { d: v.d, v: v.v || 5, dur: v.dur, trig: v.trig?.trim(), help: v.help?.trim(), note: v.note?.trim() });
       syReopen(); toast(`${s.name}: записано за ${fmtDate(v.d)}`);
       return;
     }

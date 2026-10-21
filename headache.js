@@ -255,8 +255,8 @@ function hxAddPt(x, v) {
 // a complaint's mark on a day follows the strongest record left on that day, and goes when none is left
 function hxMark(id, d) {
   const s = state.symptoms[id], l = (s.log || []).filter(e => e.d === d);
-  if (l.length) (dyDay(d).sy ||= {})[id] = Math.max(...l.map(e => e.sev || 1));
-  else if (state.days?.[d]?.sy) { delete state.days[d].sy[id]; dyTidy(d); }
+  if (l.length) syDaySet(d, id, Math.max(...l.map(e => syEV(e) ?? 2)));
+  else syDaySet(d, id, null);
 }
 const hxEndMsg = (d, x) => { const ed = hxEndD(x, d), dur = hxDur({ d, hx: x }); return `Прошла ${ed !== todayISO() ? hxDay(ed) + " " : ""}в ${x.end}${dur != null ? ` · длилась ${hxLen(dur)}` : ""}`; };
 
@@ -273,7 +273,7 @@ function hxSave() {
   if (!pts.length) delete hx.pts;
   if (!hx.imp) delete hx.imp;
   if (!hx.mood) delete hx.mood;
-  const entry = { d, sev: hxSev(vas), t: Date.now(), hx };
+  const entry = { d, v: vas, sev: hxSev(vas), t: Date.now(), hx };
   if (note.trim()) entry.note = note.trim();
   s.log = [...(s.log || [])];
   const old = i != null ? s.log[i] : null;

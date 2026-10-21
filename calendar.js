@@ -252,8 +252,8 @@ function clMedsBlock(d) {
 // quality) plus how rested in the morning and what woke you — reflux, cough and mucus wake people with GERD
 const CL_LAT = [[1, "до 15 мин", "g0"], [2, "15–30 мин", "g1"], [3, "30–60 мин", "g2"], [4, "больше часа", "g3"]];
 const CL_WK = [[0, "ни разу", "g0"], [1, "1 раз", "g1"], [2, "2 раза", "g2"], [3, "3 и больше", "g3"]];
-const CL_SQ = [[1, "Очень плохо"], [2, "Плохо"], [3, "Средне"], [4, "Хорошо"], [5, "Отлично"]];
-const CL_REST = [[1, "Разбитый", "g3"], [2, "Так себе", "g2"], [3, "Отдохнувший", "g0"]];
+const CL_SQ = [[1, "Очень плохо"], [2, "Плохо"], [3, "Нормально"], [4, "Хорошо"], [5, "Отлично"]];
+const CL_REST = [[1, "Разбитый", "g3"], [2, "Нормально", "g1"], [3, "Отдохнувший", "g0"]];
 // on waking: a clenched, tired jaw (night clenching) — with a morning headache worth showing a dentist or doctor
 const CL_AM = [["jaw", "Челюсть сжата, устала"]];
 const CL_WHY = [["reflux", "Изжога, кислота"], ["cough", "Кашель, слизь"], ["dry", "Сухость во рту"], ["toilet", "Туалет"], ["ears", "Шум в ушах"], ["other", "Без причины"]];

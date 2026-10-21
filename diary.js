@@ -5,7 +5,7 @@
 // Loaded before app.js: definitions only; initDiary() wires the UI.
 "use strict";
 
-const DY_MOOD = [[1, "Очень плохо"], [2, "Плохо"], [3, "Так себе"], [4, "Хорошо"], [5, "Отлично"]];
+const DY_MOOD = [[1, "Очень плохо"], [2, "Плохо"], [3, "Нормально"], [4, "Хорошо"], [5, "Отлично"]];
 const DY_MOOD_NAME = Object.fromEntries(DY_MOOD);
 // hours slept the night before; the edge chips mean "or less" and "or more"
 const DY_SLEEP = [[5, "5 ч и меньше"], [6, "6 ч"], [7, "7 ч"], [8, "8 ч и больше"]];

@@ -244,23 +244,24 @@ function clStrip(sel, today, wide) {
     <div class="cl-legend"><span><i class="cl-pill ok"></i>всё принято</span><span><i class="cl-pill part"></i>не всё</span><span><i class="dy-dot m4"></i>самочувствие</span></div>
   </section>`;
 }
+const CL_RMB = "Правая кнопка: время, пропуск, история";
 function clMedsBlock(d) {
   const { sched, prn } = clMeds(d), x = state.days?.[d] || {}, m = x.meds || {};
   if (!sched.length && !prn.length) return `<section class="card cl-card"><h3 class="cl-h3">Лекарства</h3><p class="cl-muted">Нет препаратов из схем</p></section>`;
   const isT = d === todayISO(), now = clNowSlot();
   const groups = CL_SLOTS.map(([k, n]) => ({ k, n, l: sched.filter(it => it.slot === k) })).filter(g => g.l.length);
   const leftOf = g => g.l.filter(it => !clDose(d, it.key));
-  // a taken or skipped dose as a chip: the name and the time; a tap opens the medicine window
+  // a taken or skipped dose as a chip: the name and the time; a click clears the tick
   const chip = (it, cls = "cl-tk") => { const st = clDose(d, it.key), t = clT(m[it.key]);
-    return `<button type="button" class="${cls}${st === "skip" ? " skip" : st ? "" : " todo"}" data-cl-mv="${esc(it.key)}" title="${st === "skip" ? "Пропущено" : st ? (t ? `Принято в ${t}` : "Принято, время не указано") : "Не отмечено"}">${esc(it.g.name)}${st === "skip" ? `<span class="cl-tkt">пропущено</span>` : t ? `<span class="cl-tkt">${t}</span>` : ""}${cls === "cl-tk" ? clCourseTag(it.g, it.id) : ""}</button>`; };
+    return `<button type="button" class="${cls}${st === "skip" ? " skip" : st ? "" : " todo"}" data-cl-mv="${esc(it.key)}" title="${st === "skip" ? "Пропущено" : st ? (t ? `Принято в ${t}` : "Принято, время не указано") : "Не отмечено"}. ${CL_RMB}">${esc(it.g.name)}${st === "skip" ? `<span class="cl-tkt">пропущено</span>` : t ? `<span class="cl-tkt">${t}</span>` : ""}${cls === "cl-tk" ? clCourseTag(it.g, it.id) : ""}</button>`; };
   // today: the current time of day first; when it is done, the next one that still has something left
   let focus = null;
   if (isT) {
     const ahead = groups.filter(g => g.k === "any" || CL_ORDER.indexOf(g.k) >= CL_ORDER.indexOf(now));
     focus = ahead.find(g => g.k === now && leftOf(g).length) || ahead.find(g => g.k !== "any" && leftOf(g).length) || groups.find(g => g.k === now) || null;
   }
-  // the tile: the round tick takes it now, the name opens the medicine window
-  const tile = it => `<div class="cl-tile"><button type="button" class="cl-mn" data-cl-mv="${esc(it.key)}" title="Время, пропуск, история"><b>${esc(it.g.name)}${clCourseTag(it.g, it.id)}</b>${clSub(it.g) ? `<small>${esc(clSub(it.g))}</small>` : ""}</button><button type="button" class="cl-tick" data-cl-med="${esc(it.key)}" aria-label="Принял ${esc(it.g.name)}" title="Принял${isT ? " сейчас" : ""}"></button></div>`;
+  // the tile: a click anywhere on it takes the dose now
+  const tile = it => `<div class="cl-tile" data-cl-med="${esc(it.key)}" data-cl-mv="${esc(it.key)}" title="${CL_RMB}"><div class="cl-mn"><b>${esc(it.g.name)}${clCourseTag(it.g, it.id)}</b>${clSub(it.g) ? `<small>${esc(clSub(it.g))}</small>` : ""}</div><button type="button" class="cl-tick" aria-label="Принял ${esc(it.g.name)}" title="Принял${isT ? " сейчас" : ""}"></button></div>`;
   const body = g => {
     const left = leftOf(g), done = g.l.filter(it => clDose(d, it.key)), sk = done.some(it => !m[it.key]);
     return `${left.length ? `<div class="cl-tiles">${left.map(tile).join("")}</div>` : ""}
@@ -280,7 +281,7 @@ function clMedsBlock(d) {
   };
   const prnRow = prn.length ? `<div class="cl-rowwrap"><div class="cl-row cl-prnrow">${CL_ICON.prn}<span class="cl-rn"><b>По необходимости</b><small>когда нужно</small></span>
       <div class="cl-prns">${prn.map(it => { const l = clPrnList(x, it.id), k = l.length, last = l.filter(Boolean).pop();
-        return `<span class="cl-prn1"><button type="button" class="cl-prnn" data-cl-mv="prn:${esc(it.id)}" title="Приёмы по времени, история">${esc(it.g.name)}${last ? `<span class="cl-tkt">${last}</span>` : ""}</button>${k ? `<button type="button" class="icon-btn sm" data-cl-prn="${esc(it.id)}|-1" aria-label="Убрать приём">−</button><b class="cl-n">${k}</b>` : ""}<button type="button" class="btn sm" data-cl-prn="${esc(it.id)}|1">${k ? "+1" : "Принял"}</button></span>`; }).join("")}</div></div></div>` : "";
+        return `<span class="cl-prn1"><button type="button" class="cl-prnn" data-cl-mv="prn:${esc(it.id)}" title="Правая кнопка: приёмы по времени, история">${esc(it.g.name)}${last ? `<span class="cl-tkt">${last}</span>` : ""}</button>${k ? `<button type="button" class="icon-btn sm" data-cl-prn="${esc(it.id)}|-1" aria-label="Убрать приём">−</button><b class="cl-n">${k}</b>` : ""}<button type="button" class="btn sm" data-cl-prn="${esc(it.id)}|1">${k ? "+1" : "Принял"}</button></span>`; }).join("")}</div></div></div>` : "";
   const left = focus ? leftOf(focus).length : 0;
   return `<h3 class="cl-sec">Лекарства</h3>
     ${focus ? `<section class="card cl-card cl-focus"><div class="cl-slothead">${CL_ICON[focus.k]}<h4>${focus.n}</h4>${focus.k === now ? `<span class="cl-pnow">сейчас</span>` : ""}
@@ -560,11 +561,22 @@ function mvDraw(top) {
 function initCalendar() {
   const page = $("#calendarView");
   const touch = clEdit;
+  let hold, held = false;
   page.addEventListener("click", e => {
     const t = e.target, d = clSel();
     // a day of the month: the screen switches to it
     const dd = t.closest("[data-cl-day]"); if (dd && !dd.disabled) { ui.clDay = dd.dataset.clDay; renderCalendar(); if (dd.closest(".cl-banner, .cl-top")) window.scrollTo({ top: 0 }); return; }
-    const mv = t.closest("[data-cl-mv]"); if (mv) { openMv(mv.dataset.clMv, d); return; }
+    // a left click ticks a medicine or clears the tick
+    const mv = t.closest("[data-cl-mv]");
+    if (mv) {
+      if (held) { held = false; return; }
+      const k = mv.dataset.clMv;
+      if (k.startsWith("prn:")) { const id = k.slice(4); touch(d, x => clPrnSet(x, id, [...clPrnList(x, id), d === todayISO() ? clHM() : ""])); return; }
+      if (clDose(d, k) === "ok") { touch(d, x => clSetDose(x, k, null)); return; }
+      const tl = mv.closest(".cl-tile"), take = () => touch(d, x => clSetDose(x, k, clTakeNow(d)));
+      if (tl && motionOK()) { if (!tl.classList.contains("taking")) { tl.classList.add("taking"); setTimeout(take, 300); } } else take();
+      return;
+    }
     const go = t.closest("[data-cl-go]");
     if (go) {
       const k = +go.dataset.clGo, month = !!+$("[data-cl-mode]", go.closest(".cl-strip")).dataset.clMode;
@@ -574,13 +586,6 @@ function initCalendar() {
     }
     const mo = t.closest("[data-cl-mode]"); if (mo) { ui.clMonth = !+mo.dataset.clMode; renderCalendar(); return; }
     const op = t.closest("[data-cl-open]"); if (op) { ui.clOpen = { ...(ui.clOpen || {}), [op.dataset.clOpen]: !ui.clOpen?.[op.dataset.clOpen] }; renderCalendar(); return; }
-    // the round tick: taken now, with the time
-    const md = t.closest("[data-cl-med]");
-    if (md) {
-      const k = md.dataset.clMed, tl = md.closest(".cl-tile"), take = () => touch(d, x => clSetDose(x, k, clTakeNow(d)));
-      if (tl && motionOK()) { if (!tl.classList.contains("taking")) { tl.classList.add("taking"); setTimeout(take, 300); } } else take();
-      return;
-    }
     const al = t.closest("[data-cl-all]");
     if (al && motionOK() && !al.dataset.going) {
       const tiles = $$(".cl-tile", al.closest(".cl-card, .cl-rowbody"));
@@ -628,6 +633,16 @@ function initCalendar() {
   });
   dyBind(page, clSel, renderCalendar);
   // the time-of-day rows are not buttons (the names inside are), so Enter and Space open them by hand
+  // the medicine window: the right button, on a phone a long press
+  page.addEventListener("contextmenu", e => {
+    const mv = e.target.closest("[data-cl-mv]"); if (!mv) return;
+    e.preventDefault(); clearTimeout(hold); openMv(mv.dataset.clMv, clSel());
+  });
+  page.addEventListener("touchstart", e => {
+    held = false; const mv = e.target.closest("[data-cl-mv]");
+    if (mv) hold = setTimeout(() => { held = true; openMv(mv.dataset.clMv, clSel()); }, 550);
+  }, { passive: true });
+  for (const n of ["touchend", "touchmove", "touchcancel"]) page.addEventListener(n, () => clearTimeout(hold), { passive: true });
   page.addEventListener("keydown", e => {
     if ((e.key === "Enter" || e.key === " ") && e.target.matches("[role=button][data-cl-open]")) { e.preventDefault(); e.target.click(); }
   });

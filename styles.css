@@ -2800,10 +2800,10 @@ body[data-view]:not([data-view="labs"]) #addBtn { display: none; }
 .hx-allc { grid-column: 1 / -1; margin: 4px 0 0; text-align: center; font-size: 14px; color: var(--muted); }
 
 /* calendar medicines: the tick takes a dose now, the name opens the medicine window; taken chips carry the time */
-.cl-tile { cursor: default; }
+.cl-tile { cursor: pointer; }
+.cl-tile, .cl-tk, .cl-nm, .cl-prnn { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 .cl-tile .cl-mn { flex: 1; align-self: stretch; justify-content: center; padding: 0; border: 0; background: none; text-align: left; font: inherit; color: inherit; cursor: pointer; }
 .cl-tile .cl-mn:hover b { color: var(--accent); }
-.cl-tile:hover .cl-tick { border-color: var(--faint); background: none; }
 .cl-tick { padding: 0; background: none; cursor: pointer; }
 .cl-tile .cl-tick:hover { border-color: var(--accent); background: var(--accent-soft); }
 .cl-tkt { margin-left: 8px; font-weight: 650; font-variant-numeric: tabular-nums; color: var(--ok); }

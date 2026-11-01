@@ -160,8 +160,9 @@ function clExpResult(e) {
 function renderCalendar() {
   const box = $("#calendarView"); if (!box || box.hidden) return;
   const today = todayISO(), sel = clSel(), x = state.days?.[sel] || {};
-  // in the morning an empty night comes first: it is the one thing to fill right after waking up
-  const sleepFirst = sel === today && new Date().getHours() < 12 && !(x.bed && x.wake);
+  // in the morning an empty night comes first: it is the one thing to fill right after waking up;
+  // the place is set once per day, so the card does not jump away while it is being filled
+  const sleepFirst = ui.clTop?.d === sel ? ui.clTop.first : (ui.clTop = { d: sel, first: sel === today && new Date().getHours() < 12 && !(x.bed && x.wake) }).first;
   morph(box, `${clTop(sel)}
     <div class="cl-layout">
       <div class="cl-main">

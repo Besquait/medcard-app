@@ -341,7 +341,7 @@ function clSleepCard(d, first) {
 function clDayCard(d, withSleep) {
   const x = state.days?.[d] || {}, { main, rest } = clMain(), e = clExpOn(d);
   // a 0–10 row per complaint; yesterday's score is a faint mark
-  const syRow = s => { const v = dyVal(s, d); return `<div class="cl-syr"><span class="cl-syn"><i class="cl-sdot${v != null ? " s" + syB(v) : ""}"></i>${esc(s.name)}</span>
+  const syRow = s => { const v = dyVal(s, d); return `<div class="cl-syr"><span class="cl-syn">${esc(s.name)}</span>
     ${syScale("data-dy-sy", `${esc(s.id)}|`, v, { prev: dyVal(s, addDaysISO(d, -1)), label: s.name })}</div>`; };
   const marked = main.filter(s => dyVal(s, d) != null).length, restMarked = rest.filter(s => dyVal(s, d) != null).length;
   const filled = !!x.mood && (main.length ? main.every(s => dyVal(s, d) != null) : true);

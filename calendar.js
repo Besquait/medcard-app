@@ -479,9 +479,9 @@ const clIn = (g, d) => !(g.start && g.start > d) && !(g.end && g.end < d);
 const clNav = (attr, d) => `<div class="mv-nav"><button type="button" class="icon-btn" ${attr}="-1" aria-label="Предыдущий день">‹</button><button type="button" class="icon-btn" ${attr}="1" aria-label="Следующий день"${d >= todayISO() ? " disabled" : ""}>›</button></div>`;
 const clX = `<button type="button" class="icon-btn" data-xclose aria-label="Закрыть">×</button>`;
 
-function openMv(key, d, back) {
+function openMv(key, d) {
   const prn = key.startsWith("prn:"), cut = key.lastIndexOf(":");
-  ui.mv = { prn, id: prn ? key.slice(4) : key.slice(0, cut), slot: prn ? "" : key.slice(cut + 1), d: d || clSel(), back: back || "" };
+  ui.mv = { prn, id: prn ? key.slice(4) : key.slice(0, cut), slot: prn ? "" : key.slice(cut + 1), d: d || clSel() };
   mvDraw(true);
 }
 function mvDraw(top) {
@@ -551,83 +551,7 @@ function mvDraw(top) {
       <div class="hx-col">${about}${daySec}</div>
       <div class="hx-col">${histSec}</div>
     </div>
-    <div class="hx-foot">${dr ? `<button type="button" class="btn" data-mv-drug="${esc(dr)}">О препарате</button>` : ""}<span class="hx-sp"></span><button type="button" class="btn primary" data-mv-done>${v.back ? "← К дню" : "Готово"}</button></div>`, "mv-x mv-dlg");
-  if (top) $("#xDlg").scrollTop = 0;
-}
-
-/* ---------- the day window ---------- */
-// everything about one day at a glance; editing stays in the calendar's own forms
-function openDay(d) { ui.dv = d; dvDraw(true); }
-function dvDraw(top) {
-  const d = ui.dv, today = todayISO(), x = state.days?.[d] || {};
-  const sec = (cls, tone, icon, title, body, right = "") => `<section class="card cl-box hx-sec dv-sec ${cls} ${tone}">${clHead(tone, icon, title, "", right)}${body}</section>`;
-  const kv = (k, v, cls = "") => v ? `<div class="dv-kv"><span>${k}</span><b class="${cls}">${v}</b></div>` : "";
-  const names = (list, on) => list.filter(([k]) => on?.[k]).map(([, n]) => n).join(", ");
-
-  // medicines: each dose with its state and time
-  const { sched, prn } = clMeds(d), c = clDone(d), track = clStart();
-  const sorted = [...sched].sort((a, b) => CL_ORDER.indexOf(a.slot) - CL_ORDER.indexOf(b.slot));
-  const medRow = it => {
-    const st = clDose(d, it.key), t = clT(x.meds?.[it.key]);
-    const cls = st || (d < today && d >= track ? "miss" : "todo");
-    return `<button type="button" class="dv-med" data-dv-mv="${esc(it.key)}"><span class="dv-mi">${CL_ICON[it.slot]}</span>
-      <span class="dv-mn"><b>${esc(it.g.name)}</b><small>${[clSlotName(it.slot), it.g.dose].filter(Boolean).map(esc).join(" · ")}</small></span>
-      <span class="dv-ms ${cls}">${cls === "ok" ? t || "принято" : cls === "skip" ? "пропущено" : cls === "miss" ? "не принято" : "не отмечено"}</span></button>`;
-  };
-  const prnRows = prn.map(it => ({ it, l: clPrnList(x, it.id) })).filter(r => r.l.length).map(({ it, l }) => {
-    const t = l.filter(Boolean).sort(), rest = l.length - t.length;
-    return `<button type="button" class="dv-med" data-dv-mv="prn:${esc(it.id)}"><span class="dv-mi">${CL_ICON.prn}</span>
-      <span class="dv-mn"><b>${esc(it.g.name)}</b><small>по необходимости · ${l.length} ${plural(l.length, "раз", "раза", "раз")}</small></span>
-      <span class="dv-ms ok">${esc([...t, ...(rest ? [`${rest} без времени`] : [])].join(", "))}</span></button>`;
-  }).join("");
-  const meds = sched.length || prnRows ? sec("dv-s-meds", "t-acc", CL_ICON.prn, "Лекарства", `<div class="dv-list">${sorted.map(medRow).join("")}${prnRows}</div>`,
-    c.n ? `<span class="cl-cnt" title="Принято${c.s ? `, пропущено ${c.s}` : ""}">${c.k} из ${c.n}</span>` : "") : "";
-
-  // sleep: the night before this day
-  const m = clSleepMin(x), lab = (list, v) => list.find(([k]) => k === v)?.[1];
-  const sleepKv = [kv("Как спалось", lab(CL_SQ, x.sq)), kv("Заснул за", lab(CL_LAT, x.lat)), kv("Просыпался", lab(CL_WK, x.wk)),
-    kv("Что будило", names(CL_WHY, x.why)), kv("Утром", lab(CL_REST, x.rest)), kv("При пробуждении", names(CL_AM, x.am))].join("");
-  const sleepBody = (x.bed || x.wake ? `<div class="dv-big">${esc(x.bed || "?")} → ${esc(x.wake || "?")}</div>` : "") + (sleepKv ? `<div class="dv-list">${sleepKv}</div>` : "");
-  const sleep = sleepBody ? sec("dv-s-sleep", "t-sleep", CL_ICON.night, "Сон", sleepBody, m ? `<b class="cl-big2">${clHours(m)}</b>` : "") : "";
-
-  const mood = x.mood ? sec("dv-s-mood", "t-ok", CL_I.mood, "Самочувствие", "", `<span class="cl-pillv m${x.mood}">${esc(DY_MOOD_NAME[x.mood])}</span>`) : "";
-
-  // complaints: the main ones first, the others only when marked
-  const { main, rest } = clMain(), syRow = s => { const v = dyVal(s, d);
-    return `<div class="dv-sy"><span class="cl-syn"><i class="cl-sdot${v != null ? " s" + syB(v) : ""}"></i>${esc(s.name)}</span><b class="dv-sv${v != null ? " s" + syB(v) : ""}" title="${v == null ? "" : esc(SY_HINT[syB(v)])}">${v == null ? "—" : v === 0 ? "нет" : syTen(v)}</b></div>`; };
-  const restOn = rest.filter(s => dyVal(s, d) != null), anySy = main.some(s => dyVal(s, d) != null) || restOn.length;
-  const sy = anySy ? sec("dv-s-sy", "t-edge", CL_I.sy, "Жалобы", `<div class="dv-list">${main.map(syRow).join("")}${restOn.map(syRow).join("")}</div>`) : "";
-
-  // headache episodes that cover this day
-  const eps = typeof hxEps === "function" ? hxEps().filter(e => hxSpan(e).includes(d)).reverse() : [];
-  const hx = eps.length ? sec("dv-s-hx", "t-high", CL_I.sy, "Головная боль", `<div class="dv-list">${eps.map(e => { const h = e.hx, dur = hxDur(e), top = hxTop(h);
-    return `<button type="button" class="dv-hx" data-hx-open="${e.i}"><span class="hx-v" style="--v:${top}">${top}</span>
-      <span class="dv-mn"><b>${esc(hxRange(e.d, h))}</b><small>${[dur != null ? hxLen(dur) : "", (h.loc || []).map(k => HX_ZONES[k]).filter(Boolean).join(", ")].filter(Boolean).map(esc).join(" · ")}</small></span>
-      ${(h.meds || []).length ? `<span class="hx-epmeds">${h.meds.map(p => `<i class="e-${p.eff || "unk"}" title="${esc([p.t, HX_EFF.find(([k]) => k === p.eff)?.[1] || "эффект не отмечен"].filter(Boolean).join(" · "))}">${esc(p.n)}${p.t ? ` ${esc(p.t)}` : ""}</i>`).join("")}</span>` : ""}</button>`; }).join("")}</div>`) : "";
-
-  // food: the meals with their kcal, and the last meal
-  const food = x.food || [], fdOk = typeof fdSum === "function";
-  const meals = fdOk ? FD_MEALS.map(([k, n]) => ({ n, l: food.filter(e => e.m === k) })).filter(r => r.l.length) : [];
-  const gap = clMealGap(d);
-  const foodBody = meals.map(r => `<div class="dv-meal"><span class="dv-mn"><b>${r.n}${r.l[0]?.t ? ` <span class="dv-t">${esc(r.l[0].t)}</span>` : ""}</b><small>${esc(r.l.map(e => e.n).join(", "))}</small></span><b class="dv-kc">${fdK(fdSum(r.l)[0])}<small> ккал</small></b></div>`).join("")
-    + kv("Последняя еда", x.meal ? `${esc(x.meal)}${gap != null ? ` <small>· за ${clHours(gap)} до сна</small>` : ""}` : "", gap != null && gap < 180 ? "late" : "");
-  const fd = foodBody ? sec("dv-s-food", "t-food", CL_I.fac, "Еда", `<div class="dv-list">${foodBody}</div>`, meals.length ? `<b class="cl-big2">${fdK(fdSum(food)[0])}<small> ккал</small></b>` : "") : "";
-
-  // what happened
-  const fon = dyFactors().filter(([k]) => x.f?.[k]).map(([, n]) => n);
-  const fac = x.f ? sec("dv-s-f", "t-low", CL_I.fac, "Что было", fon.length ? `<div class="tchips dv-chips">${fon.map(n => `<span class="tchip">${esc(n)}</span>`).join("")}</div>` : `<p class="cl-muted mv-q">Ничего особенного</p>`) : "";
-
-  // a running self-check
-  const exps = clExps().filter(e => e.start <= d && d <= clExpEnd(e));
-  const ex = exps.length ? sec("dv-s-x", "t-acc", CL_I.exp, "Проверка", `<div class="dv-list">${exps.map(e => { const v = x.x?.[e.id];
-    return `<div class="dv-kv"><span>${esc(e.title)} <small>· день ${daysBetween(e.start, d) + 1} из ${e.days}</small></span><b class="${v === 1 ? "ok" : v === 0 ? "late" : "faint"}">${v === 1 ? "соблюдал" : v === 0 ? "не вышло" : "не отмечено"}</b></div>`; }).join("")}</div>`) : "";
-
-  const note = x.note ? sec("dv-s-note", "t-mute", CL_I.note, "Заметка", `<p class="dv-note">${esc(x.note)}</p>`) : "";
-
-  const left = meds + sy + hx + fd, right = mood + sleep + fac + ex + note;
-  openX(`<div class="dlg-head hx-head dv-head">${clNav("data-dv-go", d)}<div class="dv-ttl"><h3>${esc(clDayName(d))}</h3><small>${esc(longDate(d))}</small></div>${clX}</div>
-    ${left || right ? `<div class="hx-body"><div class="hx-col">${left}</div><div class="hx-col">${right}</div></div>` : `<div class="hx-body dv-empty"><p class="cl-muted">Ничего не записано</p></div>`}
-    <div class="hx-foot"><span class="hx-sp"></span><button type="button" class="btn primary" data-dv-edit>Изменить этот день</button></div>`, "dv-x mv-dlg");
+    <div class="hx-foot">${dr ? `<button type="button" class="btn" data-mv-drug="${esc(dr)}">О препарате</button>` : ""}<span class="hx-sp"></span><button type="button" class="btn primary" data-mv-done>Готово</button></div>`, "mv-x mv-dlg");
   if (top) $("#xDlg").scrollTop = 0;
 }
 
@@ -637,8 +561,8 @@ function initCalendar() {
   const touch = clEdit;
   page.addEventListener("click", e => {
     const t = e.target, d = clSel();
-    // a day of the month: selected, and everything about it in a big window
-    const dd = t.closest("[data-cl-day]"); if (dd && !dd.disabled) { ui.clDay = dd.dataset.clDay; renderCalendar(); if (dd.closest(".cl-banner, .cl-top")) window.scrollTo({ top: 0 }); if (dd.closest(".cl-strip")) openDay(dd.dataset.clDay); return; }
+    // a day of the month: the screen switches to it
+    const dd = t.closest("[data-cl-day]"); if (dd && !dd.disabled) { ui.clDay = dd.dataset.clDay; renderCalendar(); if (dd.closest(".cl-banner, .cl-top")) window.scrollTo({ top: 0 }); return; }
     const mv = t.closest("[data-cl-mv]"); if (mv) { openMv(mv.dataset.clMv, d); return; }
     const go = t.closest("[data-cl-go]");
     if (go) {
@@ -709,16 +633,9 @@ function initCalendar() {
 
   // the dialogs of this screen live in the shared sheet
   const xd = $("#xDlg");
-  // the medicine window and the day window
+  // the medicine window
   xd.addEventListener("click", e => {
     const t = e.target;
-    if (xd.classList.contains("dv-x")) {
-      const go = t.closest("[data-dv-go]");
-      if (go) { const n = addDaysISO(ui.dv, +go.dataset.dvGo); if (n > todayISO()) return; ui.dv = ui.clDay = n; renderCalendar(); dvDraw(true); return; }
-      const mv = t.closest("[data-dv-mv]"); if (mv) { openMv(mv.dataset.dvMv, ui.dv, ui.dv); return; }
-      if (t.closest("[data-dv-edit]")) { const d = ui.dv; closeX(); ui.clDay = d; renderCalendar(); window.scrollTo({ top: 0 }); }
-      return;
-    }
     if (!xd.classList.contains("mv-x") || !ui.mv) return;
     const v = ui.mv, key = sl => `${v.id}:${sl}`;
     const st = t.closest("[data-mv-st]");
@@ -729,18 +646,13 @@ function initCalendar() {
     const pa = t.closest("[data-mv-padd]"); if (pa) { const m = pa.dataset.mvPadd; clEdit(v.d, x => clPrnSet(x, v.id, [...clPrnList(x, v.id), m === "" ? "" : clAgo(+m)])); mvDraw(); return; }
     const pd = t.closest("[data-mv-pdel]"); if (pd) { clEdit(v.d, x => { const l = clPrnList(x, v.id); l.splice(+pd.dataset.mvPdel, 1); clPrnSet(x, v.id, l); }); mvDraw(); return; }
     const dr = t.closest("[data-mv-drug]"); if (dr) { openDrug(dr.dataset.mvDrug); xd.scrollTop = 0; return; }
-    if (t.closest("[data-mv-done]")) { if (v.back) openDay(v.back); else closeX(); }
+    if (t.closest("[data-mv-done]")) closeX();
   });
   xd.addEventListener("change", e => {
     if (!xd.classList.contains("mv-x") || !ui.mv) return;
     const t = e.target, v = ui.mv;
     if (t.matches("[data-mv-t]")) { const k = `${v.id}:${t.dataset.mvT}`; clEdit(v.d, x => clSetDose(x, k, t.value || (x.meds?.[k] ? true : null))); v.slot = t.dataset.mvT; mvDraw(); return; }
     if (t.matches("[data-mv-pt]")) { clEdit(v.d, x => { const l = clPrnList(x, v.id); l[+t.dataset.mvPt] = t.value; clPrnSet(x, v.id, l); }); mvDraw(); }
-  });
-  // arrows flip the days in the day window
-  xd.addEventListener("keydown", e => {
-    if (!xd.classList.contains("dv-x") || !/^Arrow(Left|Right)$/.test(e.key) || e.target.matches("input, textarea, select")) return;
-    const b = $(`[data-dv-go="${e.key === "ArrowLeft" ? -1 : 1}"]`, xd); if (b && !b.disabled) { e.preventDefault(); b.click(); }
   });
   xd.addEventListener("click", e => {
     if (!xd.classList.contains("cl-dlg")) return;

@@ -59,7 +59,7 @@ const LINK_RULES = [
 const MAX_FILE = 50 * 1024 * 1024;
 
 const studyList = () => Object.entries(state.studies || {}).map(([id, s]) => ({ id, ...s })).sort((a, b) => (b.date || "").localeCompare(a.date || ""));
-const studyTitle = s => [ST[s.type]?.name || "Обследование", s.area].filter(Boolean).join(" · ");
+const studyTitle = s => [ST[s.type]?.name || "Обследование", s.area].filter(Boolean).join(", ");
 const canFiles = () => typeof cloud !== "undefined" && !!cloud.user;
 function suggestLinks(type, area) {
   const text = `${ST[type]?.name || ""} ${area || ""}`, ids = [];
@@ -126,7 +126,6 @@ function renderStudies() {
     morph(box, `<div class="st-head"><div><h2>Обследования</h2></div></div>
       <div class="st-empty">
         <h3>Пока пусто</h3>
-        <p>УЗИ, МРТ, ФГДС, заключения и выписки — с файлами.</p>
         <button type="button" class="btn primary" data-st-new>Добавить обследование</button>
       </div>`);
     return;
@@ -142,7 +141,7 @@ function renderStudies() {
   morph(box, `
     <div class="st-head">
       <div><h2>Обследования</h2>
-        <p class="st-sub">${all.length} ${plural(all.length, "запись", "записи", "записей")}${finds ? ` · <span class="bad">${finds} с находками</span>` : ""}${watch ? ` · ${watch} под наблюдением` : ""}</p></div>
+        <p class="st-sub">${all.length} ${plural(all.length, "запись", "записи", "записей")}${finds ? `, <span class="bad">${finds} с находками</span>` : ""}${watch ? `, ${watch} под наблюдением` : ""}</p></div>
       <button type="button" class="btn primary" data-st-new>Добавить</button>
     </div>
     ${all.length > 4 ? `<div class="st-bar">
@@ -150,7 +149,7 @@ function renderStudies() {
         <input type="text" data-st-q value="${esc(ui.stQ || "")}" placeholder="Поиск по заключениям" autocomplete="off"></div>
       ${cats.length > 2 ? `<div class="seg">${cats.map(([k, n]) => `<button type="button" data-st-type="${k}" aria-pressed="${f === k}">${esc(n)}</button>`).join("")}</div>` : ""}
     </div>` : ""}
-    ${kinds.length ? kinds.map(([k, l]) => `<h3 class="st-year">${esc(ST[k]?.name || "Другое")}${l.length > 1 ? ` · ${l.length}` : ""}</h3><div class="card st-list">${l.map(studyRow).join("")}</div>`).join("") : `<div class="empty">Ничего не нашлось.</div>`}`);
+    ${kinds.length ? kinds.map(([k, l]) => `<h3 class="st-year">${esc(ST[k]?.name || "Другое")}${l.length > 1 ? `: ${l.length}` : ""}</h3><div class="card st-list">${l.map(studyRow).join("")}</div>`).join("") : `<div class="empty">Ничего не нашлось.</div>`}`);
 }
 function studyRow(s) {
   const [, m, d] = (s.date || "").split("-");
@@ -158,13 +157,13 @@ function studyRow(s) {
   return `<button type="button" class="st-row" data-st="${esc(s.id)}">
     <span class="st-date num"><b>${d ? +d : "—"}</b><span>${m ? MON3[+m - 1] : ""}</span>${s.date ? `<small>${s.date.slice(0, 4)}</small>` : ""}</span>
     <span class="st-main">
-      <span class="st-kind">${icon(s.type)}${s.area ? esc(ST[s.type]?.name || "Обследование") : ""}${s.area && s.clinic ? " · " : ""}${s.clinic ? esc(s.clinic) : ""}</span>
+      <span class="st-kind">${icon(s.type)}${s.area ? esc(ST[s.type]?.name || "Обследование") : ""}${s.area && s.clinic ? ", " : ""}${s.clinic ? esc(s.clinic) : ""}</span>
       <b class="st-title">${esc(s.area || ST[s.type]?.name || "")}</b>
       ${s.conclusion ? `<span class="st-concl">${esc(s.conclusion)}</span>` : ""}
     </span>
     <span class="st-side">
       ${s.status ? `<span class="st-status ${s.status}"><i></i>${esc(STATUS_NAME[s.status])}</span>` : ""}
-      ${files || links ? `<span class="st-counts">${files ? `${files} ${plural(files, "файл", "файла", "файлов")}` : ""}${files && links ? " · " : ""}${links ? `${links} ${plural(links, "анализ", "анализа", "анализов")}` : ""}</span>` : ""}
+      ${files || links ? `<span class="st-counts">${files ? `${files} ${plural(files, "файл", "файла", "файлов")}` : ""}${files && links ? ", " : ""}${links ? `${links} ${plural(links, "анализ", "анализа", "анализов")}` : ""}</span>` : ""}
     </span>
     <svg class="chev" width="18" height="18" viewBox="0 0 20 20" aria-hidden="true"><path d="M7 4l6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
   </button>`;
@@ -180,16 +179,16 @@ function openStudy(id) {
     const when = n ? (Math.abs(n.d) < 1 ? "в тот же день" : `за ${spanText(n.d)} ${n.d < 0 ? "до" : "после"}`) : "";
     return `<button type="button" class="st-lrow" data-goto="${esc(m)}">
       <i class="gc-dot ${n ? status(n.r) || "none" : "none"}"></i><span class="st-lname">${esc(info(m).ru)}</span>
-      ${n ? `<span class="num"><b class="${status(n.r) || ""}">${fmt(n.r.v)}</b> <small>${esc(n.r.unit || "")}</small></span><span class="muted st-lwhen">${fmtDate(n.r.date)} · ${when}</span>` : `<span class="muted">не сдавал</span><span></span>`}
+      ${n ? `<span class="num"><b class="${status(n.r) || ""}">${fmt(n.r.v)}</b> <small>${esc(n.r.unit || "")}</small></span><span class="muted st-lwhen">${fmtDate(n.r.date)}, ${when}</span>` : `<span class="muted">не сдавал</span><span></span>`}
     </button>`;
   }).join("");
   openX(`<div class="dlg-head"><div><div class="info-group st-kind">${icon(s.type)}${esc(ST[s.type]?.name || "")}</div><h3>${esc(s.area || ST[s.type]?.name || "Обследование")}</h3>
-      <div class="st-meta">${longDate(s.date)}${s.clinic ? " · " + esc(s.clinic) : ""}${s.doctor ? " · " + esc(s.doctor) : ""}</div></div>
+      <div class="st-meta">${longDate(s.date)}${s.clinic ? ", " + esc(s.clinic) : ""}${s.doctor ? ", " + esc(s.doctor) : ""}</div></div>
       <button type="button" class="icon-btn" data-xclose aria-label="Закрыть">×</button></div>
-    ${s.status || due ? `<div class="st-tags">${s.status ? `<span class="st-status ${s.status}"><i></i>${esc(STATUS_NAME[s.status])}</span>` : ""}${due ? `<span class="st-due${left < 0 ? " late" : ""}">Повторить ${left < 0 ? `— просрочено на ${spanText(left)}` : `до ${fmtDate(due)}`}</span>` : ""}</div>` : ""}
+    ${s.status || due ? `<div class="st-tags">${s.status ? `<span class="st-status ${s.status}"><i></i>${esc(STATUS_NAME[s.status])}</span>` : ""}${due ? `<span class="st-due${left < 0 ? " late" : ""}">Повторить${left < 0 ? `: просрочено на ${spanText(left)}` : ` до ${fmtDate(due)}`}</span>` : ""}</div>` : ""}
     ${s.conclusion ? `<section class="st-sec"><h4>Заключение</h4>${richText(s.conclusion)}</section>` : ""}
     ${s.recs ? `<section class="st-sec"><h4>Рекомендации</h4>${richText(s.recs)}</section>` : ""}
-    ${files.length ? `<section class="st-sec"><h4>Файлы · ${files.length}</h4><div class="st-gallery">${files.map((f, i) => isImg(f)
+    ${files.length ? `<section class="st-sec"><h4>Файлы: ${files.length}</h4><div class="st-gallery">${files.map((f, i) => isImg(f)
       ? `<button type="button" class="st-gimg" data-thumb="${esc(f.path)}" data-file="${i}" title="${esc(f.name)}"></button>`
       : `<button type="button" class="st-gfile" data-file="${i}"><span class="st-ext">${esc((f.name.split(".").pop() || "файл").slice(0, 4).toUpperCase())}</span><span class="st-fname">${esc(f.name)}</span><small>${kb(f.size || 0)}</small></button>`).join("")}</div></section>` : ""}
     ${links ? `<section class="st-sec"><h4>Связанные анализы</h4><div class="st-lrows">${links}</div></section>` : ""}
@@ -292,11 +291,11 @@ function renderFileList() {
   const box = $("[data-flist]"); if (!box) return;
   const ed = ui.stEdit, old = ed.id ? (state.studies[ed.id].files || []).filter(f => !ed.removed.includes(f.path)) : [];
   box.innerHTML = [...old.map(f => `<div class="st-frow"><span class="st-ext">${esc((f.name.split(".").pop() || "").slice(0, 4).toUpperCase())}</span><span class="st-fname">${esc(f.name)}</span><small>${kb(f.size || 0)}</small><button type="button" class="icon-btn sm" data-frm="${esc(f.path)}" aria-label="Убрать файл">×</button></div>`),
-    ...ed.files.map((f, i) => `<div class="st-frow new"><span class="st-ext">${esc((f.name.split(".").pop() || "").slice(0, 4).toUpperCase())}</span><span class="st-fname">${esc(f.name)}</span><small>${kb(f.size)} · будет загружен</small><button type="button" class="icon-btn sm" data-fnew="${i}" aria-label="Убрать файл">×</button></div>`)].join("");
+    ...ed.files.map((f, i) => `<div class="st-frow new"><span class="st-ext">${esc((f.name.split(".").pop() || "").slice(0, 4).toUpperCase())}</span><span class="st-fname">${esc(f.name)}</span><small>${kb(f.size)}, будет загружен</small><button type="button" class="icon-btn sm" data-fnew="${i}" aria-label="Убрать файл">×</button></div>`)].join("");
 }
 function addPicked(list) {
   for (const f of list) {
-    if (f.size > MAX_FILE) { toast(`«${f.name}» больше 50 МБ — не добавлен`); continue; }
+    if (f.size > MAX_FILE) { toast(`«${f.name}» больше 50 МБ, не добавлен`); continue; }
     ui.stEdit.files.push(f);
   }
   renderFileList();

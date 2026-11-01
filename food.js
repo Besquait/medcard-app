@@ -56,10 +56,10 @@ function fdGrams(f, amt, unit) {
   if (/^(шт|порц)/.test(unit) || amt <= 12) return Math.round(amt * f.pg);
   return amt;
 }
-// how often each food was eaten in the last month, with its latest entry
+// how often each food was eaten in the month before today, with its latest entry; today is left out so adding does not reorder the chips
 function fdFreq(days = 30) {
   const out = {}, today = todayISO();
-  for (let i = 0; i < days; i++) for (const e of state.days?.[addDaysISO(today, -i)]?.food || []) (out[e.n] ||= { n: 0, e }).n++;
+  for (let i = 1; i <= days; i++) for (const e of state.days?.[addDaysISO(today, -i)]?.food || []) (out[e.n] ||= { n: 0, e }).n++;
   return out;
 }
 function fdSearch(q) {
@@ -75,7 +75,7 @@ function fdSearch(q) {
 function fdHitsHtml(hits) {
   return hits.map((h, i) => `<button type="button" class="fd-hit${i === (ui.fdIdx || 0) ? " on" : ""}" data-fd-hit="${i}">
       <span class="fd-hn"><b>${esc(h.f.n)}</b>${fdTags(h.f.tags)}</span>
-      <span class="fd-hv">${Math.round(h.g)} ${fdUnit(h.f)} · <b>${fdK(h.f.per[0] * h.g / 100)}</b> ккал</span></button>`).join("");
+      <span class="fd-hv">${Math.round(h.g)} ${fdUnit(h.f)}, <b>${fdK(h.f.per[0] * h.g / 100)}</b> ккал</span></button>`).join("");
 }
 function fdShowRes(inp) {
   const box = inp.parentElement.querySelector(".fd-res"), q = inp.value.trim();
@@ -123,12 +123,12 @@ function fdAdd(d, f, g, m = fdMealCur()) {
 }
 const fdEntry = (d, id) => (state.days?.[d]?.food || []).find(e => e.id === id);
 // the day's factors follow the food: fatty, sour, coffee, flax in the morning, a big meal, the last meal before bed.
-// A factor the person ticked or unticked by hand is left alone.
+// A factor the person ticked or unticked by hand is left alone, and so is a last meal typed by hand.
 function fdSync(d) {
   const x = dyDay(d), food = x.food || [];
   if (!food.length) delete x.food;
   const ts = food.map(e => e.t).filter(Boolean).sort();
-  if (ts.length) { x.meal = ts[ts.length - 1]; x.mealFd = 1; } else if (x.mealFd) { delete x.meal; delete x.mealFd; }
+  if (ts.length) { if (!x.meal || x.mealFd) { x.meal = ts[ts.length - 1]; x.mealFd = 1; } } else if (x.mealFd) { delete x.meal; delete x.mealFd; }
   const has = t => food.some(e => (e.tags || "").split(" ").includes(t));
   const auto = {
     fatty: has("fat"), acid: has("acid") || has("spicy"), coffee: has("coffee"),
@@ -167,7 +167,7 @@ function fdItem(e) {
       <button type="button" class="icon-btn" data-fd-step="${esc(e.id)}|-1" aria-label="Меньше">−</button>
       <label class="fd-gl"><input class="input" type="number" inputmode="decimal" min="0" data-fd-g="${esc(e.id)}" value="${Math.round(e.g)}"><span>${fdUnit(e)}</span></label>
       <button type="button" class="icon-btn" data-fd-step="${esc(e.id)}|1" aria-label="Больше">+</button>
-      <span class="cl-muted cl-small">Б ${fdK(e.per[1] * e.g / 100)} · Ж ${fdK(e.per[2] * e.g / 100)} · У ${fdK(e.per[3] * e.g / 100)}</span>
+      <span class="cl-muted cl-small">Б ${fdK(e.per[1] * e.g / 100)}, Ж ${fdK(e.per[2] * e.g / 100)}, У ${fdK(e.per[3] * e.g / 100)}</span>
       <span class="fd-sp"></span>
       <select class="input fd-move" data-fd-move="${esc(e.id)}" aria-label="Приём пищи">${FD_MEALS.map(([k, n]) => `<option value="${k}"${e.m === k ? " selected" : ""}>${n}</option>`).join("")}</select>
       <button type="button" class="btn sm" data-fd-comp="${esc(e.id)}">Состав</button><button type="button" class="btn sm ghost" data-fd-del="${esc(e.id)}">Удалить</button></div>` : ""}
@@ -176,7 +176,7 @@ function fdItem(e) {
 function fdMealCard(k, n, list) {
   const s = fdSum(list);
   return `<section class="card cl-box t-food fd-meal" data-key="meal-${k}">
-    <div class="cl-bh"><span class="cl-bi t-food">${FD_ICON[k]}</span><div class="cl-bt"><h4>${n}</h4><small>Б ${fdK(s[1])} · Ж ${fdK(s[2])} · У ${fdK(s[3])}${s[0] >= FD_BIG ? ` · <span class="fd-warn">большая порция</span>` : ""}</small></div>
+    <div class="cl-bh"><span class="cl-bi t-food">${FD_ICON[k]}</span><div class="cl-bt"><h4>${n}</h4><small>Б ${fdK(s[1])}, Ж ${fdK(s[2])}, У ${fdK(s[3])}${s[0] >= FD_BIG ? `, <span class="fd-warn">большая порция</span>` : ""}</small></div>
       <div class="cl-br fd-mr"><b class="cl-big2">${fdK(s[0])}<small> ккал</small></b><input class="input fd-time" type="time" data-fd-mtime="${k}" value="${esc(list[0]?.t || "")}" aria-label="Во сколько"></div></div>
     <div class="fd-items">${list.map(fdItem).join("")}</div>
     <div class="fd-mfoot"><button type="button" class="cl-link" data-fd-addto="${k}">+ Добавить в ${n.toLowerCase()}</button><button type="button" class="cl-link fd-quiet" data-fd-save="${k}">Сохранить как набор</button></div>
@@ -202,7 +202,7 @@ function fdStomach(d) {
   const rows = [
     ...Object.entries(by).map(([t, l]) => `<div class="fd-srow"><i class="fd-tag t-${t}">${FD_TAG[t]}</i><span>${esc([...l].join(", "))}</span></div>`),
     ...big.map(([n, v]) => `<div class="fd-srow"><i class="fd-tag t-big">много</i><span>${n}: ${fdK(v)} ккал за раз</span></div>`),
-    x.meal ? `<div class="fd-srow"><i class="fd-tag ${gap != null && gap < 180 ? "t-late" : "t-ok"}">${x.meal}</i><span>последняя еда${gap != null ? ` · за ${clHours(gap)} до сна` : ""}</span></div>` : "",
+    x.meal ? `<div class="fd-srow"><i class="fd-tag ${gap != null && gap < 180 ? "t-late" : "t-ok"}">${x.meal}</i><span>последняя еда${gap != null ? `, за ${clHours(gap)} до сна` : ""}</span></div>` : "",
   ].filter(Boolean);
   return `<section class="card cl-side-card"><h4>Для желудка</h4>
     ${rows.join("")}</section>`;
@@ -218,7 +218,7 @@ function fdSetsCard() {
   const sets = state.prefs?.foodSets || [];
   if (!sets.length) return "";
   return `<section class="card cl-side-card"><h4>Наборы</h4>
-    ${sets.length ? sets.map(s => `<div class="fd-setrow"><span><b>${esc(s.name)}</b><small>${esc(s.items.map(e => e.n).join(", "))} · ${fdK(fdSum(s.items)[0])} ккал</small></span><button type="button" class="icon-btn sm" data-fd-setdel="${esc(s.id)}" aria-label="Удалить набор">×</button></div>`).join("")
+    ${sets.length ? sets.map(s => `<div class="fd-setrow"><span><b>${esc(s.name)}</b><small>${esc(s.items.map(e => e.n).join(", "))}, ${fdK(fdSum(s.items)[0])} ккал</small></span><button type="button" class="icon-btn sm" data-fd-setdel="${esc(s.id)}" aria-label="Удалить набор">×</button></div>`).join("")
       : ""}</section>`;
 }
 function renderFood() {
@@ -241,7 +241,7 @@ function renderFood() {
 function fdDayCard(d) {
   const x = state.days?.[d] || {}, food = x.food || [], s = fdSum(food);
   const lines = FD_MEALS.map(([k, n]) => { const l = food.filter(e => e.m === k); return l.length ? `<div class="fd-line"><b>${n}</b><span>${esc(l.map(e => e.n).join(", "))}</span><em>${fdK(fdSum(l)[0])} ккал</em></div>` : ""; }).join("");
-  return `<section class="card cl-box t-food">${clHead("t-food", FD_ICON.food, "Еда", food.length ? `${fdK(s[0])} ккал${x.meal ? ` · последняя в ${x.meal}` : ""}` : "что ел за день", `<button type="button" class="btn sm" data-fd-open="${d}">Дневник еды →</button>`)}
+  return `<section class="card cl-box t-food">${clHead("t-food", FD_ICON.food, "Еда", food.length ? `${fdK(s[0])} ккал${x.meal ? `, последняя в ${x.meal}` : ""}` : "", `<button type="button" class="btn sm" data-fd-open="${d}">Дневник еды →</button>`)}
     ${lines ? `<div class="fd-lines">${lines}</div>` : ""}
     ${fdAddBox(d, true)}</section>`;
 }
@@ -316,7 +316,7 @@ function initFood() {
     const sp = t.closest("[data-fd-step]");
     if (sp) { const [id, k] = sp.dataset.fdStep.split("|"), en = fdEntry(d, id); if (en) { en.g = Math.max(fdStep(en), en.g + +k * fdStep(en)); fdSync(d); } return; }
     const dl = t.closest("[data-fd-del]");
-    if (dl) { const x = dyDay(d); x.food = (x.food || []).filter(en => en.id !== dl.dataset.fdDel); ui.fdEdit = null; fdSync(d); return; }
+    if (dl) { const x = dyDay(d), l = x.food || [], i = l.findIndex(en => en.id === dl.dataset.fdDel), it = l[i]; x.food = l.filter(en => en.id !== dl.dataset.fdDel); ui.fdEdit = null; fdSync(d); if (it) toastUndo("Удалено", () => { const y = dyDay(d), r = [...(y.food || [])]; r.splice(i, 0, it); y.food = r; fdSync(d); }); return; }
     const at = t.closest("[data-fd-addto]"); if (at) { ui.fdMeal = at.dataset.fdAddto; renderFood(); renderCalendar(); const q = $("#foodView [data-fd-q]"); q.scrollIntoView({ behavior: "smooth", block: "center" }); q.focus({ preventScroll: true }); return; }
     const sv = t.closest("[data-fd-save]");
     if (sv) {

@@ -56,7 +56,7 @@ const swap = (r, cls = "") => r.converted
   ? `<span class="swap ${cls}"><span class="c">${fmt(r.v)}</span><span class="o">${fmt(r.o.v)}</span></span>`
   : `<span class="${cls}">${fmt(r.v)}</span>`;
 const pair = (r, vc, uc) => r.converted
-  ? `<span class="swap" title="Наведи — покажу как на бланке"><span class="c"><span class="${vc}">${fmt(r.v)}</span> <span class="${uc}">${esc(r.unit)}</span></span><span class="o"><span class="${vc}">${fmt(r.o.v)}</span> <span class="${uc}">${esc(r.o.unit)}</span></span></span>`
+  ? `<span class="swap" title="Наведи, покажу как на бланке"><span class="c"><span class="${vc}">${fmt(r.v)}</span> <span class="${uc}">${esc(r.unit)}</span></span><span class="o"><span class="${vc}">${fmt(r.o.v)}</span> <span class="${uc}">${esc(r.o.unit)}</span></span></span>`
   : `<span class="${vc}">${fmt(r.v)}</span> <span class="${uc}">${esc(r.unit)}</span>`;
 const swapUnit = r => r.converted
   ? `<span class="swap"><span class="c">${esc(r.unit)}</span><span class="o">${esc(r.o.unit)}</span></span>`
@@ -123,12 +123,12 @@ const LVL_TXT = { mild: "немного", mod: "заметно", sev: "силь�
 function statusBadge(r) {
   const s = status(r), out = outside(r);
   if (!out) return `<span class="badge ${s || "none"}">${STATUS_TXT[s] || ""}</span>`;
-  const title = `${fmt(r.v)} ${r.unit || ""} при норме ${out.dir === "high" ? "до" : "от"} ${fmt(out.limit)} — ${LVL_TXT[out.lvl]} ${out.dir === "high" ? "выше" : "ниже"}`;
+  const title = `${fmt(r.v)} ${r.unit || ""} при норме ${out.dir === "high" ? "до" : "от"} ${fmt(out.limit)}: ${LVL_TXT[out.lvl]} ${out.dir === "high" ? "выше" : "ниже"}`;
   return `<span class="badge ${out.dir} lvl-${out.lvl}" title="${esc(title)}">${out.dir === "high" ? "↑ выше" : "↓ ниже"} на ${diffText(out)}</span>`;
 }
 // How old a result is: fresh < 6 months, aging 6–12, old > 12.
 function ageClass(d) { const m = monthsAgo(d); return m == null ? "" : m < 6 ? "age-fresh" : m < 12 ? "age-aging" : "age-old"; }
-const ageLine = (d, bad) => `<div class="mk-age ${ageClass(d)} ${bad ? "bad" : ""}" title="${ageClass(d) === "age-old" ? (bad ? "Отклонение и больше года без пересдачи — стоит пересдать" : "Больше года назад") : ageClass(d) === "age-aging" ? "Полгода–год назад" : "Свежий анализ"}"><span class="num">${fmtDate(d)}</span> · ${agoText(d)}</div>`;
+const ageLine = (d, bad) => `<div class="mk-age ${ageClass(d)} ${bad ? "bad" : ""}" title="${ageClass(d) === "age-old" ? (bad ? "Отклонение и больше года без пересдачи, стоит пересдать" : "Больше года назад") : ageClass(d) === "age-aging" ? "Полгода–год назад" : "Свежий анализ"}"><span class="num">${fmtDate(d)}</span>, ${agoText(d)}</div>`;
 // how far outside the norm, relative to norm width (0 = inside)
 function dev(r) {
   const { v, min, max } = r, a = isNum(min), b = isNum(max);
@@ -249,16 +249,16 @@ function renderOverview() {
     <button type="button" class="ov" ${last ? `data-digest="${last}"` : "disabled"}>
       <span class="ov-k">Последняя сдача</span>
       <span class="ov-v num">${last ? fmtDate(last) : "—"}</span>
-      <span class="ov-s">${lastRows.length} ${plural(lastRows.length, "показатель", "показателя", "показателей")}${labs ? " · " + esc(labs) : ""}</span>
+      <span class="ov-s">${lastRows.length} ${plural(lastRows.length, "показатель", "показателя", "показателей")}${labs ? ", " + esc(labs) : ""}</span>
       ${last ? `<span class="ov-link">Что изменилось →</span>` : ""}</button>
     <div class="ov">
       <span class="ov-k">В норме сейчас</span>
       <span class="ov-v num">${okCount}<span class="sep"> из ${withNorm}</span></span>
-      <span class="ov-s">${better || worse ? `с прошлой сдачи: <span class="good">↑ ${better} лучше</span> · <span class="${worse ? "bad" : ""}">↓ ${worse} хуже</span>` : "по последнему значению каждого показателя"}</span></div>
+      <span class="ov-s">${better || worse ? `с прошлой сдачи: <span class="good">↑ ${better} лучше</span>, <span class="${worse ? "bad" : ""}">↓ ${worse} хуже</span>` : "по последнему значению каждого показателя"}</span></div>
     <button type="button" class="ov" data-ov-attn>
       <span class="ov-k">Обсудить с врачом</span>
       <span class="ov-v num ${worth.length ? "bad" : "good"}">${worth.length || "—"}</span>
-      <span class="ov-s">${worth.length ? `${plural(worth.length, "показатель", "показателя", "показателей")} вне нормы` : "ничего важного"}${calm ? ` · ещё ${calm} не опасно` : ""}</span>
+      <span class="ov-s">${worth.length ? `${plural(worth.length, "показатель", "показателя", "показателей")} вне нормы` : "ничего важного"}${calm ? `, ещё ${calm} не опасно` : ""}</span>
       ${att.length ? `<span class="ov-link">Посмотреть →</span>` : ""}</button>
     <button type="button" class="ov" data-ov-due${due.length ? "" : " disabled"}>
       <span class="ov-k">Пора пересдать</span>
@@ -272,8 +272,8 @@ function openAttention() {
     <span class="ov-rn">${esc(info(a.id).ru)}${a.g.lvl >= 2 ? `<small class="attn-urg s${a.g.lvl}">${a.g.lvl === 3 ? "срочно" : "в ближайшие недели"}</small>` : ""}<small>${esc(a.g.why || "")}</small></span>
     <span class="ov-rv num">${fmt(a.x.v)} ${a.s === "high" ? "↑" : "↓"}</span></button>`;
   openX(`<div class="dlg-head"><h3>Обсудить с врачом</h3><button type="button" class="icon-btn" data-xclose aria-label="Закрыть">×</button></div>
-    ${worth.length ? `<section><h4 class="ov-h">Вне нормы · ${worth.length}</h4><div class="ov-list">${worth.map(row).join("")}</div></section>` : `<p class="muted">Ничего важного вне нормы.</p>`}
-    ${calm.length ? `<section><h4 class="ov-h">Вне нормы, но не опасно · ${calm.length}</h4><div class="ov-list">${calm.map(row).join("")}</div></section>` : ""}`, "st-dlg tp-dlg ov-dlg");
+    ${worth.length ? `<section><h4 class="ov-h">Вне нормы: ${worth.length}</h4><div class="ov-list">${worth.map(row).join("")}</div></section>` : `<p class="muted">Ничего важного вне нормы.</p>`}
+    ${calm.length ? `<section><h4 class="ov-h">Вне нормы, но не опасно: ${calm.length}</h4><div class="ov-list">${calm.map(row).join("")}</div></section>` : ""}`, "st-dlg tp-dlg ov-dlg");
 }
 
 /* ============ range bar ============ */
@@ -405,8 +405,8 @@ function chart(list) {
       ${labelDate ? `<text x="${xx}" y="${H - 10}" text-anchor="${anchor}" font-size="11" fill="var(--muted)">${fmtDate(r.date)}</text>` : ""}</g>`;
   }).join("");
   const cap = normalized
-    ? "Лаборатории давали разные единицы, поэтому график в % от нормы: 0% — нижняя граница, 100% — верхняя."
-    : `Единицы: ${[...units][0] || "—"}. Пунктир — ${last.tgt ? `цель (${last.tgt})` : "границы нормы с последнего бланка"}. Наведи на точку, чтобы увидеть подробности.`;
+    ? "График в % от нормы, единицы разные: 0% нижняя граница, 100% верхняя."
+    : `${[...units][0] ? `Единицы: ${[...units][0]}. ` : ""}Пунктир: ${last.tgt ? `цель (${last.tgt})` : "границы нормы с последнего бланка"}`;
   return `<div class="panel-cap">${esc(cap)}</div><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="График значений">${zones}${band}${grid}${evBands}${limits}${line}${dots}</svg>`;
 }
 
@@ -416,7 +416,7 @@ function renderGroups() {}
 function renderNav() {
   const secs = $$("#list .sec");
   $("#groups").innerHTML = secs.map(el => `<button class="chip" data-sec="${el.id}">${+el.dataset.bad ? `<i class="chip-dot s${el.dataset.max}" title="${el.dataset.bad} вне нормы${+el.dataset.worth ? `, ${el.dataset.worth} стоит обсудить` : ""}"></i>` : ""}${esc(el.dataset.name)}<span class="cnt">${el.dataset.n}</span></button>`).join("");
-  $("#rail").innerHTML = `<div class="rail-cap">Разделы</div><div class="rail-list">${secs.map(el => `<button type="button" class="rail-item" data-sec="${el.id}"><span class="rail-name">${esc(el.dataset.name)}</span>${+el.dataset.bad ? `<span class="rail-bad s${el.dataset.max}" title="${el.dataset.bad} вне нормы${+el.dataset.worth ? `, ${el.dataset.worth} стоит обсудить` : " — не опасно"}">${el.dataset.bad}</span>` : `<span class="rail-n">${el.dataset.n}</span>`}</button>`).join("")}</div>`;
+  $("#rail").innerHTML = `<div class="rail-cap">Разделы</div><div class="rail-list">${secs.map(el => `<button type="button" class="rail-item" data-sec="${el.id}"><span class="rail-name">${esc(el.dataset.name)}</span>${+el.dataset.bad ? `<span class="rail-bad s${el.dataset.max}" title="${el.dataset.bad} вне нормы${+el.dataset.worth ? `, ${el.dataset.worth} стоит обсудить` : ", не опасно"}">${el.dataset.bad}</span>` : `<span class="rail-n">${el.dataset.n}</span>`}</button>`).join("")}</div>`;
   spy();
 }
 function visibleIds() {
@@ -455,7 +455,7 @@ function bpRow(bm) {
   const badge = x.c.k === "ok" ? `<span class="badge ok">${x.c.t}</span>` : `<span class="badge ${x.c.k}${x.c.lvl ? " lvl-" + x.c.lvl : ""}">${x.c.t}</span>`;
   const P = v => Math.max(0, Math.min(100, (v - 80) / (190 - 80) * 100));
   return `<div class="mk bp ${open ? "open" : ""}" data-id="sbp" tabindex="0" role="button" aria-expanded="${open}">
-      <div><div class="mk-name">Давление</div><div class="mk-alt">верхнее / нижнее · SYS/DIA · Тиск · Blood pressure</div></div>
+      <div><div class="mk-name">Давление</div><div class="mk-alt">верхнее / нижнее, SYS/DIA, Тиск, Blood pressure</div></div>
       <div>
         <div class="mk-val"><span class="v num">${fmt(x.s.v)}<span class="bp-sep">/</span>${fmt(x.d.v)}</span> <span class="u">мм рт. ст.</span></div>
         <div class="mk-meta">${badge}</div>
@@ -466,7 +466,7 @@ function bpRow(bm) {
           <span class="bp-dot" style="left:${P(x.s.v)}%" title="Верхнее ${fmt(x.s.v)}"></span></div>
         <div class="bp-lbl num"><span style="left:${P(120)}%">120</span><span style="left:${P(130)}%">130</span><span style="left:${P(140)}%">140</span></div>
       </div>
-      <div class="hist">${prev.length ? `<span class="hist-lbl">Раньше</span>${prev.map(p => `<span class="pill ${p.c.k}" title="${esc(fmtDate(p.date) + " · " + p.c.t)}">${fmt(p.s.v)}/${fmt(p.d.v)}</span>`).join('<span class="arrow">›</span>')}` : `<span class="first">Первая сдача</span>`}</div>
+      <div class="hist">${prev.length ? `<span class="hist-lbl">Раньше</span>${prev.map(p => `<span class="pill ${p.c.k}" title="${esc(fmtDate(p.date) + ", " + p.c.t)}">${fmt(p.s.v)}/${fmt(p.d.v)}</span>`).join('<span class="arrow">›</span>')}` : `<span class="first">Первая сдача</span>`}</div>
       <svg class="chev" width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M7 4l6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </div>
     ${open ? bpDetail(ps) : ""}`;
@@ -481,14 +481,14 @@ function bpDetail(ps) {
   const series = (k, col) => (ps.length > 1 ? `<polyline points="${ps.map((p, i) => `${X(p, i)},${Y(p[k].v)}`).join(" ")}" fill="none" stroke="var(--${col})" stroke-width="2" stroke-linejoin="round"/>` : "")
     + ps.map((p, i) => `<circle cx="${X(p, i)}" cy="${Y(p[k].v)}" r="5.5" fill="var(--${col})" stroke="var(--card)" stroke-width="2.5"/><text x="${X(p, i)}" y="${Y(p[k].v) - 11}" text-anchor="middle" font-size="12" font-weight="600" fill="var(--ink)">${fmt(p[k].v)}</text>`).join("");
   const dates = ps.map((p, i) => `<text x="${X(p, i)}" y="${H - 8}" text-anchor="middle" font-size="11" fill="var(--muted)">${fmtDate(p.date)}</text>`).join("");
-  const svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="График давления">${line(140, "high", "140 — гипертония")}${line(90, "high", "90")}${line(120, "ok", "120 — оптимальное")}${line(80, "ok", "80")}${series("s", "ink")}${series("d", "muted")}${dates}</svg>`;
+  const svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="График давления">${line(140, "high", "140: гипертония")}${line(90, "high", "90")}${line(120, "ok", "120: оптимальное")}${line(80, "ok", "80")}${series("s", "ink")}${series("d", "muted")}${dates}</svg>`;
   const rows = [...ps].reverse().map(p => `<tr>
       <td class="num">${fmtDate(p.date)}</td><td class="num"><b>${fmt(p.s.v)}/${fmt(p.d.v)}</b></td>
       <td><span class="badge ${p.c.k}">${p.c.t}</span></td>
       <td style="color:var(--muted)">${esc(p.s.note || p.d.note || "")}</td>
       <td class="acts"><button class="btn sm ghost danger" data-bpdel="${esc(p.s.id)}|${esc(p.d.id)}">${ui.confirmDel === p.s.id ? "Точно удалить?" : "Удалить"}</button></td></tr>`).join("");
   return `<div class="detail${ui.animOpen ? " anim" : ""}">
-    <div class="panel chart"><div class="panel-cap">Верхнее — тёмная линия, нижнее — серая. Пунктир — границы по ESC/ESH: до 120/80 оптимальное, от 140/90 гипертония.</div>${svg}</div>
+    <div class="panel chart"><div class="panel-cap">Тёмная линия верхнее, серая нижнее. Пунктир: границы по ESC/ESH, до 120/80 оптимальное, от 140/90 гипертония.</div>${svg}</div>
     <div class="panel"><div class="tbl-scroll"><table class="mtable"><thead><tr><th>Дата</th><th>Давление</th><th>Категория</th><th>Заметка</th><th></th></tr></thead><tbody>${rows}</tbody></table></div></div>
   </div>`;
 }
@@ -499,8 +499,8 @@ function renderList() {
   $("#count").textContent = filtered ? `${ids.length} из ${total}` : String(total);
   const rest = untaken(bm);
   if (!ids.length) {
-    const msg = !total ? "Пока нет анализов. Нажми «+ Внести анализы»."
-      : rest ? "Среди сданных ничего не нашлось — смотри в справочнике ниже."
+    const msg = !total ? "Пока нет анализов."
+      : rest ? "Среди сданных ничего не нашлось. Смотри в справочнике ниже."
       : "Ничего не нашлось. Поиск понимает русский, украинский и английский.";
     $("#list").innerHTML = `<div class="empty">${msg}</div>${rest}`;
     renderNav(); return;
@@ -536,10 +536,10 @@ function renderList() {
       <div class="card">${top.map(id => row(id, bm[id])).join("")}
         ${open ? `<div class="minor${ui.justOpened === g ? " reveal" : ""}">
           ${main.length ? `<div class="minor-cap">Остальное в норме</div>${main.map(one).join("")}` : ""}
-          ${minor.length ? `<div class="minor-cap">Маловажные: врачи смотрят на них редко, обычно если основные не в норме</div>${minor.map(one).join("")}` : ""}
+          ${minor.length ? `<div class="minor-cap" title="Врачи смотрят на них редко, обычно если основные не в норме">Маловажные</div>${minor.map(one).join("")}` : ""}
         </div>` : ""}
       </div>
-      ${restIds.length ? `<button type="button" class="more-btn" data-more="${esc(g)}" aria-expanded="${open}">${open ? "Свернуть" : `Показать всё · ещё ${restIds.length}`}<svg width="16" height="16" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 8l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>` : ""}
+      ${restIds.length ? `<button type="button" class="more-btn" data-more="${esc(g)}" aria-expanded="${open}">${open ? "Свернуть" : `Показать всё, ещё ${restIds.length}`}<svg width="16" height="16" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 8l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>` : ""}
     </div>`;
   }).join("") + rest;
   ui.justOpened = null;
@@ -603,7 +603,7 @@ function untaken(bm) {
         <div class="ut-grid">${ids.map(id => { const m = info(id); return `
           <button type="button" class="ut" data-info="${esc(id)}" title="Что это за анализ">
             <span class="ut-name">${esc(m.ru)}</span>
-            <span class="ut-alt">${esc([m.abbr, m.uk !== m.ru ? m.uk : ""].filter(Boolean).join(" · "))}</span>
+            <span class="ut-alt">${esc([m.abbr, m.uk !== m.ru ? m.uk : ""].filter(Boolean).join(", "))}</span>
             <span class="ut-add" data-add="${esc(id)}" role="button" title="Внести результат">+ Внести</span>
           </button>`; }).join("")}</div>
       </div>`).join("")}</div>` : ""}
@@ -612,7 +612,7 @@ function untaken(bm) {
 function row(id, list) {
   if (id === "sbp") { const b = bpRow(byMarker()); if (b) return b; }
   const m = info(id), x = list[list.length - 1], s = status(x);
-  const alt = [m.abbr && m.abbr !== m.ru ? m.abbr : "", m.uk && m.uk !== m.ru ? m.uk : "", m.en].filter(Boolean).join(" · ");
+  const alt = [m.abbr && m.abbr !== m.ru ? m.abbr : "", m.uk && m.uk !== m.ru ? m.uk : "", m.en].filter(Boolean).join(", ");
   const open = ui.open === id;
   return `<div class="mk ${open ? "open" : ""}" data-id="${esc(id)}" tabindex="0" role="button" aria-expanded="${open}">
       <div><div class="mk-name">${esc(m.ru)}</div><div class="mk-alt">${esc(alt)}</div></div>
@@ -659,13 +659,13 @@ function detail(id, list) {
 
 /* ============ timeline ============ */
 function renderTimeline() {
-  if (ui.histMode === "map") { $("#timeline").innerHTML = Object.keys(state.results).length ? heatmapHtml() : `<div class="empty">Здесь появится карта.</div>`; return; }
+  if (ui.histMode === "map") { $("#timeline").innerHTML = Object.keys(state.results).length ? heatmapHtml() : `<div class="empty">Сдач пока нет.</div>`; return; }
   const by = {};
   for (const [id, r] of Object.entries(state.results)) (by[r.date || ""] ||= []).push(view(id, r));
   const ds = Object.keys(by).sort().reverse();
-  if (!ds.length) { $("#timeline").innerHTML = `<div class="empty">Здесь появятся твои сдачи.</div>`; return; }
+  if (!ds.length) { $("#timeline").innerHTML = `<div class="empty">Сдач пока нет.</div>`; return; }
   const evs = [...eventList(), ...studyList().map(s => ({ ...s, start: s.date, study: true }))].sort((a, b) => (b.start || "").localeCompare(a.start || ""));
-  const evHtml = e => e.study ? `<button type="button" class="tl-st" data-st-open="${esc(e.id)}">${icon(e.type)}<span><b>${esc(studyTitle(e))}</b>${e.status ? ` · ${esc(STATUS_NAME[e.status])}` : ""}${e.conclusion ? `<small>${esc(e.conclusion.slice(0, 110))}${e.conclusion.length > 110 ? "…" : ""}</small>` : ""}</span><span class="num muted">${fmtDate(e.date)}</span></button>` : `<button type="button" class="tl-ev k-${e.kind}" data-ev="${esc(e.id)}"><i></i><span><b>${esc(e.title)}</b> · ${esc(EVENT_KIND[e.kind] || "")}</span><span class="num muted">${fmtDate(e.start)}${e.end ? " – " + fmtDate(e.end) : " → сейчас"}</span></button>`;
+  const evHtml = e => e.study ? `<button type="button" class="tl-st" data-st-open="${esc(e.id)}">${icon(e.type)}<span><b>${esc(studyTitle(e))}</b>${e.status ? `, ${esc(STATUS_NAME[e.status])}` : ""}${e.conclusion ? `<small>${esc(e.conclusion.slice(0, 110))}${e.conclusion.length > 110 ? "…" : ""}</small>` : ""}</span><span class="num muted">${fmtDate(e.date)}</span></button>` : `<button type="button" class="tl-ev k-${e.kind}" data-ev="${esc(e.id)}"><i></i><span><b>${esc(e.title)}</b>, ${esc(EVENT_KIND[e.kind] || "")}</span><span class="num muted">${fmtDate(e.start)}${e.end ? " до " + fmtDate(e.end) : " → сейчас"}</span></button>`;
   let ei = 0, html = "";
   for (const d of ds) {
     while (ei < evs.length && evs[ei].start > d) html += evHtml(evs[ei++]);
@@ -674,7 +674,7 @@ function renderTimeline() {
     const labs = [...new Set(l.map(r => r.lab).filter(Boolean))].join(", ");
     html += `<details class="sess">
       <summary><span class="sess-date num">${fmtDate(d)}</span>
-        <span class="sess-meta">${l.length} ${plural(l.length, "показатель", "показателя", "показателей")}${labs ? " · " + esc(labs) : ""}${bad ? ` · <span style="color:var(--high)">${bad} вне нормы</span>` : ""}</span>
+        <span class="sess-meta">${l.length} ${plural(l.length, "показатель", "показателя", "показателей")}${labs ? ", " + esc(labs) : ""}${bad ? `, <span style="color:var(--high)">${bad} вне нормы</span>` : ""}</span>
         <span class="sess-dots">${l.map(r => `<i class="${status(r) || "none"}"></i>`).join("")}</span></summary>
       <div class="sess-body">${l.map(r => { const s = status(r); return `<div class="sess-row" data-goto="${esc(r.m)}"><span>${esc(info(r.m).ru)}</span><span class="num ${s}">${pair(r, "", "muted")}</span></div>`; }).join("")}
         <button type="button" class="linkbtn" data-digest="${esc(d)}">Что изменилось по сравнению с прошлыми сдачами →</button></div>
@@ -687,7 +687,7 @@ function renderTimeline() {
 /* ============ about a marker: what, when, prep, panels ============ */
 function memberChip(mid, self, bm) {
   const m = info(mid), l = bm[mid];
-  if (!l) return `<button type="button" class="mchip untaken ${self ? "self" : ""}" data-jump="${esc(mid)}" title="Не сдавал — открыть описание"><i></i>${esc(m.ru)}<span class="mv">не сдавал</span></button>`;
+  if (!l) return `<button type="button" class="mchip untaken ${self ? "self" : ""}" data-jump="${esc(mid)}" title="Не сдавал, открыть описание"><i></i>${esc(m.ru)}<span class="mv">не сдавал</span></button>`;
   const x = l[l.length - 1], s = status(x), out = outside(x);
   const v = out ? `${fmt(x.v)} ${out.dir === "high" ? "↑" : "↓"}` : fmt(x.v);
   return `<button type="button" class="mchip st-${s || "none"} ${out ? "lvl-" + out.lvl : ""} ${self ? "self" : ""}" data-jump="${esc(mid)}" title="${esc(`${fmtDate(x.date)}: ${fmt(x.v)} ${x.unit}`)}"><i></i>${esc(m.ru)}<span class="mv num">${esc(v)}</span></button>`;
@@ -746,7 +746,7 @@ function about(id) {
     }).join("");
     return `<details class="pcard" ${i === 0 ? "open" : ""}>
       <summary class="pcard-sum">
-        <span class="pcard-title"><b>${esc(p.name)}</b><span class="pcard-role tier-${tier}">${esc(m.ru)} здесь — ${esc(rolePhrase)}</span></span>
+        <span class="pcard-title"><b>${esc(p.name)}</b><span class="pcard-role tier-${tier}">${esc(m.ru)} здесь ${esc(rolePhrase)}</span></span>
         <span class="pcard-meta">${base.length ? `основа: ${baseTaken} из ${base.length} сдано` : ""}</span>
         <svg class="chev" width="18" height="18" viewBox="0 0 20 20" aria-hidden="true"><path d="M7 4l6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </summary>
@@ -770,9 +770,9 @@ function about(id) {
       ${inf?.prep ? `<div class="about-block"><h5>Как подготовиться</h5><p class="prep"><svg width="16" height="16" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10 6v4.5l3 2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>${esc(inf.prep)}</span></p></div>` : ""}
     </div>
     ${hlHtml(id)}
-    ${panels.length ? `<h5 class="about-h">С чем сдают вместе <span>· наборы, куда входит ${esc(m.ru)}</span></h5><div class="pcards">${panelHtml}</div>` : ""}
+    ${panels.length ? `<h5 class="about-h">С чем сдают вместе</h5><div class="pcards">${panelHtml}</div>` : ""}
     <p class="about-note">Справка, не диагноз.
-      Подробнее: <a href="https://vsearch.nlm.nih.gov/vivisimo/cgi-bin/query-meta?v%3Aproject=medlineplus&query=${encodeURIComponent(m.en + " test")}" target="_blank" rel="noopener">MedlinePlus (NIH)</a> ·
+      Подробнее: <a href="https://vsearch.nlm.nih.gov/vivisimo/cgi-bin/query-meta?v%3Aproject=medlineplus&query=${encodeURIComponent(m.en + " test")}" target="_blank" rel="noopener">MedlinePlus (NIH)</a>,
       <a href="https://pubmed.ncbi.nlm.nih.gov/?term=${encodeURIComponent(m.en)}" target="_blank" rel="noopener">исследования в PubMed</a></p>
   </div>`;
 }
@@ -781,7 +781,7 @@ function openInfo(id) {
   const m = info(id), taken = !!byMarker()[id];
   $("#infoBody").innerHTML = `
     <div class="dlg-head">
-      <div><div class="info-group">${esc(GROUP_NAME[m.group] || "")}</div><h3>${esc(m.ru)}</h3><div class="mk-alt">${esc([m.abbr, m.uk !== m.ru ? m.uk : "", m.en].filter(Boolean).join(" · "))}</div></div>
+      <div><div class="info-group">${esc(GROUP_NAME[m.group] || "")}</div><h3>${esc(m.ru)}</h3><div class="mk-alt">${esc([m.abbr, m.uk !== m.ru ? m.uk : "", m.en].filter(Boolean).join(", "))}</div></div>
       <button type="button" class="icon-btn" data-close aria-label="Закрыть">×</button>
     </div>
     ${about(id)}
@@ -803,9 +803,9 @@ function inSit(id, sit) { return (INFO[id]?.when || []).includes(sit) || !!GUIDE
 // one marker inside a plan: latest value with status, or "не сдавал"
 function gchip(id, bm) {
   const m = info(id), l = bm[id];
-  if (!l) return `<button type="button" class="gchip none" data-ginfo="${esc(id)}" title="Не сдавал — что это и как внести"><span class="gc-name">${esc(m.ru)}</span><span class="gc-val">не сдавал</span></button>`;
+  if (!l) return `<button type="button" class="gchip none" data-ginfo="${esc(id)}" title="Не сдавал: что это и как внести"><span class="gc-name">${esc(m.ru)}</span><span class="gc-val">не сдавал</span></button>`;
   const x = l[l.length - 1], s = status(x) || "none", old = ageClass(x.date) === "age-old";
-  return `<button type="button" class="gchip ${s}" data-ginfo="${esc(id)}" title="${esc(fmtDate(x.date) + " · " + agoText(x.date) + (STATUS_TXT[s] ? " · " + STATUS_TXT[s] : ""))}">
+  return `<button type="button" class="gchip ${s}" data-ginfo="${esc(id)}" title="${esc(fmtDate(x.date) + ", " + agoText(x.date) + (STATUS_TXT[s] ? ", " + STATUS_TXT[s] : ""))}">
     <i class="gc-dot"></i><span class="gc-name">${esc(m.ru)}</span><span class="gc-val num">${fmt(x.v)} <span>${esc(x.unit || "")}</span></span>${old ? `<span class="gc-old">${esc(agoText(x.date))}</span>` : ""}</button>`;
 }
 function renderSit() {
@@ -813,7 +813,7 @@ function renderSit() {
   if (!ui.sit) { bar.hidden = true; bar.innerHTML = ""; return; }
   const bm = byMarker(), g = GUIDES[ui.sit];
   const panels = PANELS.filter(p => panelIds(p).filter(x => inSit(x, ui.sit)).length >= 2);
-  const panelRow = panels.length ? `<div class="sitbar-panels"><span>Внести набором:</span>${panels.map(p => `<button type="button" class="chip" data-panel="${esc(p.id)}" title="${esc(p.why)} — внести весь набор">${esc(p.name)}</button>`).join("")}</div>` : "";
+  const panelRow = panels.length ? `<div class="sitbar-panels"><span>Внести набором:</span>${panels.map(p => `<button type="button" class="chip" data-panel="${esc(p.id)}" title="${esc(p.why)}. Внести весь набор">${esc(p.name)}</button>`).join("")}</div>` : "";
   const head = `<div class="g-head"><div><div class="g-kicker">Что беспокоит</div><div class="g-title">${esc(ui.sit)}</div></div><button type="button" class="icon-btn sm" data-sit-clear aria-label="Сбросить ситуацию">×</button></div>`;
   if (!g) { bar.hidden = false; bar.innerHTML = head + panelRow; return; }
   const coreIds = [...new Set((g.core || []).flatMap(it => it[0]))], done = coreIds.filter(id => bm[id]).length;
@@ -826,11 +826,11 @@ function renderSit() {
     ${coreIds.length ? `<div class="g-prog"><div class="g-bar"><i style="width:${Math.round(done / coreIds.length * 100)}%"></i></div><span>Основное сдано: <b>${done} из ${coreIds.length}</b></span></div>` : ""}
     ${step(1, "core", g.core)}
     ${step(g.core?.length ? 2 : 1, "then", g.then)}
-    ${g.extra?.length ? `<section class="g-step extra"><button type="button" class="g-more" data-sit-extra aria-expanded="${!!open}">${esc(GUIDE_STEP.extra)} · ${g.extra.length}<svg width="14" height="14" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 8l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>${open ? items(g.extra) : ""}</section>` : ""}
+    ${g.extra?.length ? `<section class="g-step extra"><button type="button" class="g-more" data-sit-extra aria-expanded="${!!open}">${esc(GUIDE_STEP.extra)}: ${g.extra.length}<svg width="14" height="14" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 8l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>${open ? items(g.extra) : ""}</section>` : ""}
     ${g.note ? `<div class="g-note">${esc(g.note)}</div>` : ""}
     ${g.flags ? `<div class="g-flags"><b>Сразу к врачу, если:</b> ${esc(g.flags)}</div>` : ""}
     ${panelRow}
-    <div class="g-src">План по клиническим рекомендациям — это подсказка для разговора с врачом, а не назначение.</div>`;
+    <div class="g-src">План по клиническим рекомендациям: подсказка для разговора с врачом, а не назначение.</div>`;
 }
 // Situation picker: a grouped popover instead of a long native select.
 const SIT_GROUPS = [
@@ -914,8 +914,8 @@ function showTip(el) {
   else {
     const raw = state.results[el.dataset.tip]; if (!raw) return;
     const r = view(el.dataset.tip, raw), s = status(r);
-    html = `<div class="tip-d">${fmtDate(r.date)}${r.lab ? " · " + esc(r.lab) : ""}</div><b class="num">${fmt(r.v)}</b> ${esc(r.unit || "")}
-      ${rangeText(r.min, r.max) ? `<div>норма ${esc(rangeText(r.min, r.max))}${s && s !== "none" ? " · " + STATUS_TXT[s] : ""}</div>` : ""}
+    html = `<div class="tip-d">${fmtDate(r.date)}${r.lab ? ", " + esc(r.lab) : ""}</div><b class="num">${fmt(r.v)}</b> ${esc(r.unit || "")}
+      ${rangeText(r.min, r.max) ? `<div>норма ${esc(rangeText(r.min, r.max))}${s && s !== "none" ? ", " + STATUS_TXT[s] : ""}</div>` : ""}
       ${r.converted ? `<div class="tip-o">На бланке: <b class="num">${esc(origText(r))}</b>${rangeText(r.o.min, r.o.max) ? `, норма ${esc(rangeText(r.o.min, r.o.max))}` : ""}</div>` : ""}${r.note ? `<div class="tip-d">${esc(r.note)}</div>` : ""}`;
   }
   tip.innerHTML = html; tip.hidden = false;
@@ -1048,14 +1048,22 @@ $("#exportBtn").addEventListener("click", () => {
   document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   menu.hidden = true; toast("Копия сохранена в файл");
 });
+const importTally = s => [[s.results, "замер", "замера", "замеров"], [s.studies, "обследование", "обследования", "обследований"], [s.symptoms, "симптом", "симптома", "симптомов"], [s.days, "день", "дня", "дней"], [s.plans, "схема лечения", "схемы лечения", "схем лечения"]].map(([o, ...w]) => { const n = Object.keys(o || {}).length; return `${n} ${plural(n, ...w)}`; }).join(", ");
 $("#importInput").addEventListener("change", async e => {
   const f = e.target.files[0]; if (!f) return;
   try {
     const j = JSON.parse(await f.text());
     if (!j || typeof j.results !== "object") throw new Error("bad");
-    state.markers = j.markers || {}; state.results = j.results; state.events = j.events || {}; state.prefs = j.prefs || {}; state.studies = j.studies || {}; state.symptoms = j.symptoms || {}; state.days = j.days || {}; state.plans = j.plans || {}; state.drugs = j.drugs || {}; save(); renderAll();
-    toast(`Загружено: ${Object.keys(state.results).length} замеров`);
-  } catch (err) { toast("Это не файл Медкарты — ничего не изменено"); }
+    if (confirm(`Заменить все данные файлом?\nСейчас: ${importTally(state)}\nВ файле: ${importTally(j)}`)) {
+      const old = JSON.stringify(state);
+      try { localStorage.setItem("medcard.backup." + Date.now(), old); }
+      catch (err) { toast("Нет места для копии старых данных. Ничего не изменено"); e.target.value = ""; menu.hidden = true; return; }
+      Object.keys(localStorage).filter(k => k.startsWith("medcard.backup.")).sort().slice(0, -2).forEach(k => localStorage.removeItem(k));
+      const put = d => { state.markers = d.markers || {}; state.results = d.results; state.events = d.events || {}; state.prefs = d.prefs || {}; state.studies = d.studies || {}; state.symptoms = d.symptoms || {}; state.days = d.days || {}; state.plans = d.plans || {}; state.drugs = d.drugs || {}; save(); renderAll(); };
+      put(j);
+      toastUndo(`Загружено замеров: ${Object.keys(state.results).length}`, () => put(JSON.parse(old)));
+    }
+  } catch (err) { toast("Это не файл Медкарты. Ничего не изменено"); }
   e.target.value = ""; menu.hidden = true;
 });
 
@@ -1093,15 +1101,15 @@ function renderLab() {
 }
 function rowCard(r, i) {
   const m = r.mid ? info(r.mid) : null;
-  const sub = r.last ? `прошлый раз ${fmt(r.last.o.v)} ${esc(r.last.o.unit)} · ${fmtDate(r.last.date)}` : (m ? "первая сдача" : "новый показатель");
+  const sub = r.last ? `прошлый раз ${fmt(r.last.o.v)} ${esc(r.last.o.unit)}, ${fmtDate(r.last.date)}` : (m ? "первая сдача" : "новый показатель");
   const meta = r.edit
     ? `<div class="ec-edit">
         <label><span>Единицы</span><input class="input unit" id="unit${i}" value="${esc(r.unit)}" placeholder="мкМЕ/мл"></label>
         <label><span>Норма с бланка</span><input class="input num rng" id="rng${i}" value="${esc(r.range)}" placeholder="0.27-4.2 или <34"></label>
       </div>`
-    : `<button type="button" class="ec-meta" data-edit>${r.range ? `норма ${esc(r.range.replace(/-/, "–"))}` : "норма не указана"} · изменить</button>`;
+    : `<button type="button" class="ec-meta" data-edit>${r.range ? `норма ${esc(r.range.replace(/-/, "–"))}` : "норма не указана"}, изменить</button>`;
   return `<div class="ecard" data-i="${i}">
-    <div class="ec-name"><b>${esc(r.name)}</b><span>${esc(m?.abbr || "")}${m?.abbr ? " · " : ""}${sub}</span></div>
+    <div class="ec-name"><b>${esc(r.name)}</b><span>${esc(m?.abbr || "")}${m?.abbr ? ", " : ""}${sub}</span></div>
     <div class="ec-val">
       <input class="input num val" id="val${i}" value="${esc(r.v)}" inputmode="decimal" autocomplete="off" placeholder="значение" aria-label="Значение ${esc(r.name)}">
       ${r.mid ? `<select class="ec-unit-sel unit-sel" aria-label="Единицы ${esc(r.name)}" title="В чём измеряла лаборатория">
@@ -1116,7 +1124,7 @@ function rowCard(r, i) {
 function renderRows(focusIdx, field = "val") {
   $("#rows").innerHTML = rows.length
     ? rows.map(rowCard).join("")
-    : `<div class="ec-empty">Начни печатать название анализа выше — или выбери набор.</div>`;
+    : `<div class="ec-empty">Начни печатать название анализа выше или выбери набор.</div>`;
   updateSave();
   if (focusIdx != null) { const el = $(`#${field}${focusIdx}`); el?.focus(); el?.select?.(); }
 }
@@ -1142,7 +1150,7 @@ function renderQuick() {
 function renderSetList(q) {
   const list = PANELS.filter(p => !norm(q) || norm(p.name + " " + p.problems).includes(norm(q)));
   $("#setList").innerHTML = list.length
-    ? list.map(p => `<button type="button" class="setitem" data-quick="p:${p.id}"><b>${esc(p.name)}</b><span>${panelBase(p.id).length} ${plural(panelBase(p.id).length, "анализ", "анализа", "анализов")} · ${esc(p.problems.split(/[,;]/)[0])}</span></button>`).join("")
+    ? list.map(p => `<button type="button" class="setitem" data-quick="p:${p.id}"><b>${esc(p.name)}</b><span>${panelBase(p.id).length} ${plural(panelBase(p.id).length, "анализ", "анализа", "анализов")}, ${esc(p.problems.split(/[,;]/)[0])}</span></button>`).join("")
     : `<div class="setempty">Ничего не нашлось</div>`;
 }
 function toggleSet(open) {
@@ -1301,7 +1309,7 @@ function openAddSugg() {
   sug = { items, sel: 0, custom: exact ? null : q.trim() };
   $("#addSugg").innerHTML = items.map((m, k) => {
     const last = lastOf(m.id);
-    return `<li role="option" data-k="${k}" aria-selected="${k === 0}"><span class="as-name">${esc(m.ru)}<small>${esc([m.abbr, m.en].filter(Boolean).join(" · "))}</small></span><span class="as-last">${last ? `${fmtDate(last.date)}` : "не сдавал"}</span></li>`;
+    return `<li role="option" data-k="${k}" aria-selected="${k === 0}"><span class="as-name">${esc(m.ru)}<small>${esc([m.abbr, m.en].filter(Boolean).join(", "))}</small></span><span class="as-last">${last ? `${fmtDate(last.date)}` : "не сдавал"}</span></li>`;
   }).join("") + (sug.custom ? `<li role="option" data-k="new" aria-selected="${!items.length}"><span class="as-name new">+ Новый показатель «${esc(sug.custom)}»</span></li>` : "");
   $("#addSugg").hidden = false; $("#addQ").setAttribute("aria-expanded", "true");
 }
@@ -1376,7 +1384,7 @@ $("#entryForm").addEventListener("submit", e => {
   }
   if (!save()) return;
   dlg.close(); renderAll();
-  toast(`Сохранено: ${filled.length} ${plural(filled.length, "показатель", "показателя", "показателей")} за ${fmtDate(date)}${skipped ? ` · ${skipped} без значения пропущено` : ""}`);
+  toast(`Сохранено: ${filled.length} ${plural(filled.length, "показатель", "показателя", "показателей")} за ${fmtDate(date)}${skipped ? `, ${skipped} без значения пропущено` : ""}`);
   if (changesFor(date).some(c => c.prev)) setTimeout(() => openDigest(date), 350);
 });
 

@@ -212,3 +212,16 @@ function richText(text) {
     return `<div class="rt-row"><b>${esc(m[1])}</b>${parts.length > 1 ? `<ul>${parts.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : `<span>${esc(m[2])}</span>`}</div>`;
   }).join("")}</div>`;
 }
+
+/* ---------- undo ---------- */
+// a toast with a way back, for anything erased by one click; a modal dialog makes the rest of the page inert, so it lives inside the dialog
+let undoBox;
+function toastUndo(text, undo) {
+  undoBox?.remove();
+  const el = undoBox = document.createElement("div"), b = document.createElement("button");
+  el.className = "toast"; el.textContent = text;
+  b.type = "button"; b.className = "toast-undo"; b.textContent = "Вернуть";
+  b.onclick = () => { el.remove(); undo(); };
+  el.append(b); ($("dialog[open]") || document.body).append(el);
+  setTimeout(() => el.remove(), 6000);
+}

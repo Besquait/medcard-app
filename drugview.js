@@ -39,8 +39,8 @@ function renderDrugs() {
   morph(box, `<div class="st-head"><div><h2>Препараты</h2></div>
       ${ui.readonly ? "" : `<button type="button" class="btn primary" data-dr-add>Свой препарат</button>`}</div>
     <input class="input tp-dq" data-dr-q placeholder="Найти препарат" autocomplete="off" aria-label="Найти препарат">
-    ${mine.size ? `<h3 class="st-year">Мои · ${mine.size}</h3><div class="card st-list tp-dlist">${[...mine.values()].map(m => row(m.id, m.name, [m.id ? drugInfo(m.id).group : "нет в справочнике — нажми, чтобы создать", "в схеме: " + m.plans.join(", ")].filter(Boolean).join(" · "))).join("")}</div>` : ""}
-    ${others.length ? `<h3 class="st-year">Справочник · ${others.length}</h3><div class="card st-list tp-dlist">${others.map(id => row(id, drugInfo(id).name, drugInfo(id).group)).join("")}</div>` : ""}
+    ${mine.size ? `<h3 class="st-year">Мои ${mine.size}</h3><div class="card st-list tp-dlist">${[...mine.values()].map(m => row(m.id, m.name, [m.id ? drugInfo(m.id).group : "нет в справочнике, создать", "в схеме: " + m.plans.join(", ")].filter(Boolean).join(", "))).join("")}</div>` : ""}
+    ${others.length ? `<h3 class="st-year">Справочник ${others.length}</h3><div class="card st-list tp-dlist">${others.map(id => row(id, drugInfo(id).name, drugInfo(id).group)).join("")}</div>` : ""}
     <p class="muted tp-dnone" hidden>Ничего не нашлось</p>
     <p class="muted tp-dnote">Дозу и курс решает врач.</p>`);
 }
@@ -69,10 +69,10 @@ function openDrug(id) {
   const sec = k => k === "mine" ? (mine.length ? `<section class="tp-recg tp-mine"><h4>У тебя</h4><ul>${mine.map(t => `<li>${esc(t)}</li>`).join("")}</ul></section>` : "")
     : (d[k]?.length || !ro) ? `<section class="tp-recg"><h4>${DR_LISTS.find(([x]) => x === k)[1]}</h4>${list(k)}</section>` : "";
   const curTab = DR_TABS.find(([k]) => k === tab);
-  openX(`<div class="dlg-head"><div><div class="info-group">${ed === "group" ? drEditor("group", d.group) : drLine("group", d.group || (ro ? "" : "группа — нажми, чтобы указать"), ro)}</div>
+  openX(`<div class="dlg-head"><div><div class="info-group">${ed === "group" ? drEditor("group", d.group) : drLine("group", d.group || (ro ? "" : "указать группу"), ro)}</div>
       <h3>${ed === "name" ? drEditor("name", d.name) : drLine("name", d.name, ro)}</h3></div><button type="button" class="icon-btn" data-xclose aria-label="Закрыть">×</button></div>
     <div class="sy-tabs" role="tablist">${DR_TABS.map(([k, n]) => `<button type="button" role="tab" data-dr-tab="${k}" aria-selected="${tab === k}">${n}</button>`).join("")}</div>
-    <div class="tp-body">${tab === "how" ? `<p class="tp-what">${ed === "what" ? drEditor("what", d.what, true) : drLine("what", d.what || (ro ? "" : "Что это и как работает — нажми, чтобы написать"), ro)}</p>` : ""}
+    <div class="tp-body">${tab === "how" ? `<p class="tp-what">${ed === "what" ? drEditor("what", d.what, true) : drLine("what", d.what || (ro ? "" : "Что это и как работает"), ro)}</p>` : ""}
       ${curTab[2].map(sec).join("")}</div>
     <div class="dlg-foot"><p class="muted tp-dnote">Дозу и курс решает врач.</p><span style="flex:1"></span>
       ${!ro && d.own ? `<button type="button" class="btn sm ghost${d.custom ? " danger" : ""}" data-dr-reset>${d.custom ? (ui.drConfirm === id ? "Точно удалить?" : "Удалить препарат") : "Вернуть как было"}</button>` : ""}</div>`, "st-dlg tp-dlg dr-dlg");

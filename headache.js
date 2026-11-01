@@ -52,7 +52,7 @@ const hxDay = d => { const t = todayISO(); if (d === t) return "сегодня";
 // "вчера, 22:00 → сегодня, 08:30", one day as "20 октября, 09:00–11:30"
 function hxRange(d, x) {
   const s = `${hxDay(d)}, ${x.start || "?"}`;
-  if (!x.end) return dyCap(`${s} · ещё болит`);
+  if (!x.end) return dyCap(`${s}, ещё болит`);
   const ed = hxEndD(x, d);
   return dyCap(ed === d ? `${s}–${x.end}` : `${s} → ${hxDay(ed)}, ${x.end}`);
 }
@@ -89,7 +89,7 @@ function hxHead(sel, heat) {
   const max = heat ? Math.max(1, ...[...HX_FRONT, ...HX_BACK, ["neck"]].map(([id]) => cnt(id))) : 1;
   const z = (id, shape, at) => {
     const on = sel?.includes(id), n = cnt(id), h = heat ? n / max : 0;
-    return `<g class="hx-z${on ? " on" : ""}${heat && h > .5 ? " hot" : ""}" data-hx-z="${id}"${heat ? ` style="--h:${h.toFixed(2)}"` : ""}><title>${HX_ZONES[id]}${heat ? ` · ${n}` : ""}</title>${shape}${heat && n && at ? `<text x="${at[0]}" y="${at[1] + 5}">${n}</text>` : ""}</g>`;
+    return `<g class="hx-z${on ? " on" : ""}${heat && h > .5 ? " hot" : ""}" data-hx-z="${id}"${heat ? ` style="--h:${h.toFixed(2)}"` : ""}><title>${HX_ZONES[id]}${heat ? `: ${n}` : ""}</title>${shape}${heat && n && at ? `<text x="${at[0]}" y="${at[1] + 5}">${n}</text>` : ""}</g>`;
   };
   const view = (back, list) => {
     const id = uid + (back ? "b" : "f");
@@ -108,7 +108,7 @@ function hxHead(sel, heat) {
   return `<div class="hx-heads${heat ? " heat" : ""}${sel?.includes("whole") ? " all" : ""}">
     <figure>${view(false, HX_FRONT)}<figcaption>Спереди</figcaption></figure>
     <figure>${view(true, HX_BACK)}<figcaption>Сзади</figcaption></figure>
-    ${chips}${heat && all ? `<p class="hx-allc">Вся голова · ${all}</p>` : ""}
+    ${chips}${heat && all ? `<p class="hx-allc">Вся голова: ${all}</p>` : ""}
   </div>`;
 }
 
@@ -162,7 +162,7 @@ function hxChart(x) {
     ${nights.map(([t, d]) => `<line class="hx-cn" x1="${X(t)}" x2="${X(t)}" y1="${T - 14}" y2="${Y(0)}"/><text class="hx-cnl" x="${+X(t) + 5}" y="${T - 6}">${esc(hxDay(d))}</text>`).join("")}
     <path class="hx-ca" d="${area}"/><path class="hx-ct" d="${tail}"/><path class="hx-cl" d="${line}"/>
     ${x.end ? `<circle class="hx-ce" cx="${X(en)}" cy="${Y(0)}" r="5"><title>Прошла в ${esc(x.end)}</title></circle>` : ""}
-    ${pts.map(p => `<g style="--v:${p.v}"><circle class="hx-cd" cx="${X(p.at)}" cy="${Y(p.v)}" r="6.5"><title>${esc(p.t)} · ${p.v}/10</title></circle><text class="hx-cv" x="${X(p.at)}" y="${+Y(p.v) - 12}">${p.v}</text></g>`).join("")}
+    ${pts.map(p => `<g style="--v:${p.v}"><circle class="hx-cd" cx="${X(p.at)}" cy="${Y(p.v)}" r="6.5"><title>${esc(p.t)}, ${p.v}/10</title></circle><text class="hx-cv" x="${X(p.at)}" y="${+Y(p.v) - 12}">${p.v}</text></g>`).join("")}
     ${shown.map(([t, l]) => `<text class="hx-cx" x="${X(t)}" y="${H - 10}">${esc(l)}</text>`).join("")}
   </svg>`;
 }
@@ -258,7 +258,7 @@ function hxMark(id, d) {
   if (l.length) syDaySet(d, id, Math.max(...l.map(e => syEV(e) ?? 2)));
   else syDaySet(d, id, null);
 }
-const hxEndMsg = (d, x) => { const ed = hxEndD(x, d), dur = hxDur({ d, hx: x }); return `Прошла ${ed !== todayISO() ? hxDay(ed) + " " : ""}в ${x.end}${dur != null ? ` · длилась ${hxLen(dur)}` : ""}`; };
+const hxEndMsg = (d, x) => { const ed = hxEndD(x, d), dur = hxDur({ d, hx: x }); return `Прошла ${ed !== todayISO() ? hxDay(ed) + " " : ""}в ${x.end}${dur != null ? `, длилась ${hxLen(dur)}` : ""}`; };
 
 function hxSave() {
   const x = ui.hx; if (!x) return true;
@@ -284,7 +284,7 @@ function hxSave() {
   ui.hx = null;
   save(); closeX(); renderAll();
   const dur = hxDur({ d, hx });
-  toast(hx.end && (ui.hxWasOpen || !old) ? hxEndMsg(d, hx) : hx.end ? `Сохранил · ${hxRange(d, hx)}${dur != null ? `, ${hxLen(dur)}` : ""}` : `Записал · ещё болит${dur ? `, ${hxLen(dur)}` : ""}`);
+  toast(hx.end && (ui.hxWasOpen || !old) ? hxEndMsg(d, hx) : hx.end ? `Сохранил: ${hxRange(d, hx)}${dur != null ? `, ${hxLen(dur)}` : ""}` : `Записал: ещё болит${dur ? `, ${hxLen(dur)}` : ""}`);
   return true;
 }
 
@@ -340,7 +340,7 @@ function hxPage() {
     <div class="hx-cols">
       <section class="card cl-box t-edge"><div class="cl-bh"><div class="cl-bt"><h4>${CL_MONTHS[t.getMonth()]} ${t.getFullYear()}</h4></div>
         <div class="cl-br" style="flex-direction:row"><button type="button" class="icon-btn" data-hx-mon="-1" aria-label="Назад">‹</button><button type="button" class="icon-btn" data-hx-mon="1" aria-label="Вперёд">›</button></div></div>
-        <div class="hx-cal">${CL_WD.map(w => `<span class="cl-wd">${w}</span>`).join("")}${cells.map(d => { const v = byDay[d]; return `<button type="button" class="hx-day${d.slice(0, 7) !== ref ? " other" : ""}${d === today ? " now" : ""}${v ? " has" : ""}" ${v ? `style="--v:${v}" data-hx-open="${dayEp[d]}"` : "disabled"} title="${fmtDate(d)}${v ? ` · ${v}/10` : ""}"><b>${+d.slice(8)}</b>${v ? `<i>${v}</i>` : ""}</button>`; }).join("")}</div></section>
+        <div class="hx-cal">${CL_WD.map(w => `<span class="cl-wd">${w}</span>`).join("")}${cells.map(d => { const v = byDay[d]; return `<button type="button" class="hx-day${d.slice(0, 7) !== ref ? " other" : ""}${d === today ? " now" : ""}${v ? " has" : ""}" ${v ? `style="--v:${v}" data-hx-open="${dayEp[d]}"` : "disabled"} title="${fmtDate(d)}${v ? `, ${v}/10` : ""}"><b>${+d.slice(8)}</b>${v ? `<i>${v}</i>` : ""}</button>`; }).join("")}</div></section>
       <section class="card cl-box t-edge"><div class="cl-bh"><div class="cl-bt"><h4>Где болит чаще</h4></div></div>${eps.length ? hxHead([], heat) : `<p class="cl-muted">Пока нет записей</p>`}</section>
       <section class="card cl-box t-edge"><div class="cl-bh"><div class="cl-bt"><h4>Что помогает</h4></div></div>
         ${Object.keys(pills).length ? Object.entries(pills).sort((a, b) => b[1].n - a[1].n).map(([n, p]) => `<div class="hx-pill"><span>${esc(n)}</span><span class="hx-pbar"><i class="yes" style="flex:${p.yes}"></i><i class="part" style="flex:${p.part}"></i><i class="no" style="flex:${p.no}"></i><i class="unk" style="flex:${p.n - p.yes - p.part - p.no}"></i></span><b>${p.yes}/${p.n}</b></div>`).join("") : `<p class="cl-muted">Пока нет таблеток в записях</p>`}</section>
@@ -350,13 +350,13 @@ function hxPage() {
 }
 function hxRow(e) {
   const x = e.hx, dur = hxDur(e), imp = HX_IMP.find(([k]) => k === x.imp);
-  const where = [(x.loc || []).map(k => HX_ZONES[k]).join(", "), (x.kind || []).map(k => HX_KIND.find(([y]) => y === k)?.[1].toLowerCase()).join(", ")].filter(Boolean).join(" · ");
+  const where = [(x.loc || []).map(k => HX_ZONES[k]).join(", "), (x.kind || []).map(k => HX_KIND.find(([y]) => y === k)?.[1].toLowerCase()).join(", ")].filter(Boolean).join("; ");
   return `<button type="button" class="hx-ep" data-hx-open="${e.i}">
     <span class="hx-v" style="--v:${x.vas}" title="Самая сильная">${x.vas}</span>
     <span class="hx-epm"><b>${esc(hxRange(e.d, x))}</b>
       <span class="hx-epi">${dur != null ? `<span>${x.end ? hxLen(dur) : `уже ${hxLen(dur)}`}</span>` : ""}${x.pts?.length > 1 ? `<span>${x.pts.map(p => p.v).join(" → ")}</span>` : ""}${imp ? `<em class="${imp[2]}">${imp[1]}</em>` : ""}</span>
       ${where ? `<small>${esc(where)}</small>` : ""}</span>
-    <span class="hx-epmeds">${(x.meds || []).map(m => `<i class="e-${m.eff || "unk"}" title="${esc([m.t, HX_EFF.find(([k]) => k === m.eff)?.[1] || "эффект не отмечен"].filter(Boolean).join(" · "))}">${esc(m.n)}</i>`).join("")}</span></button>`;
+    <span class="hx-epmeds">${(x.meds || []).map(m => `<i class="e-${m.eff || "unk"}" title="${esc([m.t, HX_EFF.find(([k]) => k === m.eff)?.[1] || "эффект не отмечен"].filter(Boolean).join(", "))}">${esc(m.n)}</i>`).join("")}</span></button>`;
 }
 // while it still hurts: on the calendar and the head page
 function hxBanner(e) {

@@ -20,12 +20,12 @@ const tpDays = (a, b) => daysBetween(a, b) + 1;
 function tpDrugWhen(d) {
   const today = todayISO();
   if (!d.start && !d.end) return "постоянно";
-  if (!d.end) return `с ${fmtDate(d.start)} · постоянно`;
+  if (!d.end) return `с ${fmtDate(d.start)}, постоянно`;
   const span = `${fmtDate(d.start)}–${fmtDate(d.end)}`, n = d.start ? tpDays(d.start, d.end) : 0;
-  if (d.end < today) return `${span} · закончен`;
-  if (d.start && d.start > today) return `${span} · начнётся через ${daysBetween(today, d.start)} дн.`;
+  if (d.end < today) return `${span}, закончен`;
+  if (d.start && d.start > today) return `${span}, начнётся через ${daysBetween(today, d.start)} дн.`;
   const left = daysBetween(today, d.end);
-  return `${span}${n ? ` · ${n} дн.` : ""} · ${left ? `осталось ${left} ${plural(left, "день", "дня", "дней")}` : "последний день"}`;
+  return `${span}${n ? `, ${n} дн.` : ""}, ${left ? `осталось ${left} ${plural(left, "день", "дня", "дней")}` : "последний день"}`;
 }
 // strength of each linked complaint in the days before the start against the days of the course
 function tpCompare(p) {
@@ -52,13 +52,13 @@ function renderTherapy() {
   const now = all.filter(tpActive), past = all.filter(p => !tpActive(p));
   morph(box, `<div class="st-head"><div><h2>Лечение</h2></div>
       ${ui.readonly ? "" : `<button type="button" class="btn primary" data-tp-new>Добавить</button>`}</div>
-    ${!all.length ? `<div class="st-empty"><h3>Схем лечения пока нет</h3><p>Что назначил врач и что это лечит.</p>${ui.readonly ? "" : `<button type="button" class="btn primary" data-tp-new>Добавить</button>`}</div>` : ""}
+    ${!all.length ? `<div class="st-empty"><h3>Схем лечения пока нет</h3>${ui.readonly ? "" : `<button type="button" class="btn primary" data-tp-new>Добавить</button>`}</div>` : ""}
     ${now.length ? `<div class="tp-grid">${now.map(tpTile).join("")}</div>` : ""}
-    ${past.length ? `<details class="sy-past"${ui.tpPastOpen ? " open" : ""}><summary class="st-year">Раньше · ${past.length}</summary><div class="tp-grid">${past.map(tpTile).join("")}</div></details>` : ""}`);
+    ${past.length ? `<details class="sy-past"${ui.tpPastOpen ? " open" : ""}><summary class="st-year">Раньше: ${past.length}</summary><div class="tp-grid">${past.map(tpTile).join("")}</div></details>` : ""}`);
 }
 // a tile: the name, the drugs in one line and how it works if marked
 function tpTile(p) {
-  const drugs = (p.drugs || []).map(d => d.name.replace(/\s*\(.*\)$/, "")).join(" · ");
+  const drugs = (p.drugs || []).map(d => d.name.replace(/\s*\(.*\)$/, "")).join(", ");
   const n = (p.sy || []).filter(id => state.symptoms?.[id]).length;
   return `<button type="button" class="card tp-tile${tpActive(p) ? "" : " past"}" data-tp="${esc(p.id)}">
     <b>${esc(p.title || "Схема лечения")}</b>
@@ -89,7 +89,7 @@ function openPlan(id) {
   const add = (k, label) => ro ? "" : `<button type="button" class="tp-add" data-tp-addopen="${k}">+ ${label}</button>`;
   const body = {
     drugs: () => `<div class="tp-list">${drugs.map((d, i) => ui.tpDrug === i ? drugEdit(d, i)
-        : `<div class="tp-drugrow"><button type="button" class="tp-drug" data-tp-dedit="${i}"${ro ? " disabled" : ""}><b>${esc(d.name)}${clCourseTag(d, d.id || `${p.id}#${i}`)}</b>${tpWhen(d)}${[d.dose, d.how].filter(Boolean).length ? `<span>${esc([d.dose, d.how].filter(Boolean).join(" · "))}</span>` : ""}</button>${drugMatch(d.name) ? `<button type="button" class="btn sm ghost tp-about" data-dr="${esc(drugMatch(d.name))}">О препарате</button>` : ""}</div>`).join("")}
+        : `<div class="tp-drugrow"><button type="button" class="tp-drug" data-tp-dedit="${i}"${ro ? " disabled" : ""}><b>${esc(d.name)}${clCourseTag(d, d.id || `${p.id}#${i}`)}</b>${tpWhen(d)}${[d.dose, d.how].filter(Boolean).length ? `<span>${esc([d.dose, d.how].filter(Boolean).join(", "))}</span>` : ""}</button>${drugMatch(d.name) ? `<button type="button" class="btn sm ghost tp-about" data-dr="${esc(drugMatch(d.name))}">О препарате</button>` : ""}</div>`).join("")}
       ${ui.tpDrug === "new" ? drugEdit({}, "new") : add("drug", "Препарат")}</div>`,
     recs: () => `${TP_RECS.map(([k, n]) => { const l = recs.map((r, i) => ({ ...r, i })).filter(r => (r.cat || "other") === k); return l.length ? `<section class="tp-recg"><h4>${n}</h4><ul>${l.map(r => ui.tpRec === r.i ? `<li class="tp-recedit"><form class="dr-form" data-tp-rsave="${r.i}"><textarea class="input sy-grow" name="t" rows="2">${esc(r.text)}</textarea><div class="tp-edb"><button type="button" class="btn sm ghost danger" data-tp-rdel="${r.i}">Удалить</button><span style="flex:1"></span><button type="button" class="btn sm ghost" data-tp-cancel>Отмена</button><button type="submit" class="btn sm primary">Сохранить</button></div></form></li>`
           : `<li><span class="${ro ? "" : "dr-ed"}" data-tp-red="${r.i}">${esc(r.text)}</span>${ro ? "" : `<button type="button" class="icon-btn sm" data-tp-rdel="${r.i}" aria-label="Убрать совет">×</button>`}</li>`).join("")}</ul></section>` : ""; }).join("")}
@@ -141,7 +141,7 @@ function openPlanForm(id) {
       <label class="fld"><span>Название</span><input class="input" name="title" value="${esc(p.title || "")}" placeholder="Например: желудок" autocomplete="off"></label>
       <div class="fld"><span>Препараты</span><div class="tp-drugs-f" data-tp-drugs>${(p.drugs?.length ? p.drugs : [{}]).map(tpDrugRow).join("")}</div>
         <button type="button" class="btn sm ghost" data-tp-dradd>+ Препарат</button></div>
-      ${TP_RECS.slice(0, 3).map(([k, n]) => `<label class="fld"><span>${n} — каждый совет с новой строки</span><textarea class="input sy-grow" name="rec_${k}" rows="2">${esc(recText(k))}</textarea></label>`).join("")}
+      ${TP_RECS.slice(0, 3).map(([k, n]) => `<label class="fld"><span title="Каждый совет с новой строки">${n}</span><textarea class="input sy-grow" name="rec_${k}" rows="2">${esc(recText(k))}</textarea></label>`).join("")}
       <div class="fld"><span>Что лечит</span>${tpSyPicker(p.sy || [])}</div>
       ${id ? `<label class="sy-mainf"><input type="checkbox" name="done"${p.done ? " checked" : ""}><span><b>Закончил</b><small>Схема уйдёт в «Раньше»</small></span></label>` : ""}
       <div class="dlg-foot">${id ? `<button type="button" class="btn ghost danger" data-tp-del="${esc(id)}">${ui.confirmTp === id ? "Точно удалить?" : "Удалить"}</button>` : ""}<span style="flex:1"></span><button type="button" class="btn ghost" data-xclose>Отмена</button><button type="submit" class="btn primary">Сохранить</button></div>
@@ -171,8 +171,8 @@ function therapyReport(from) {
     .sort((a, b) => tpActive(b) - tpActive(a) || tpStart(b).localeCompare(tpStart(a)));
   if (!l.length) return "";
   return `<table class="rep-t rep-tp"><thead><tr><th>Схема</th><th>Препараты</th><th>Лечит</th><th>Результат</th></tr></thead><tbody>${l.map(p => `<tr>
-    <td><b>${esc(p.title)}</b><br><small>${esc([tpActive(p) ? "идёт" : "закончено", p.by, p.date ? fmtDate(p.date) : ""].filter(Boolean).join(" · "))}</small></td>
-    <td>${(p.drugs || []).map(d => `${esc(d.name)}${d.how ? ` — ${esc(d.how)}` : ""} <small>${esc(tpDrugWhen(d))}</small>`).join("<br>") || "—"}${(p.recs || []).length ? `<br><small>Советы: ${esc(p.recs.map(r => r.text).join("; "))}</small>` : ""}</td>
+    <td><b>${esc(p.title)}</b><br><small>${esc([tpActive(p) ? "идёт" : "закончено", p.by, p.date ? fmtDate(p.date) : ""].filter(Boolean).join(", "))}</small></td>
+    <td>${(p.drugs || []).map(d => `${esc(d.name)}${d.how ? `: ${esc(d.how)}` : ""} <small>${esc(tpDrugWhen(d))}</small>`).join("<br>") || "—"}${(p.recs || []).length ? `<br><small>Советы: ${esc(p.recs.map(r => r.text).join("; "))}</small>` : ""}</td>
     <td>${esc((p.sy || []).map(id => state.symptoms?.[id]?.name).filter(Boolean).join(", ")) || "—"}</td>
     <td>${p.eff ? esc(TP_EFF_NAME[p.eff]) : "—"}${tpCompare(p).map(c => `<br><small>${esc(c.s.name)}: ${dyNum(c.a)} → ${dyNum(c.b)}</small>`).join("")}</td></tr>`).join("")}</tbody></table>`;
 }

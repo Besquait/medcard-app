@@ -14,7 +14,7 @@ const FD_NI = {
   sat: ["Насыщенные жиры", "г", 1], mono: ["Мононенасыщенные", "г", 1], poly: ["Полиненасыщенные", "г", 1], trans: ["Трансжиры", "г", 1], chol: ["Холестерин", "мг", 0],
   ala: ["ALA", "г", 2, "растительная: лён, орехи, масла"], o3: ["EPA + DHA", "г", 2, "из рыбы и морепродуктов"], epa: ["EPA", "г", 2], dha: ["DHA", "г", 2],
   la: ["LA", "г", 1, "линолевая"], aa: ["AA", "г", 2, "арахидоновая"],
-  vA: ["Витамин A", "мкг", 0], vC: ["Витамин C", "мг", 0], vD: ["Витамин D", "мкг", 1, "из еды мало у всех; главное — солнце и анализ 25(OH)D"], vE: ["Витамин E", "мг", 1], vK: ["Витамин K", "мкг", 0],
+  vA: ["Витамин A", "мкг", 0], vC: ["Витамин C", "мг", 0], vD: ["Витамин D", "мкг", 1, "из еды мало у всех, главное: солнце и анализ 25(OH)D"], vE: ["Витамин E", "мг", 1], vK: ["Витамин K", "мкг", 0],
   b1: ["B1 тиамин", "мг", 2], b2: ["B2 рибофлавин", "мг", 2], b3: ["B3 ниацин", "мг", 1], b5: ["B5 пантотеновая", "мг", 1], b6: ["B6 пиридоксин", "мг", 2],
   b9: ["B9 фолат", "мкг", 0], b12: ["B12 кобаламин", "мкг", 1], chol_: ["Холин", "мг", 0],
   ca: ["Кальций", "мг", 0], fe: ["Железо", "мг", 1], mg: ["Магний", "мг", 0], p: ["Фосфор", "мг", 0], k: ["Калий", "мг", 0], na: ["Натрий", "мг", 0, "≈ соль × 400"],
@@ -130,7 +130,7 @@ function fdNutRow(k, lv, S, c, open) {
   const lim = r.max != null, goal = lim ? r.max : r.t, pct = goal ? Math.round(v / goal * 100) : null;
   const st = lim ? (pct > 100 ? "over" : "ok") : r.ul && v > r.ul ? "over" : pct == null ? "" : pct >= 100 ? "ok" : pct >= 50 ? "mid" : "low";
   const ppi = FD_PPI_WATCH.has(k) && fdOnPPI();
-  const tip = [note, lim ? `не больше ${fdFmt(goal, k)} ${unit}` : goal ? `норма ${fdFmt(goal, k)} ${unit}` : "", ppi ? "на омепразоле усваивается хуже — спроси врача про анализ" : "", cov < 0.9 ? "для части еды нет данных — на деле больше" : ""].filter(Boolean).join(" · ");
+  const tip = [note, lim ? `не больше ${fdFmt(goal, k)} ${unit}` : goal ? `норма ${fdFmt(goal, k)} ${unit}` : "", ppi ? "на омепразоле усваивается хуже, спроси врача про анализ" : "", cov < 0.9 ? "для части еды нет данных, на деле больше" : ""].filter(Boolean).join("; ");
   return `<button type="button" class="fd-r lv${lv} ${st}${open ? " open" : ""}" data-fd-nut="${k}" aria-expanded="${open}"${tip ? ` title="${esc(tip)}"` : ""}>
       <span class="fd-rn">${esc(name)}${ppi ? `<i class="fd-ppi">омез</i>` : ""}</span>
       <span class="fd-rv">${cov < 0.9 ? "≈" : ""}${fdFmt(v, k)} ${unit}</span>
@@ -147,7 +147,7 @@ function fdNutBy(k, S) {
     .map(x => [x, FD_NUT[x[0]][idx] * x[8] / 100]).sort((a, b) => b[1] - a[1]).slice(0, 5) : [];
   return `<div class="fd-nby">
     ${list.length ? `<div class="fd-nbl"><span class="fd-ql">Откуда</span>${list.map(([n, v]) => `<div class="fd-nbi"><span>${esc(n)}</span><b>${fdFmt(v, k)} ${unit}</b><i style="width:${Math.round(v / tot * 100)}%"></i></div>`).join("")}</div>` : ``}
-    ${tips.length ? `<div class="fd-nbl"><span class="fd-ql" title="Только то, что обычно не раздражает желудок">Чем добрать</span><div class="tchips">${tips.map(([x, v]) => `<button type="button" class="tchip" data-fd-tip="${esc(x[0])}">${esc(x[1])}<small>${esc(x[9])} · ${fdFmt(v, k)} ${unit}</small></button>`).join("")}</div></div>` : ""}
+    ${tips.length ? `<div class="fd-nbl"><span class="fd-ql" title="Только то, что обычно не раздражает желудок">Чем добрать</span><div class="tchips">${tips.map(([x, v]) => `<button type="button" class="tchip" data-fd-tip="${esc(x[0])}">${esc(x[1])}<small>${esc(x[9])}, ${fdFmt(v, k)} ${unit}</small></button>`).join("")}</div></div>` : ""}
   </div>`;
 }
 // [group, [[key, indent]]] — the left and the right column
@@ -180,6 +180,6 @@ function openFoodComp(d, id) {
   const e = fdEntry(d, id); if (!e) return;
   const o = fdNutOf(e), c = fdCtx();
   const row = k => { const r = fdDRI(k, c), goal = r.max ?? r.t; return o[k] == null ? "" : `<div class="cl-stat"><span>${esc(FD_NI[k][0])}</span><b>${fdFmt(o[k], k)} ${FD_NI[k][1]}${goal ? ` <small class="cl-muted">${Math.round(o[k] / goal * 100)}%</small>` : ""}</b></div>`; };
-  openX(`<div class="dlg-head"><h3>${esc(e.n)} · ${fdAmt(e)}</h3><button type="button" class="icon-btn" data-xclose aria-label="Закрыть">×</button></div>
+  openX(`<div class="dlg-head"><h3>${esc(e.n)}, ${fdAmt(e)}</h3><button type="button" class="icon-btn" data-xclose aria-label="Закрыть">×</button></div>
     <div class="fd-comp">${FD_TABS.slice(1).map(([, n, ks]) => { const rows = ks.map(row).join(""); return rows ? `<section><h4 class="cl-dh4">${n}</h4>${rows}</section>` : ""; }).join("")}</div>`, "st-dlg tp-dlg cl-dlg fd-dlg");
 }

@@ -137,7 +137,7 @@ function dyLinks() {
     }
     if (on.length < DY_MIN || off.length < DY_MIN) continue;
     const a = avg(on), b = avg(off), se = Math.sqrt(vari(on, a) / on.length + vari(off, b) / off.length);
-    const r = { o, phrase, lag, a, b, na: on.length, nb: off.length, diff: a - b, w: Math.abs(a - b) / o.scale, t: se ? Math.abs(a - b) / se : a !== b ? 9 : 0 };
+    const r = { o, fid, phrase, lag, a, b, na: on.length, nb: off.length, diff: a - b, w: Math.abs(a - b) / o.scale, t: se ? Math.abs(a - b) / se : a !== b ? 9 : 0 };
     const key = (o.id || "mood") + "|" + fid, prev = best.get(key);
     if (!prev || r.t > prev.t) best.set(key, r);
   }
@@ -165,8 +165,8 @@ function dyGrid() {
 function dyLinksTab() {
   const n = dyCount(), grid = dyGrid();
   if (n < DY_FIRST) {
-    return `<section class="card dy-links"><h3>Связи появятся после недели записей</h3>
-      <p>Записано ${n} ${plural(n, "день", "дня", "дней")} из ${DY_GOAL}. Сравнивать можно, когда есть дни и с каждым фактором, и без него, — поэтому отмечай день, даже если «ничего из этого».</p>
+    return `<section class="card dy-links"><h3>Связи</h3>
+      <p>Записано ${n} из ${DY_GOAL} дней</p>
       <div class="g-bar dy-prog"><i style="width:${Math.round(n / DY_GOAL * 100)}%"></i></div></section>${grid}`;
   }
   const list = dyLinks();
@@ -175,12 +175,12 @@ function dyLinksTab() {
     const what = r.o.mood ? `самочувствие ${r.diff > 0 ? "лучше" : "хуже"}` : `«${esc(r.o.name)}» ${r.diff > 0 ? "сильнее" : "слабее"}`;
     return `<div class="dy-link${worse ? " worse" : ""}"><div class="dy-lt"><b>${esc(dyCap(r.phrase))}</b> → ${what}${r.lag ? " на следующий день" : ""}</div>
       <div class="dy-lbar"><i style="width:${Math.min(100, Math.round(r.w * 250))}%"></i></div>
-      <small>${r.t >= 3.5 ? "Чёткая связь" : "Есть связь"} · в среднем ${dyNum(r.a)} против ${dyNum(r.b)} ${r.o.mood ? "из 5" : "из 10"} · дней с этим ${r.na}, без — ${r.nb}</small></div>`;
+      <small>${r.t >= 3.5 ? "Чёткая связь" : "Есть связь"}, в среднем ${dyNum(r.a)} против ${dyNum(r.b)} ${r.o.mood ? "из 5" : "из 10"}, дней с этим ${r.na}, без этого ${r.nb}</small></div>`;
   };
   return `<section class="card dy-links"><h3>Что связано с самочувствием</h3>
-      <p>По ${n} ${plural(n, "записанному дню", "записанным дням", "записанным дням")}${n < DY_GOAL ? " — пока предварительно" : ""}: в какие дни становится лучше или хуже.</p>
+      <p>${n} ${plural(n, "день", "дня", "дней")}</p>
       ${list.length ? list.map(item).join("") : `<p>Явных связей пока нет.</p>`}
-      <p class="dy-caveat">Это совпадения, а не доказанные причины. Проверить можно в «Проверке».</p>
+      <p class="dy-caveat">Совпадения, а не доказанные причины</p>
     </section>${grid}`;
 }
 

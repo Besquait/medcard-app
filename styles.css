@@ -2917,3 +2917,9 @@ body[data-view]:not([data-view="labs"]) #addBtn { display: none; }
 .cl-lk .cl-stat { padding: 0; font-size: 14.5px; }
 .cl-res small { font-weight: 500; color: var(--muted); }
 .st-empty h3 { margin: 0 0 20px; }
+
+/* adding a medicine */
+.cl-sechead { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-top: 14px; }
+.cl-sechead .cl-sec { margin: 0 0 0 2px; }
+.cl-addl { max-height: 300px; overflow: hidden auto; padding: 2px; }
+.cl-addl .tchip[hidden] { display: none; }

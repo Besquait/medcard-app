@@ -249,7 +249,8 @@ function clStrip(sel, today, wide) {
 const CL_RMB = "Правая кнопка: время, пропуск, история";
 function clMedsBlock(d) {
   const { sched, prn } = clMeds(d), x = state.days?.[d] || {}, m = x.meds || {};
-  if (!sched.length && !prn.length) return `<section class="card cl-card"><h3 class="cl-h3">Лекарства</h3><p class="cl-muted">Лекарств нет</p></section>`;
+  const head = `<div class="cl-sechead"><h3 class="cl-sec">Лекарства</h3><button type="button" class="btn sm" data-cl-addmed>+ Лекарство</button></div>`;
+  if (!sched.length && !prn.length) return head;
   const isT = d === todayISO(), now = clNowSlot();
   const groups = CL_SLOTS.map(([k, n]) => ({ k, n, l: sched.filter(it => it.slot === k) })).filter(g => g.l.length);
   // a dose stays where it is and only changes its state, so the next one never slides under the pointer
@@ -265,7 +266,7 @@ function clMedsBlock(d) {
   const prnBox = prn.length ? `<section class="card cl-card cl-prnbox"><div class="cl-slothead">${CL_ICON.prn}<h4>По необходимости</h4></div>
       <div class="cl-prns">${prn.map(it => { const l = clPrnList(x, it.id), k = l.length, last = l.filter(Boolean).pop();
         return `<span class="cl-prn1"><button type="button" class="cl-prnn" data-cl-mv="prn:${esc(it.id)}" title="Правая кнопка: приёмы по времени, история">${esc(it.g.name)}</button><button type="button" class="icon-btn sm" data-cl-prn="${esc(it.id)}|-1" aria-label="Убрать приём"${k ? "" : " disabled"}>−</button><b class="cl-n">${k}</b><button type="button" class="icon-btn sm" data-cl-prn="${esc(it.id)}|1" aria-label="Добавить приём">+</button>${last ? `<span class="cl-tkt">${last}</span>` : ""}</span>`; }).join("")}</div></section>` : "";
-  return `<h3 class="cl-sec">Лекарства</h3><div class="cl-slots">${groups.map(slot).join("")}</div>${prnBox}`;
+  return `${head}<div class="cl-slots">${groups.map(slot).join("")}</div>${prnBox}`;
 }
 // the night: the core of the Consensus Sleep Diary (bed and rise time, how long to fall asleep, awakenings,
 // quality) plus how rested in the morning and what woke you — reflux, cough and mucus wake people with GERD
@@ -459,6 +460,47 @@ function clRemind() {
   toast("Открой файл, напоминание встанет на 21:30");
 }
 
+/* ---------- adding a medicine ---------- */
+// names to pick from: what is in the schemes, common pharmacy names, then the drug reference
+const CL_COMMON = ["Налгезин", "Парацетамол", "Ибупрофен", "Цитрамон", "Нимесил", "Но-шпа", "Гевискон", "Альмагель", "Мезим", "Смекта", "Лоратадин", "Мелатонин", "Магний B6", "Солевой раствор для носа"];
+const CL_ADD = [["prn", "Разово"], ["morning", "Утро"], ["day", "День"], ["evening", "Вечер"], ["night", "На ночь"]];
+function clMedNames() {
+  const seen = new Set(), out = [];
+  const add = n => { const k = drugMatch(n) || norm(n); if (n && !seen.has(k)) { seen.add(k); out.push(n); } };
+  tpList().flatMap(p => p.drugs || []).forEach(g => add(g.name));
+  CL_COMMON.forEach(add);
+  Object.values(DRUG).forEach(g => add(g.name));
+  return out;
+}
+function openMedAdd() {
+  openX(`<div class="dlg-head"><h3>Добавить лекарство</h3>${clX}</div>
+    <div class="seg cl-seg">${CL_ADD.map(([k, n], i) => `<button type="button" data-cla-w="${k}" aria-pressed="${i === 0}">${n}</button>`).join("")}</div>
+    <input class="input" data-cla-q placeholder="Найти или вписать своё" autocomplete="off" aria-label="Название">
+    <div class="tchips cl-addl">${clMedNames().map(n => `<button type="button" class="tchip" data-cla-n="${esc(n)}" data-q="${esc(norm(n))}">${esc(n)}</button>`).join("")}</div>
+    <div class="dlg-foot"><span class="hx-sp"></span><button type="button" class="btn primary" data-cla-new hidden>Добавить</button></div>`, "st-dlg tp-dlg cl-dlg");
+  $("[data-cla-q]", $("#xDlg")).focus();
+}
+// one-off: a dose now, and the drug stays in "По необходимости"; a time of day: a new dose in that slot from this day on
+function clMedAdd(name, when) {
+  const d = clSel(), { sched, prn } = clMeds(d), match = drugMatch(name);
+  const same = g => match ? drugMatch(g.name) === match : norm(g.name) === norm(name);
+  const dose = id => clEdit(d, x => clPrnSet(x, id, [...clPrnList(x, id), d === todayISO() ? clHM() : ""]));
+  if (when !== "prn" && sched.some(it => it.slot === when && same(it.g))) { toast("Уже есть в этом приёме"); return; }
+  const have = when === "prn" && prn.find(it => same(it.g));
+  closeX();
+  if (have) { const old = [...clPrnList(state.days?.[d], have.id)]; dose(have.id); toastUndo("Записано", () => clEdit(d, x => clPrnSet(x, have.id, old))); return; }
+  state.plans ||= {};
+  const p = state.plans.tpmine ||= { title: "Мои лекарства", by: "сам", date: "", done: false, note: "", eff: "", study: "", sy: [], recs: [], drugs: [] };
+  const g = when === "prn" ? { id: newId("g"), name, prn: true, slots: [], start: "", end: "" } : { id: newId("g"), name, slots: [when], start: d, end: "" };
+  p.done = false; p.drugs.push(g);
+  if (when === "prn") dose(g.id); else { save(); renderCalendar(); }
+  toastUndo("Добавлено", () => {
+    const q = state.plans?.tpmine; if (!q) return;
+    q.drugs = q.drugs.filter(x => x.id !== g.id); if (!q.drugs.length) delete state.plans.tpmine;
+    clEdit(d, x => clPrnSet(x, g.id, []));
+  });
+}
+
 /* ---------- the medicine window ---------- */
 // one drug: the course, this day's doses (taken at a time, skipped, not marked) and the last two weeks;
 // every change is saved at once
@@ -574,6 +616,7 @@ function initCalendar() {
       renderCalendar(); return;
     }
     const mo = t.closest("[data-cl-mode]"); if (mo) { ui.clMonth = !+mo.dataset.clMode; renderCalendar(); return; }
+    if (t.closest("[data-cl-addmed]")) { openMedAdd(); return; }
     const lk = t.closest("[data-cl-lk]");
     if (lk) {
       const r = ui.clLinks?.[+lk.dataset.clLk], cur = clExpOn(todayISO()); if (!r) return;
@@ -664,6 +707,9 @@ function initCalendar() {
     if (!xd.classList.contains("cl-dlg")) return;
     const t = e.target;
     const one = (b, sel) => { $$(sel, xd).forEach(x => x.setAttribute("aria-pressed", x === b)); };
+    const cw = t.closest("[data-cla-w]"); if (cw) { one(cw, "[data-cla-w]"); return; }
+    const cn = t.closest("[data-cla-n]"), cnew = t.closest("[data-cla-new]");
+    if (cn || cnew) { clMedAdd(cn ? cn.dataset.claN : $("[data-cla-q]", xd).value.trim(), $("[data-cla-w][aria-pressed=true]", xd).dataset.claW); return; }
     const s = t.closest("[data-clb-s]"); if (s) { one(s, "[data-clb-s]"); return; }
     const v = t.closest("[data-clb-v]"); if (v) { one(v, "[data-clb-v]"); return; }
     const w = t.closest("[data-clb-w]");
@@ -706,6 +752,16 @@ function initCalendar() {
     if (del && confirm("Удалить эту проверку? Отметки «соблюдал» в днях тоже перестанут учитываться.")) {
       state.prefs.exps = clExps().filter(x => x.id !== del.dataset.cleDel); save(); closeX(); renderCalendar();
     }
+  });
+  xd.addEventListener("input", e => {
+    if (!e.target.matches("[data-cla-q]")) return;
+    const v = e.target.value.trim(), q = norm(v), rows = $$("[data-cla-n]", xd), b = $("[data-cla-new]", xd);
+    rows.forEach(r => r.hidden = !!q && !r.dataset.q.includes(q));
+    b.hidden = !v || rows.some(r => r.dataset.q === q); b.textContent = `Добавить «${v}»`;
+  });
+  xd.addEventListener("keydown", e => {
+    if (e.key !== "Enter" || !e.target.matches("[data-cla-q]")) return;
+    e.preventDefault(); ($("[data-cla-n]:not([hidden])", xd) || $("[data-cla-new]:not([hidden])", xd))?.click();
   });
   xd.addEventListener("input", e => { if (e.target.matches(".cl-dlg [data-cle-own]") && e.target.value.trim()) $$("[data-cle-i]", xd).forEach(b => b.setAttribute("aria-pressed", false)); });
 }
